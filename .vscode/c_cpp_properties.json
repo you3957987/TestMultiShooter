@@ -7,7 +7,7 @@
             "cppStandard": "c++20",
             "intelliSenseMode": "msvc-x64",
             "compileCommands": [
-                "C:\\Users\\YJH\\Documents\\Unreal Projects\\MultiShooter\\.vscode\\compileCommands_MultiShooter.json"
+                "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_MultiShooter.json"
             ]
         },
         {
@@ -17,7 +17,7 @@
             "cppStandard": "c++20",
             "intelliSenseMode": "msvc-x64",
             "compileCommands": [
-                "C:\\Users\\YJH\\Documents\\Unreal Projects\\MultiShooter\\.vscode\\compileCommands_Default.json"
+                "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default.json"
             ]
         }
     ],
