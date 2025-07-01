@@ -2,6 +2,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/WidgetComponent.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -19,6 +20,9 @@ ABaseCharacter::ABaseCharacter()
 
 	bUseControllerRotationYaw = false; // 캐릭터가 컨트롤러 방향으로 회전하게 만들기
 	GetCharacterMovement()->bOrientRotationToMovement = true; // 캐릭터가 이동 방향을 향하도록 설정
+
+	OverHeadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("OverHeadWidget"));
+	OverHeadWidget->SetupAttachment(RootComponent);
 }
 
 void ABaseCharacter::BeginPlay()

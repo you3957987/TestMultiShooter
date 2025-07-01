@@ -13,6 +13,8 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter
 	class USpringArmComponent* CameraBoom;
 	UPROPERTY(VisibleAnywhere)
 	class UCameraComponent* FollowCamera;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UWidgetComponent* OverHeadWidget;
 
 public:
 	ABaseCharacter();

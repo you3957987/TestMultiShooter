@@ -104,6 +104,22 @@
 		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
 	},
 	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\HUD\\OverHeadWidget.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\HUD\\OverHeadWidget.h",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
 		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\MultiShooter.Build.cs",
 		"arguments": [
 			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
