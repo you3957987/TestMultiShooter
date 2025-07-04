@@ -3,12 +3,15 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Components/CapsuleComponent.h" // UCapsuleComponent 사용을 위한 include
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Net/UnrealNetwork.h" // 네트워크 복제를 위한 헤더 파일
 #include "MultiShooter/Weapon/BaseWeapon.h" // ABaseWeapon 클래스 사용을 위한 헤더 파일
 #include "MultiShooter/CharacterComponent/CombatComponent.h" // UCombatComponent 클래스 사용을 위한 헤더 파일
 #include "Kismet/KismetMathLibrary.h"
+#include "BaseAnimInstance.h" // ABaseAnimInstance 클래스 사용을 위한 헤더 파일
+#include "MultiSHooter/MultiShooter.h" // MultiShooter 헤더 파일을 포함합니다. -> 스켈레탈 콜리전 정의 가져오기
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -32,6 +35,18 @@ ABaseCharacter::ABaseCharacter()
 
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent")); // 전투 컴포넌트 생성
 	CombatComponent->SetIsReplicated(true); // 전투 컴포넌트도 네트워크에서 복제되도록 설정
+
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore); // 캡슐 컴포넌트가 카메라 채널에 반응하지 않도록 설정
+	GetMesh()->SetCollisionObjectType( ECC_SkeletalMesh ); // 메쉬의 충돌 오브젝트 타입을 스켈레탈 메쉬로 설정
+	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore); // 메쉬가 카메라 채널에 반응하지 않도록 설정
+	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block); // 메쉬가 트레이스 채널에 반응하지 않도록 설정
+	//GetCharacterMovement()->RotationRate = FRotator(0.f, 850.f, 0.f); // Yaw(좌우 회전) 속도 850도/초 이거 안쓰는게 좋은듯
+
+	TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 초기 좌우 회전 상태 설정
+
+	SetNetUpdateFrequency(66.f);      // 네트워크 업데이트 빈도 설정
+	SetMinNetUpdateFrequency(33.f);   // 최소 네트워크 업데이트 빈도 설정
+
 }
 
 void ABaseCharacter::BeginPlay()
@@ -54,8 +69,24 @@ void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	AimOffset(DeltaTime); // AimOffset 함수 호출
+	/*
+	if( GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled() ) 
+	{
+		AimOffset(DeltaTime); // AimOffset 함수 호출
+	}
+	else
+	{
+		TimeSinceLastMovementReplicattion += DeltaTime;
+		if (TimeSinceLastMovementReplicattion > 0.25f) // 0.25초마다 이동을 복제합니다.
+		{
+			OnRep_ReplicatedMovement(); // SimProxyTurn 함수를 호출하여 회전 처리
+		}
+		Calculate_AO_Pitch(); // AO 피치를 계산합니다.
+	}
+	*/
 
+	AimOffset(DeltaTime); // AimOffset 함수 호출
+	HideCameraIfCharacterClose(); // 캐릭터가 카메라에 너무 가까이 있으면 카메라 숨기기
 }
 
 void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -70,6 +101,8 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
         EnhancedInput->BindAction(IA_Equip, ETriggerEvent::Started, this, &ABaseCharacter::Equip);
 		EnhancedInput->BindAction(IA_Aim, ETriggerEvent::Started, this, &ABaseCharacter::AimPressed);
 		EnhancedInput->BindAction(IA_Aim, ETriggerEvent::Completed, this, &ABaseCharacter::AimReleased);
+		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Started, this, &ABaseCharacter::FirePressed);
+		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Completed, this, &ABaseCharacter::FireReleased);
     }
 }
 
@@ -115,9 +148,12 @@ void ABaseCharacter::Equip()
 		{
 			ServerEquipWeapon(); // SetOverlappingWeapon 함수를 호출하여 서버에 무기 장착을 요청합니다.
 		}
+
+		if (IsLocallyControlled())
+        {
+            StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+        }
 	}
-
-
 }
 
 void ABaseCharacter::AimPressed()
@@ -133,6 +169,22 @@ void ABaseCharacter::AimReleased()
 	if (CombatComponent) // CombatComponent가 존재하는 경우
 	{
 		CombatComponent->SetAiming(false); // Aim 상태를 false로 설정
+	}
+}
+
+void ABaseCharacter::FirePressed()
+{
+	if (CombatComponent) // CombatComponent가 존재하는 경우
+	{
+		CombatComponent->FireButtonPressed(true); // 발사 버튼이 눌렸음을 CombatComponent에 알립니다.
+	}
+}
+
+void ABaseCharacter::FireReleased()
+{
+	if (CombatComponent) // CombatComponent가 존재하는 경우
+	{
+		CombatComponent->FireButtonPressed(false); // 발사 버튼이 떼어졌음을 CombatComponent에 알립니다.
 	}
 }
 
@@ -193,7 +245,6 @@ void ABaseCharacter::ServerEquipWeapon_Implementation() // 서버에서 지시�
 	}
 }
 
-
 bool ABaseCharacter::IsWeaponEquipped()
 {
 	return ( CombatComponent && CombatComponent->EquippedWeapon ); // CombatComponent가 존재하고, 장착된 무기가 있는지 확인
@@ -215,18 +266,168 @@ void ABaseCharacter::AimOffset( float DeltaTime )
 
 	if( Speed == 0.f && !bIsAir ) // 속도가 0이고 공중에 있지 않다면
 	{
+		bRotateRootBone = true; // 루트 본을 회전하도록 설정합니다.
+
 		FRotator CurrentRotation = FRotator( 0.f, GetBaseAimRotation().Yaw, 0.f );
 		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator( CurrentRotation, StartingAimRotation ); // 현재 회전과 시작 회전의 차이를 계산합니다.
 		AO_Yaw = DeltaAimRotation.Yaw; // Yaw 회전값을 저장합니다.
-		bUseControllerRotationYaw = false; // 컨트롤러 회전 사용
+		
+		if( TurningInPlace == ETurningInPlace::ETIP_NotTurning ) // 좌우 회전 상태가 아닌 경우
+		{
+			InterpAO_Yaw = AO_Yaw;
+		}
+		
+		bUseControllerRotationYaw = true; // 컨트롤러 회전 사용
+		TurnInPlace(DeltaTime); // TurnInPlace 함수를 호출하여 회전 처리
 	}
 	if( Speed > 0.0f || bIsAir ) // 
 	{
+		bRotateRootBone = false; // 루트 본을 회전하지 않도록 설정합니다.
+
 		StartingAimRotation = FRotator( 0.f, GetBaseAimRotation().Yaw, 0.f ); // 조준 회전을 시작합니다.
-		AO_Yaw = 0.f; // Yaw 회전값을 초기화합니다.
+		AO_Yaw = 0.f; // Yaw 회전값을 0으로. 움직일떄는 좌우로 못 보게
 		bUseControllerRotationYaw = true; // 컨트롤러 회전 사용
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
 	}
 
-	AO_Pitch = GetBaseAimRotation().Pitch; // AO 피치를 현재 조준 회전의 Pitch로 설정합니다.
-
+	Calculate_AO_Pitch();
 }
+
+void ABaseCharacter::Calculate_AO_Pitch()
+{
+	AO_Pitch = GetBaseAimRotation().Pitch; // AO 피치를 현재 조준 회전의 Pitch로 설정합니다. -90 ~ 90도 사이로 제한됩니다.
+	if( AO_Pitch > 90.f && !IsLocallyControlled() ) // 로컬 플레이어가 아닌 경우
+	{
+		FVector2D InRange(270.f, 360.f); // 270도에서 360도 사이로 제한합니다.
+		FVector2D OutRange( -90.f, 0.f ); // -90도에서 0도 사이로 변환합니다.
+		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch); // 범위 변환
+		/*
+		언리얼 엔진에서 Pitch 값이 네트워크로 복제될 때 0~360도로 변환되어
+		-90<del>0도(아래로 조준) 값이 270</del>360도로 올 수 있습니다.
+		이걸 다시 -90~0도로 변환해서
+		다른 플레이어가 보는 캐릭터의 조준 방향이 올바르게 보이도록 하는 코드입니다.
+		*/
+	}
+}
+
+void ABaseCharacter::TurnInPlace(float DeltaTime)
+{
+	if( AO_Yaw > 90.f )
+	{
+		TurningInPlace = ETurningInPlace::ETIP_Right; // 오른쪽으로 회전 중
+	}	
+	else if( AO_Yaw < -90.f )
+	{
+		TurningInPlace = ETurningInPlace::ETIP_Left; // 왼쪽으로 회전 중
+	}
+	
+	if( TurningInPlace != ETurningInPlace::ETIP_NotTurning )
+	{
+		InterpAO_Yaw = FMath::FInterpTo( InterpAO_Yaw, 0.f, DeltaTime, 4.f ); // AO_Yaw를 보간합니다.
+		AO_Yaw = InterpAO_Yaw; // 보간된 값을 AO_Yaw에 저장합니다.
+		if( FMath::Abs( AO_Yaw ) < 15.f ) // 보간된 값이 15보다 작으면
+		{
+			TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
+			StartingAimRotation = FRotator( 0.f, GetBaseAimRotation().Yaw, 0.f ); // 조준 회전을 시작합니다.
+		}
+	}
+	
+}
+
+void ABaseCharacter::SimProxyTurn()
+{
+	if( CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 EquippedWeapon이 없으면 함수 종료
+
+	bRotateRootBone = false;
+
+	ProxyRotationLastFrame = ProxyRotation; // 이전 프레임의 회전값을 저장합니다.
+	ProxyRotation = GetActorRotation(); // 현재 회전값을 저장합니다.
+	ProxyYaw = UKismetMathLibrary::NormalizedDeltaRotator( ProxyRotation, ProxyRotationLastFrame ).Yaw; // 현재 회전값과 이전 프레임의 회전값의 차이를 계산합니다.
+
+	if( FMath::Abs( ProxyYaw ) > TurnThreshold ) // 회전값의 Yaw가 TurnThreshold보다 크면
+	{
+		if( ProxyYaw > TurnThreshold )
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Right;
+		}
+		else if( ProxyYaw < TurnThreshold )
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Left;
+		}
+		else
+		{
+			TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
+		}
+		return;
+	}
+	TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
+}
+
+void ABaseCharacter::PlayFireMontage()
+{
+	if( CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr || FireWeaponMontage == nullptr ) return; // CombatComponent, EquippedWeapon, FireWeaponMontage가 없으면 함수 종료
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if( AnimInstance && FireWeaponMontage )
+	{
+		AnimInstance->Montage_Play(FireWeaponMontage); // 무기 발사 애니메이션 몽타주를 재생합니다.
+		FName SectionName = "Fire"; // 애니메이션 몽타주의 섹션 이름을 "Fire"로 설정합니다.
+		AnimInstance->Montage_JumpToSection(SectionName); // 해당 섹션으로 점프합니다.
+	}
+}
+
+void ABaseCharacter::PlayHitReactMontage()
+{
+	if( CombatComponent == nullptr || HitReactMontage == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if( AnimInstance && HitReactMontage )
+	{
+		AnimInstance->Montage_Play(HitReactMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
+		FName SectionName = "HitFront"; // 애니메이션 몽타주의 섹션 이름을 "HitReact"로 설정합니다.
+		AnimInstance->Montage_JumpToSection(SectionName); // 해당 섹션으로 점프합니다.
+	}
+}
+
+void ABaseCharacter::MulticastPlayHitReactMontage_Implementation()
+{
+	PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
+}
+
+void ABaseCharacter::HideCameraIfCharacterClose()
+{
+	if( !IsLocallyControlled() ) return; // 로컬 플레이어가 아닌 경우 함수 종료
+
+	if( ( FollowCamera->GetComponentLocation() - GetActorLocation() ).Size() < CameraThreshold )
+	{
+		bCloseWall = true; // 카메라가 캐릭터에 너무 가까이 있으면 bCloseWall을 true로 설정합니다.
+		GetMesh()->SetVisibility(false); // 카메라가 캐릭터에 너무 가까우면 메쉬를 숨깁니다.
+		if( CombatComponent &&  CombatComponent->EquippedWeapon && CombatComponent->EquippedWeapon->GetWeaponMesh() ) 
+		{
+			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = true; // 무기 메쉬도 숨깁니다.
+		}
+	}
+	else
+	{
+		bCloseWall = false; // 카메라가 캐릭터에 너무 가까이 있지 않으면 bCloseWall을 false로 설정합니다.
+		GetMesh()->SetVisibility(true); // 카메라가 캐릭터에 너무 가까우지 않으면 메쉬를 보이게 합니다.
+		if( CombatComponent &&  CombatComponent->EquippedWeapon && CombatComponent->EquippedWeapon->GetWeaponMesh() ) 
+		{
+			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = false; 
+		}
+	} 
+}
+
+void ABaseCharacter::OnRep_ReplicatedMovement()
+{
+	Super::OnRep_ReplicatedMovement(); // 부모 클래스의 OnRep_ReplicatedMovement를 호출합니다.
+
+	if( GetLocalRole() == ENetRole::ROLE_SimulatedProxy ) // 로컬 플레이어가 아닌 경우
+	{
+		//SimProxyTurn(); // SimProxyTurn 함수를 호출하여 회전 처리
+	}
+	TimeSinceLastMovementReplicattion = 0.f; // 마지막 이동 복제 시간 초기화
+}
+
+
+

@@ -4,6 +4,8 @@
 #include "Net/UnrealNetwork.h" // 네트워크 관련 헤더 파일
 #include "Components/WidgetComponent.h" // 위젯 컴포넌트 헤더 파일
 #include "MultiShooter/Character/BaseCharacter.h" // 캐릭터 헤더 파일
+#include "OutBullet.h" // 총알 헤더 파일
+#include "Kismet/GameplayStatics.h" // 게임 관련 유틸리티 함수들을 사용하기 위한 헤더 파일
 
 ABaseWeapon::ABaseWeapon()
 {
@@ -27,6 +29,12 @@ ABaseWeapon::ABaseWeapon()
 
 	PickUpWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickUpWidget"));
 	PickUpWidget->SetupAttachment(RootComponent); // 위젯 컴포넌트를 루트 컴포넌트에 첨부합니다.
+
+	MuzzlePoint = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzlePoint")); // 총구 위치를 나타내는 컴포넌트 생성
+	MuzzlePoint->SetupAttachment(WeaponMesh); // 
+
+	BulletOutPoint = CreateDefaultSubobject<USceneComponent>(TEXT("BulletOutPoint")); // 탄피 배출 위치를 나타내는 컴포넌트 생성
+	BulletOutPoint->SetupAttachment(WeaponMesh); // 무기 메쉬에 첨부합니다.
 }
 
 void ABaseWeapon::BeginPlay()
@@ -124,4 +132,27 @@ void ABaseWeapon::SetWeaponState(EWeaponState NewState) // 무기 상태를 설�
     }
 }
 
+
+void ABaseWeapon::Fire(const FVector& HitTarget) // 발사 함수, 타겟 위치를 인자로 받음
+{
+	//이거는 자식에서 제대로 구현함. 강의에서는 발사 애니메이션으로 머즐 포인트 생성
+
+	if( OutBulletClass ) // 이거 총알 아니라 탄피임
+	{
+		FTransform FirePosition = BulletOutPoint->GetComponentTransform();
+
+		if(  OutBulletClass )
+		{
+			UWorld* World = GetWorld();
+			if (World)
+			{
+				World->SpawnActor<AOutBullet>(OutBulletClass, FirePosition.GetLocation() , FirePosition.GetRotation().Rotator() );
+			}
+		}
+	}
+	if( MuzzleFlash )
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, MuzzlePoint->GetComponentTransform(), true); // 총구 플래시 이펙트 생성
+	}
+}
 

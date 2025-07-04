@@ -2,10 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "MultiSHooter/TypeHeader/TurningInPlace.h" // 조준시 좌우로 360도 회전하는게 아니라 90도 정도로만 돌아가게 만들기 위한 헤더
+#include "MultiShooter/Interface/CrosshairInterface.h" // 크로스헤어 인터페이스 헤더
 #include "BaseCharacter.generated.h"
 
 UCLASS()
-class MULTISHOOTER_API ABaseCharacter : public ACharacter
+class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInterface // ICrosshairInterface 인터페이스를 구현합니다.
 {
 	GENERATED_BODY()
 
@@ -28,6 +30,8 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter
 	class UInputAction* IA_Equip;
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	class UInputAction* IA_Aim;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	class UInputAction* IA_Fire;
 
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
 	class ABaseWeapon* OverlappingWeapon;
@@ -43,7 +47,33 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter
 
 	float AO_Pitch; // 캐릭터의 AO 피치를 저장합니다. 조준 시에 사용됩니다.
 	float AO_Yaw; // 캐릭터의 AO 요 를 저장합니다. 조준 시에 사용됩니다.
-	FRotator StartingAimRotation;
+	float InterpAO_Yaw; // AO_Yaw를 보간하기 위한 변수입니다. 조준 시에 사용됩니다.
+	FRotator StartingAimRotation; // 조준 회전을 시작할 때의 회전값을 저장합니다.
+
+	ETurningInPlace TurningInPlace; // 캐릭터가 조준 중일 때 좌우로 회전하는 상태를 제한하기 위한 열거형 변수!
+	void TurnInPlace(float DeltaTime); // 조준 중일 때 좌우로 회전하는 상태를 처리하는 함수
+
+	void HideCameraIfCharacterClose(); // 캐릭터가 가까이 있을 때 카메라를 숨기는 함수
+	UPROPERTY(EditAnywhere)
+	float CameraThreshold = 200.f; // 카메라가 캐릭터와 얼마나 가까이 있을 때 숨길지 설정하는 변수
+	bool bCloseWall = false; // 벽에 가까이 있을 때 true로 설정되는 변수
+
+	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
+	bool bRotateRootBone; // 루트 본을 회전할지 여부를 저장하는 변수
+	float TurnThreshold = 0.5f; // 조준 중일 때 회전할 최소 각도
+	FRotator ProxyRotationLastFrame; // 로컬 플레이어가 아닌 경우 회전값을 저장하는 변수
+	FRotator ProxyRotation; // 로컬 플레이어가 아닌 경우 현재 회전값을 저장하는 변수
+	float ProxyYaw; // 로컬 플레이어가 아닌 경우 현재 Yaw 값을 저장하는 변수
+	float TimeSinceLastMovementReplicattion; // 마지막으로 이동이 복제된 시간
+	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
+
+	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* FireWeaponMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주 
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* HitReactMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
+	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
 
 protected:
 	virtual void BeginPlay() override;
@@ -58,25 +88,39 @@ protected:
 	void AimPressed();
 	UFUNCTION()
 	void AimReleased();
+	UFUNCTION()
+	void FirePressed();
+	UFUNCTION()
+	void FireReleased();
 
-	void AimOffset(float DeltaTime); // 조준 오프셋을 계산하는 함수
-
+    void AimOffset(float DeltaTime); // 조준 오프셋을 계산하는 함수
+    void Calculate_AO_Pitch();
+    void SimProxyTurn(); // 조준중 회전값 전달을 매끄럽게 하는 함수
 
 public:	
 	ABaseCharacter();	
 	virtual void Tick(float DeltaTime) override;
-
-	bool IsWeaponEquipped();
-	bool IsAiming(); // CombatComponent가 존재할 때만 bIsAiming을 반환
+	virtual void PostInitializeComponents() override; // 이 함수는 BeginPlay() 전에 호출되며, 컴포넌트 초기화에 사용됩니다.
+	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; // 뱐수 복제 위한 함수 복제는 변수가 변했을떄만!
+	virtual void OnRep_ReplicatedMovement() override; // ReplicatedMovement가 변경되었을 때 호출되는 함수
 
 	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; } // AO_Yaw를 반환하는 함수
 	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; } // AO_Pitch를 반환하는 함수
+	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; } // TurningInPlace를 반환하는 함수
+	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; } // FollowCamera를 반환하는 함수
+	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
+	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; } // bRotateRootBone을 반환하는 함수
+	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
+	FORCEINLINE bool GetCloseWall() const { return bCloseWall; } // bCloseWall을 반환하는 함수
 
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; // 뱐수 복제 위한 함수 복제는 변수가 변했을떄만!
-
+	bool IsWeaponEquipped();
+	bool IsAiming(); // CombatComponent가 존재할 때만 bIsAiming을 반환
 	void SetOverlappingWeapon(ABaseWeapon* Weapon);
+	void PlayFireMontage(); // 무기 발사 애니메이션 몽타주를 재생하는 함수. 
+	void PlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 재생하는 함수
 
-	virtual void PostInitializeComponents() override; // 이 함수는 BeginPlay() 전에 호출되며, 컴포넌트 초기화에 사용됩니다.
+	UFUNCTION( NetMulticast, Unreliable ) // 이거는 전달 안되도 상관 없음
+	void MulticastPlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 멀티캐스트로 재생하는 함수
 
 };
