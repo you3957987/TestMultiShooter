@@ -12,11 +12,16 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "BaseAnimInstance.h" // ABaseAnimInstance 클래스 사용을 위한 헤더 파일
 #include "MultiSHooter/MultiShooter.h" // MultiShooter 헤더 파일을 포함합니다. -> 스켈레탈 콜리전 정의 가져오기
+#include "MultiShooter/PlayerController/BasePC.h" // ABasePC 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/GameMode/MainGameMode.h" // AMainGameMode 클래스 사용을 위한 헤더 파일
+#include "TimerManager.h" // 타이머 매니저 사용을 위한 헤더 파일
 
 ABaseCharacter::ABaseCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	//SpawnCollisionHandlingMethod = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn; 
+	// 스폰 충돌 처리 방법 설정 스폰 설정시 겹쳐도 항상 스폰되도록
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -47,6 +52,8 @@ ABaseCharacter::ABaseCharacter()
 	SetNetUpdateFrequency(66.f);      // 네트워크 업데이트 빈도 설정
 	SetMinNetUpdateFrequency(33.f);   // 최소 네트워크 업데이트 빈도 설정
 
+	DissolveTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("DissolveTimeline")); // 디졸브 타임라인 컴포넌트 생성
+
 }
 
 void ABaseCharacter::BeginPlay()
@@ -63,6 +70,13 @@ void ABaseCharacter::BeginPlay()
             }
         }
     }
+	UpdateHUDHealth();
+
+	if( HasAuthority() )
+	{
+		OnTakeAnyDamage.AddDynamic(this, &ABaseCharacter::ReceiveDamage); // 피해를 받았을 때 호출되는 함수 바인딩/ 어플라이 대미지는 프로젝타일에서!
+		// 이 함수는 서버에서만 실행되므로 변수 복제시 클라에서도 실행 되게 해야함!
+	}
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -194,6 +208,8 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 	// OverlappingWeapon 변수를 네트워크에서 복제합니다.
 	DOREPLIFETIME_CONDITION(ABaseCharacter, OverlappingWeapon, COND_OwnerOnly); // 이 변수는 오직 소유자에게만 복제됩니다.
+	DOREPLIFETIME(ABaseCharacter, Health); // CurrentHealth 변수를 네트워크에서 복제합니다.
+
 }
 
 void ABaseCharacter::OnRep_OverlappingWeapon( ABaseWeapon* LastWeapon ) // 이 함수는 클라이언트에서만 실행 되므로 서버용도 필요
@@ -206,6 +222,12 @@ void ABaseCharacter::OnRep_OverlappingWeapon( ABaseWeapon* LastWeapon ) // 이 �
 	{
 		LastWeapon->ShowPickUpWidget(false); // 이전 무기의 위젯을 숨깁니다.
 	}
+}
+
+void ABaseCharacter::OnRep_Health()
+{
+	UpdateHUDHealth();
+	PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
 }
 
 void ABaseCharacter::SetOverlappingWeapon(ABaseWeapon* Weapon) // 겹치면 무기, 아니면 널값 받아옴. 이 함수는 서버에서만 실행됨
@@ -380,8 +402,10 @@ void ABaseCharacter::PlayHitReactMontage()
 {
 	if( CombatComponent == nullptr || HitReactMontage == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
 
+	//UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage called")); // 디버깅용 로그 출력
+
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if( AnimInstance && HitReactMontage )
+	if( AnimInstance && HitReactMontage && !bDead ) // HitReactMontage가 존재하고, 캐릭터가 죽지 않은 경우
 	{
 		AnimInstance->Montage_Play(HitReactMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
 		FName SectionName = "HitFront"; // 애니메이션 몽타주의 섹션 이름을 "HitReact"로 설정합니다.
@@ -389,9 +413,17 @@ void ABaseCharacter::PlayHitReactMontage()
 	}
 }
 
-void ABaseCharacter::MulticastPlayHitReactMontage_Implementation()
+void ABaseCharacter::PlayDieMontage()
 {
-	PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
+	if( CombatComponent == nullptr || HitReactMontage == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
+
+	//UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage called")); // 디버깅용 로그 출력
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if( AnimInstance && DieMontage )
+	{
+		AnimInstance->Montage_Play(DieMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
+	}
 }
 
 void ABaseCharacter::HideCameraIfCharacterClose()
@@ -427,6 +459,114 @@ void ABaseCharacter::OnRep_ReplicatedMovement()
 		//SimProxyTurn(); // SimProxyTurn 함수를 호출하여 회전 처리
 	}
 	TimeSinceLastMovementReplicattion = 0.f; // 마지막 이동 복제 시간 초기화
+}
+
+void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser)
+{
+	Health = FMath::Clamp(Health - Damage, 0.f, MAxHealth); // 피해를 받아 Health를 감소시키고, 0과 MAxHealth 사이로 제한합니다.
+	// 이떄 OnRep_Health가 호출 클라이언트에서 플레이 힛 몽타주 실행
+	// 이떄 캐릭터 체력이 0 이면 변수 변경 없고 복제도 안 일어남. 그레서 0 이하로 내려가면 힛 몽타주가 한쪽에서 안보임!
+	PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
+	UpdateHUDHealth();
+
+	if(  Health == 0.f ) // Health가 0 이하로 떨어지면
+	{
+		AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+		if( MainGameMode )
+		{
+			PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
+
+			ABasePC* AttackerController = Cast<ABasePC>(InstigatorController); // 공격자를 ABasePC로 캐스팅합니다.
+
+			MainGameMode->PlayerEliminated(this, PlayerController, AttackerController ); // 플레이어 제거 함수 호출
+		}
+	}
+
+}
+
+void ABaseCharacter::UpdateHUDHealth()
+{
+	PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
+	if( PlayerController )
+	{
+		PlayerController->SetHUDHealth(Health, MAxHealth); // 플레이어 컨트롤러의 HUD 체력을 설정합니다.
+	}
+}
+
+void ABaseCharacter::MulticastEliminate_Implementation()
+{
+	bDead = true;
+	PlayDieMontage(); // 죽었을 때 애니메이션 몽타주를 재생합니다.
+
+    // 2초 뒤에 StartDissolveMaterials 실행
+    FTimerHandle DissolveTimerHandle;
+    GetWorldTimerManager().SetTimer(
+        DissolveTimerHandle,
+        this,
+        &ABaseCharacter::StartDissolve,
+        2.0f, // 2초 뒤에 실행
+        false
+    );
+}
+
+void ABaseCharacter::Eliminate()
+{
+	MulticastEliminate(); // 멀티캐스트로 함수 실행
+
+	// 이 아래로는 서버에서만 실행
+	GetWorldTimerManager().SetTimer(
+		EliminateTimer, // 타이머 핸들을 설정합니다.
+		this, // 현재 객체를 타겟으로 설정
+		&ABaseCharacter::EliminateTimerFinished, // 타이머가 끝났을 때 호출할 함수
+		EliminateDelay); // 타이머 설정
+}
+
+void ABaseCharacter::EliminateTimerFinished()
+{
+	AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+	if( MainGameMode )
+	{
+		MainGameMode->RequestRespawn( this, Controller ); // 플레이어 제거 함수 호출
+	}
+}
+
+void ABaseCharacter::UpdateDissolve(float DissolveValue)
+{
+	UE_LOG(LogTemp, Warning, TEXT("DissolveValue: %f"), DissolveValue); // 디졸브 값 출력
+	if( DynamicDissolveMaterialInstanceBody )
+	{
+		DynamicDissolveMaterialInstanceBody->SetScalarParameterValue(TEXT("Dissolve"), DissolveValue); // 디졸브 값을 업데이트합니다.
+	}
+	if( DynamicDissolveMaterialInstanceHead )
+	{
+		DynamicDissolveMaterialInstanceHead->SetScalarParameterValue(TEXT("Dissolve"), DissolveValue); // 디졸브 값을 업데이트합니다.
+	}
+}
+
+void ABaseCharacter::StartDissolve()
+{
+	if (DIssolveMaterialInstanceBody)
+    {
+        DynamicDissolveMaterialInstanceBody = UMaterialInstanceDynamic::Create(DIssolveMaterialInstanceBody, this);
+        GetMesh()->SetMaterial(0, DynamicDissolveMaterialInstanceBody);
+        DynamicDissolveMaterialInstanceBody->SetScalarParameterValue(TEXT("Dissolve"), 0.55f);
+        DynamicDissolveMaterialInstanceBody->SetScalarParameterValue(TEXT("Glow"), 200.f);
+    }
+    if (DIssolveMaterialInstanceHead)
+    {
+        DynamicDissolveMaterialInstanceHead = UMaterialInstanceDynamic::Create(DIssolveMaterialInstanceHead, this);
+        GetMesh()->SetMaterial(1, DynamicDissolveMaterialInstanceHead);
+        DynamicDissolveMaterialInstanceHead->SetScalarParameterValue(TEXT("Dissolve"), 0.55f);
+        DynamicDissolveMaterialInstanceHead->SetScalarParameterValue(TEXT("Glow"), 200.f);	
+    }
+
+	DissolveTrack.BindDynamic(this, &ABaseCharacter::UpdateDissolve); // 타임라인의 업데이트 함수에 UpdateDissolve를 바인딩합니다.
+
+	if( DissolveCurve && DissolveTimeline )
+	{
+		DissolveTimeline->AddInterpFloat(DissolveCurve, DissolveTrack); // 타임라인에 디졸브 커브를 추가합니다.
+		DissolveTimeline->Play();
+	}
 }
 
 

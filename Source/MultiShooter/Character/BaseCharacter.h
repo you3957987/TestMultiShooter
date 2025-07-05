@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "MultiSHooter/TypeHeader/TurningInPlace.h" // 조준시 좌우로 360도 회전하는게 아니라 90도 정도로만 돌아가게 만들기 위한 헤더
 #include "MultiShooter/Interface/CrosshairInterface.h" // 크로스헤어 인터페이스 헤더
+#include "Components/TimelineComponent.h" // 타임라인 컴포넌트 헤더
 #include "BaseCharacter.generated.h"
 
 UCLASS()
@@ -73,12 +74,64 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* HitReactMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* DieMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
 	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
 
-protected:
-	virtual void BeginPlay() override;
+	//플레이어 상태-------------------------------------------------------------------------------------------------------
+	UPROPERTY(EditAnywhere, Category = "Player Status", meta = (AllowPrivateAccess = "true"))
+	float MAxHealth = 100.f; // 최대 체력
+	
+	UPROPERTY( ReplicatedUsing = OnRep_Health, VisibleAnyWhere, Category = "Player Status", meta = (AllowPrivateAccess = "true") )
+	float Health = 100.f; // 현재 체력
 
 	UFUNCTION()
+	void OnRep_Health(); // 체력이 변경되었을 때 호출되는 함수
+
+	class ABasePC* PlayerController; // 플레이어 컨트롤러
+
+	bool bDead = false;
+
+	FTimerHandle EliminateTimer; // 플레이어가 제거되었을 때 타이머 핸들
+	UPROPERTY( EditDefaultsOnly, Category = "Player Status" ) 
+	float EliminateDelay = 3.f; // 플레이어가 제거되었을 때 타이머 딜레이
+
+	void EliminateTimerFinished(); // 플레이어가 제거되었을 때 타이머가 끝났을 때 호출되는 함수
+	//플레이어 상태-------------------------------------------------------------------------------------------------------
+
+	//디졸브 -------------------------------------------------------------------------------------------------------
+
+	UPROPERTY( VisibleAnyWhere )
+	class UTimelineComponent* DissolveTimeline; // 디졸브 타임라인 컴포넌트
+
+	class FOnTimelineFloat DissolveTrack; // 디졸브 트랙을 위한 타임라인 핸들
+
+	UFUNCTION()
+	void UpdateDissolve(float DissolveValue); // 디졸브 값을 업데이트하는 함수
+
+	void StartDissolve(); // 디졸브를 중지하는 함수
+
+	UPROPERTY( EditAnywhere )
+	class UCurveFloat* DissolveCurve; // 디졸브를 위한 커브
+
+	UPROPERTY( VisibleAnyWhere, Category = "Dissolve" )
+	UMaterialInstanceDynamic* DynamicDissolveMaterialInstanceBody; // 디졸브를 위한 동적 머티리얼 인스턴스. 게임 도중 바꿀 수 있음
+
+	UPROPERTY( EditAnywhere, Category = "Dissolve" )
+	UMaterialInstance* DIssolveMaterialInstanceBody; // 디졸브를 위한 머티리얼 인스턴스
+
+	UPROPERTY( VisibleAnyWhere, Category = "Dissolve" )
+	UMaterialInstanceDynamic* DynamicDissolveMaterialInstanceHead; // 디졸브를 위한 동적 머티리얼 인스턴스. 게임 도중 바꿀 수 있음
+
+	UPROPERTY( EditAnywhere, Category = "Dissolve" )
+	UMaterialInstance* DIssolveMaterialInstanceHead; // 디졸브를 위한 머티리얼 인스턴스
+
+	//디졸브 -------------------------------------------------------------------------------------------------------
+protected:
+    virtual void BeginPlay() override;
+
+    UFUNCTION()
 	void Move(const FInputActionValue& Value);
 	UFUNCTION()
 	void Look(const FInputActionValue& Value);
@@ -97,6 +150,11 @@ protected:
     void Calculate_AO_Pitch();
     void SimProxyTurn(); // 조준중 회전값 전달을 매끄럽게 하는 함수
 
+	UFUNCTION()
+	void ReceiveDamage( AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser ); 
+	// 피해를 받았을 때 호출되는 함수
+	void UpdateHUDHealth();
+
 public:	
 	ABaseCharacter();	
 	virtual void Tick(float DeltaTime) override;
@@ -113,14 +171,22 @@ public:
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; } // bRotateRootBone을 반환하는 함수
 	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 	FORCEINLINE bool GetCloseWall() const { return bCloseWall; } // bCloseWall을 반환하는 함수
+	FORCEINLINE bool IsDead() const { return bDead; } // bDie를 반환하는 함수
 
 	bool IsWeaponEquipped();
 	bool IsAiming(); // CombatComponent가 존재할 때만 bIsAiming을 반환
 	void SetOverlappingWeapon(ABaseWeapon* Weapon);
 	void PlayFireMontage(); // 무기 발사 애니메이션 몽타주를 재생하는 함수. 
 	void PlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 재생하는 함수
+	void PlayDieMontage(); // 플레이어가 죽었을 때 애니메이션 몽타주를 재생하는 함수
 
-	UFUNCTION( NetMulticast, Unreliable ) // 이거는 전달 안되도 상관 없음
-	void MulticastPlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 멀티캐스트로 재생하는 함수
+	UFUNCTION( NetMulticast, Reliable )
+	void MulticastEliminate(); // 플레이어가 제거되었을 때 호출되는 멀티캐스트 함수
+
+	void Eliminate(); // 플레이어가 제거되었을 때 호출되는 서버에서만 실행하는 함수
+
+	//UFUNCTION( NetMulticast, Unreliable ) // 이거는 전달 안되도 상관 없음
+	//void MulticastPlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 멀티캐스트로 재생하는 함수
+	//void ABaseCharacter::MulticastPlayHitReactMontage_Implementation() { PlayHitReactMontage();} // 멀티캐스트로 애니메이션 몽타주를 재생합니다. 
 
 };

@@ -18,6 +18,7 @@ public:
 	FLinearColor CrosshairColor;
 };
 
+
 UCLASS()
 class MULTISHOOTER_API ACharacterHUD : public AHUD
 {
@@ -30,12 +31,18 @@ class MULTISHOOTER_API ACharacterHUD : public AHUD
 
 	void DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, FVector2D Spread, FLinearColor CrosshairColor);
 
+protected:
+	virtual void BeginPlay() override;
+	void AddCharacterUI(); // 캐릭터 UI 위젯을 추가하는 함수
+
 public:
 	virtual void DrawHUD() override;
 
-	FORCEINLINE void SetHUDPackage(const FHUDPackage& NewHUDPackage)
-	{
-		HUDPackage = NewHUDPackage; 
-	}
+	FORCEINLINE void SetHUDPackage(const FHUDPackage& NewHUDPackage) { HUDPackage = NewHUDPackage; }
+
+	class UCharacterUI* CharacterUI; // 캐릭터 UI 위젯
+
+	UPROPERTY(EditAnywhere, Category = "PlayerStat")
+	TSubclassOf<class UUserWidget> CharacterUIClass; // 캐릭터 UI 클래스
 	
 };

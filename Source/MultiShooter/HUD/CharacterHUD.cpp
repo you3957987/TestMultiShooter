@@ -1,4 +1,6 @@
 #include "CharacterHUD.h"
+#include "GameFramework/PlayerController.h"
+#include "CharacterUI.h"
 
 void ACharacterHUD::DrawHUD()
 {
@@ -46,6 +48,13 @@ void ACharacterHUD::DrawHUD()
 
 }
 
+void ACharacterHUD::BeginPlay()
+{
+    Super::BeginPlay();
+
+    AddCharacterUI(); // 캐릭터 UI 위젯을 추가합니다.
+}
+
 void ACharacterHUD::DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, FVector2D Spread, FLinearColor CrosshairColor )
 {
     const float TextureWidth = Texture->GetSizeX();
@@ -69,3 +78,12 @@ void ACharacterHUD::DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter,
     ); // 십자선 텍스처 그리기
 }
 
+void ACharacterHUD::AddCharacterUI()
+{
+    APlayerController* PlayerController = GetOwningPlayerController();
+    if (PlayerController && CharacterUIClass )
+    {
+        CharacterUI = CreateWidget<UCharacterUI>(PlayerController, CharacterUIClass); // 캐릭터 UI 위젯 생성
+        CharacterUI->AddToViewport(); // 뷰포트에 추가
+    }
+}

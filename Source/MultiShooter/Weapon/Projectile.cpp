@@ -60,12 +60,14 @@ void AProjectile::Tick(float DeltaTime)
 void AProjectile::OnHit( UPrimitiveComponent* HitComp,  AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit )
 { 
 
+	/*
 	ABaseCharacter* HitCharacter = Cast<ABaseCharacter>(OtherActor);
 
 	if( HitCharacter ) // 충돌한 액터가 ABaseCharacter이고, 로컬 플레이어가 조종하는 캐릭터인 경우
 	{
 		HitCharacter->MulticastPlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다. 이때 멀티캐스트 함수 호출
 	}
+	*/
 
 	Destroy(); // 충돌 후 발사체를 파괴합니다.
 }

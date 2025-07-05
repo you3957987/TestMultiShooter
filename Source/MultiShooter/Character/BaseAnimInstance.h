@@ -52,6 +52,9 @@ class MULTISHOOTER_API UBaseAnimInstance : public UAnimInstance
 	bool bRotateRootBone; // 루트 본을 회전할지 여부를 저장하는 변수
 	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 
+	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	bool bDead; // 캐릭터가 죽었는지 여부를 저장하는 변수
+
 public:
 	virtual void NativeInitializeAnimation() override; // 비긴 플레이랑 유사
 	virtual void NativeUpdateAnimation(float DeltaTime) override; // 매 프레임마다 호출 틱이랑 유사

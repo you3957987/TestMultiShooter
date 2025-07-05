@@ -26,13 +26,14 @@ class MULTISHOOTER_API AProjectile : public AActor
 
 	class UParticleSystemComponent* TraceParticleComponent; // 파티클 시스템 컴포넌트
 
-
-	
 protected:
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
 	virtual void OnHit( UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit ); // 충돌 시 호출되는 함수
+
+	UPROPERTY(EditAnywhere)
+	float Damage = 20.f; // 발사체가 입힐 피해량
 
 public:
 	AProjectile();	

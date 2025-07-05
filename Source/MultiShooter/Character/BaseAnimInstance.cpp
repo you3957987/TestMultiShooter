@@ -58,4 +58,6 @@ void UBaseAnimInstance::NativeUpdateAnimation(float DeltaTime)
     AO_Yaw = BaseCharacter->GetAO_Yaw(); // 캐릭터의 AO_Yaw 값을 가져옵니다.
     AO_Pitch = BaseCharacter->GetAO_Pitch(); // 캐릭터의 AO_Pitch 값을 가져옵니다.
     // 에임 오프셋 ------------------------------------------------------------------------------------
+
+    bDead = BaseCharacter->IsDead(); // 캐릭터가 죽었는지 여부를 가져옵니다.
 }
