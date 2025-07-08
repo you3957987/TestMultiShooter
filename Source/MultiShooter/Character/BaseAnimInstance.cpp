@@ -2,6 +2,7 @@
 #include "BaseCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "MultiShooter/TypeHeader/CombatState.h" 
 
 void UBaseAnimInstance::NativeInitializeAnimation()
 {
@@ -60,4 +61,5 @@ void UBaseAnimInstance::NativeUpdateAnimation(float DeltaTime)
     // 에임 오프셋 ------------------------------------------------------------------------------------
 
     bDead = BaseCharacter->IsDead(); // 캐릭터가 죽었는지 여부를 가져옵니다.
+    bReloading = BaseCharacter->GetCombatState() != ECombatState::ECS_Reloading; // 캐릭터가 재장전 중인지 여부를 가져옵니다. 이거 안쓰긴 함.
 }

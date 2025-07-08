@@ -5,6 +5,7 @@
 #include "MultiSHooter/TypeHeader/TurningInPlace.h" // 조준시 좌우로 360도 회전하는게 아니라 90도 정도로만 돌아가게 만들기 위한 헤더
 #include "MultiShooter/Interface/CrosshairInterface.h" // 크로스헤어 인터페이스 헤더
 #include "Components/TimelineComponent.h" // 타임라인 컴포넌트 헤더
+#include "MultiShooter/TypeHeader/CombatState.h" // HUD 패키지 구조체 헤더 파일
 #include "BaseCharacter.generated.h"
 
 UCLASS()
@@ -33,6 +34,8 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	class UInputAction* IA_Aim;
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	class UInputAction* IA_Fire;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	class UInputAction* IA_Reload;
 
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
 	class ABaseWeapon* OverlappingWeapon;
@@ -40,7 +43,7 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	void OnRep_OverlappingWeapon( ABaseWeapon* LastWeapon ); 
 	// OverlappingWeapon이 변경되었을 때 호출되는 함 이 함수는 서버에서는 실행 안하고 클라이언트에서만 실행
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent; // 전투 컴포넌트
 
 	UFUNCTION( Server, Reliable )
@@ -77,6 +80,9 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* DieMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ReloadMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
 	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
 
 	//플레이어 상태-------------------------------------------------------------------------------------------------------
@@ -89,18 +95,19 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UFUNCTION()
 	void OnRep_Health(); // 체력이 변경되었을 때 호출되는 함수
 
+	UPROPERTY()
 	class ABasePC* PlayerController; // 플레이어 컨트롤러
 
 	bool bDead = false;
 
 	FTimerHandle EliminateTimer; // 플레이어가 제거되었을 때 타이머 핸들
 	UPROPERTY( EditDefaultsOnly, Category = "Player Status" ) 
-	float EliminateDelay = 3.f; // 플레이어가 제거되었을 때 타이머 딜레이
+	float EliminateDelay = 5.f; // 플레이어가 제거되었을 때 타이머 딜레이
 
 	void EliminateTimerFinished(); // 플레이어가 제거되었을 때 타이머가 끝났을 때 호출되는 함수
 	//플레이어 상태-------------------------------------------------------------------------------------------------------
 
-	//디졸브 -------------------------------------------------------------------------------------------------------
+	//디졸브 및 죽으면 나오는 봇 -------------------------------------------------------------------------------------------------------
 
 	UPROPERTY( VisibleAnyWhere )
 	class UTimelineComponent* DissolveTimeline; // 디졸브 타임라인 컴포넌트
@@ -127,7 +134,22 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY( EditAnywhere, Category = "Dissolve" )
 	UMaterialInstance* DIssolveMaterialInstanceHead; // 디졸브를 위한 머티리얼 인스턴스
 
-	//디졸브 -------------------------------------------------------------------------------------------------------
+	void EliminateBotTimerFinished(); // 제거 봇 타이머가 끝났을 때 호출되는 함수
+
+	UPROPERTY( EditAnywhere, Category = "Dissolve" )
+	UParticleSystem* EliminateBotEffect; // 플레이어가 제거되었을 때 생성되는 파티클 시스템
+
+	UPROPERTY( VisibleAnyWhere)
+	UParticleSystemComponent* EliminateBotEffectComponent; // 플레이어가 제거되었을 때 생성되는 파티클 시스템 컴포넌트
+
+	UPROPERTY( EditAnywhere, Category = "Dissolve" )
+	class USoundCue* EliminateSound; // 플레이어가 제거되었을 때 재생되는 사운드 큐
+
+	//디졸브 및 죽으면 나오는 봇 -------------------------------------------------------------------------------------------------------
+
+	UPROPERTY()
+	class ACharacterState* CharacterState; // 플레이어의 상태를 저장하는 CharacterState 클래스의 인스턴스
+
 protected:
     virtual void BeginPlay() override;
 
@@ -135,6 +157,7 @@ protected:
 	void Move(const FInputActionValue& Value);
 	UFUNCTION()
 	void Look(const FInputActionValue& Value);
+	virtual void Jump(); // 점프 입력을 처리하는 함수
 	UFUNCTION()
 	void Equip();
 	UFUNCTION()
@@ -145,6 +168,9 @@ protected:
 	void FirePressed();
 	UFUNCTION()
 	void FireReleased();
+	UFUNCTION()
+	void Reload();
+
 
     void AimOffset(float DeltaTime); // 조준 오프셋을 계산하는 함수
     void Calculate_AO_Pitch();
@@ -152,8 +178,10 @@ protected:
 
 	UFUNCTION()
 	void ReceiveDamage( AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser ); 
-	// 피해를 받았을 때 호출되는 함수
-	void UpdateHUDHealth();
+
+	void UpdateHUDHealth(); 
+
+	void PollInit(); // 관련 클래스를 확인해서 HUD를 세팅
 
 public:	
 	ABaseCharacter();	
@@ -162,6 +190,9 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; // 뱐수 복제 위한 함수 복제는 변수가 변했을떄만!
 	virtual void OnRep_ReplicatedMovement() override; // ReplicatedMovement가 변경되었을 때 호출되는 함수
+	virtual void Destroyed() override; // 액터가 파괴될 때 호출되는 함수
+
+    virtual void Restart() override; // 매치 스타트 할 시 서버에서 입력이 안되는거 해결 위한 함수 
 
 	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; } // AO_Yaw를 반환하는 함수
 	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; } // AO_Pitch를 반환하는 함수
@@ -172,18 +203,28 @@ public:
 	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 	FORCEINLINE bool GetCloseWall() const { return bCloseWall; } // bCloseWall을 반환하는 함수
 	FORCEINLINE bool IsDead() const { return bDead; } // bDie를 반환하는 함수
+	FORCEINLINE float GetHealth() const { return Health; } // Health를 반환하는 함수
+	FORCEINLINE float GetMaxHealth() const { return MAxHealth; } // MaxHealth를 반환하는 함수
+	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; } // CombatComponent를 반환하는 함수
 
 	bool IsWeaponEquipped();
 	bool IsAiming(); // CombatComponent가 존재할 때만 bIsAiming을 반환
 	void SetOverlappingWeapon(ABaseWeapon* Weapon);
+
 	void PlayFireMontage(); // 무기 발사 애니메이션 몽타주를 재생하는 함수. 
 	void PlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 재생하는 함수
 	void PlayDieMontage(); // 플레이어가 죽었을 때 애니메이션 몽타주를 재생하는 함수
+	void PlayReloadMontage(); // 무기를 재장전할 때 애니메이션 몽타주를 재생하는 함수
 
 	UFUNCTION( NetMulticast, Reliable )
 	void MulticastEliminate(); // 플레이어가 제거되었을 때 호출되는 멀티캐스트 함수
 
 	void Eliminate(); // 플레이어가 제거되었을 때 호출되는 서버에서만 실행하는 함수
+
+	UPROPERTY( Replicated )
+	bool bDisableGamePlay = false; // 게임 플레이를 비활성화하는 변수
+
+	ECombatState GetCombatState() const;
 
 	//UFUNCTION( NetMulticast, Unreliable ) // 이거는 전달 안되도 상관 없음
 	//void MulticastPlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 멀티캐스트로 재생하는 함수

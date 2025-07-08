@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "WeaponType.h" // 무기 타입 열거형 헤더 파일
 #include "BaseWeapon.generated.h"
 
 UENUM(BlueprintType) // 무기 타입을 정의하는 열거형 블루프린트에서도 사용 가능하게
@@ -39,6 +40,29 @@ class MULTISHOOTER_API ABaseWeapon : public AActor
 	UPROPERTY(EditAnywhere)
 	UParticleSystem* MuzzleFlash; // 총구 플래시 이펙트
 
+	//총알 받아라 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Ammo)
+	int32 Ammo; // 총알 개수
+	
+	UPROPERTY(EditAnywhere)
+	int32 MaxAmmo; // 최대 총알 개수
+
+	UFUNCTION()
+    void OnRep_Ammo(); // 총알 개수가 변경될 때 호출되는 함수
+
+    void SpendAmmo(); // 총알을 소모하는 함수
+
+	UPROPERTY()
+	class ABaseCharacter* Character; // 캐릭터 클래스 포인터
+	UPROPERTY()
+	class ABasePC* PlayerController; // 플레이어 컨트롤러 클래스 포인터
+
+	UPROPERTY(EditAnywhere)
+	EWeaponType WeaponType; // 무기 타입
+
+	//총알 받아라 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -63,17 +87,27 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; // 뱐수 복제 위한 함수 복제는 변수가 변했을떄만!
 
-	void ShowPickUpWidget(bool bShow); // 위젯을 보이거나 숨기는 함수
+	virtual void OnRep_Owner() override; // 소유자가 변경될 때 호출되는 함수
 
 	virtual void Fire( const FVector& HitTarget ); // 발사 함수, 타겟 위치를 인자로 받음
 
+	void ShowPickUpWidget(bool bShow); // 위젯을 보이거나 숨기는 함수
+
 	void SetWeaponState(EWeaponState NewState); // 무기 상태를 설정하는 함수
+
+	void SetHUDAmmo();
+
+	void AddAmmo(int32 Ammo); // 총알을 추가하는 함수
 
 	UFUNCTION(BlueprintCallable)
     FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; } // 무기 메쉬 컴포넌트를 반환하는 함수
 	FORCEINLINE USphereComponent* GetCollisionSphere() const { return CollisionSphere; } // 충돌 구 컴포넌트를 반환하는 함수
 	FORCEINLINE float GetZoomedFOV() const { return ZoomFOV; } // 줌 FOV를 반환하는 함수
 	FORCEINLINE float GetZoomInterpSpeed() const { return ZoomInterpSpeed; } // 줌 인터폴레이션 속도를 반환하는 함수
+	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; } // 무기 타입을 반환하는 함수
+	FORCEINLINE int32 GetAmmo() const { return Ammo; } // 현재 총알 개수를 반환하는 함수
+	FORCEINLINE int32 GetMaxAmmo() const { return MaxAmmo; } // 최대 총알 개수를 반환하는 함수
+	FORCEINLINE UTexture2D* GetWeaponIcon() const { return WeaponIcon; } // 무기 상태를 반환하는 함수
 
 	// 십자선 HUD------------------------------------------------------- 팔로우 카메라 focal distance 초점 거리 10000으로 설정, camere->조리개 값 4-> 32로 설정!
 	UPROPERTY(EditAnywhere, Category = "Crosshair" )
@@ -106,7 +140,24 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	bool bAutoFire = true; // 자동 발사 여부
+
+	bool IsEmptyAmmo(); // 총알이 없는지 확인하는 함수
 	
 	// 자동 발사----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	// 플레이어 죽음----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	void Dropped();
+
+	// 플레이어 죽음----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	// 장착 사운드----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	UPROPERTY(EditAnywhere)
+	class USoundCue* EquipSound; // 장착 사운드
+	// 장착 사운드----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+	UPROPERTY(EditAnywhere)
+	UTexture2D* WeaponIcon; // 무기 아이콘 텍스처
 
 };

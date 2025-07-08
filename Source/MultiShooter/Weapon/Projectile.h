@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Sound/SoundCue.h"
 #include "Projectile.generated.h"
 
 UCLASS()
@@ -16,14 +17,15 @@ class MULTISHOOTER_API AProjectile : public AActor
 	class UProjectileMovementComponent* ProjectileMovementComponent; // 발사체 이동 컴포넌트
 
 	UPROPERTY(EditAnywhere)
-	UParticleSystem* TraceParticle; // 충돌 시 생성될 파티클 시스템
+	class UParticleSystem* TraceParticle; // 충돌 시 생성될 파티클 시스템
 
 	UPROPERTY(EditAnywhere)
-	UParticleSystem* ImpactParticle; // 충돌 시 생성될 파티클 시스템
+	class UParticleSystem* ImpactParticle; // 충돌 시 생성될 파티클 시스템
 
 	UPROPERTY(EditAnywhere)
-	USoundCue* ImpactSound; // 충돌 시 재생될 사운드 큐
+	class USoundCue* ImpactSound; // 충돌 시 재생될 사운드 큐
 
+	UPROPERTY()
 	class UParticleSystemComponent* TraceParticleComponent; // 파티클 시스템 컴포넌트
 
 protected:

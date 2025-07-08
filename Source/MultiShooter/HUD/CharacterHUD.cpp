@@ -1,6 +1,21 @@
 #include "CharacterHUD.h"
 #include "GameFramework/PlayerController.h"
 #include "CharacterUI.h"
+#include "Announcement.h"
+
+void ACharacterHUD::BeginPlay()
+{
+    Super::BeginPlay();
+
+    //AddCharacterUI(); // 캐릭터 UI 위젯을 추가합니다.
+    //AddAnnouncement(); // 시작전 안내 위젯을 추가합니다.
+
+    APlayerController* PlayerController = GetOwningPlayerController();
+	if(PlayerController && CharacterUIClass)
+	{
+		CharacterUI = CreateWidget<UCharacterUI>(PlayerController,CharacterUIClass); // 캐릭터 UI 위젯 생성
+	} 
+}
 
 void ACharacterHUD::DrawHUD()
 {
@@ -48,13 +63,6 @@ void ACharacterHUD::DrawHUD()
 
 }
 
-void ACharacterHUD::BeginPlay()
-{
-    Super::BeginPlay();
-
-    AddCharacterUI(); // 캐릭터 UI 위젯을 추가합니다.
-}
-
 void ACharacterHUD::DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, FVector2D Spread, FLinearColor CrosshairColor )
 {
     const float TextureWidth = Texture->GetSizeX();
@@ -80,10 +88,39 @@ void ACharacterHUD::DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter,
 
 void ACharacterHUD::AddCharacterUI()
 {
+    /*
     APlayerController* PlayerController = GetOwningPlayerController();
     if (PlayerController && CharacterUIClass )
     {
         CharacterUI = CreateWidget<UCharacterUI>(PlayerController, CharacterUIClass); // 캐릭터 UI 위젯 생성
         CharacterUI->AddToViewport(); // 뷰포트에 추가
+        CharacterUI->SetVisibility(ESlateVisibility::Hidden); // 가시성 설정
+        UE_LOG(LogTemp, Warning, TEXT("CharacterUI added to viewport.")); // 디버그용 로그 출력
+    }
+    */
+    if(CharacterUI)
+    {
+        CharacterUI->AddToViewport();
+    }
+}
+
+void ACharacterHUD::AddAnnouncement()
+{
+    APlayerController* PlayerController = GetOwningPlayerController();
+    if (PlayerController && AnnouncementClass)
+    {
+        if( !Announcement )
+        {
+            Announcement = CreateWidget<UAnnouncement>(PlayerController, AnnouncementClass); // 시작전 안내 위젯 생성
+        }
+
+        if( Announcement && !Announcement->IsInViewport() ) // 위젯이 뷰포트에 없다면
+        {
+            Announcement->AddToViewport(); // 뷰포트에 추가
+        }
+
+        //Announcement = CreateWidget<UAnnouncement>(PlayerController, AnnouncementClass); // 시작전 안내 위젯 생성
+        //Announcement->AddToViewport(); // 뷰포트에 추가
+        //UE_LOG(LogTemp, Warning, TEXT("Announcement added to viewport.")); // 디버그용 로그 출력
     }
 }

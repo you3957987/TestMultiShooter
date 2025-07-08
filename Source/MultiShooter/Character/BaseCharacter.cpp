@@ -15,6 +15,11 @@
 #include "MultiShooter/PlayerController/BasePC.h" // ABasePC 클래스 사용을 위한 헤더 파일
 #include "MultiShooter/GameMode/MainGameMode.h" // AMainGameMode 클래스 사용을 위한 헤더 파일
 #include "TimerManager.h" // 타이머 매니저 사용을 위한 헤더 파일
+#include "Kismet/GameplayStatics.h" // 게임플레이 스태틱스 사용을 위한 헤더 파일
+#include "Sound/SoundCue.h" // 사운드 큐 사용을 위한 헤더 파일
+#include "Particles/ParticleSystemComponent.h" // 파티클 시스템 컴포넌트 사용을 위한 헤더 파일
+#include "MultiShooter/CharacterState/CharacterState.h" // ACharacterState 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/Weapon/WeaponType.h" // EWeaponType 열거형 사용을 위한 헤더 파일
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -60,6 +65,7 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	/* 입력 매핑은 restart 함수에서 처리합니다.
     if (APlayerController* PC = Cast<APlayerController>(Controller))
     {
         if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
@@ -70,6 +76,7 @@ void ABaseCharacter::BeginPlay()
             }
         }
     }
+	*/
 	UpdateHUDHealth();
 
 	if( HasAuthority() )
@@ -77,6 +84,7 @@ void ABaseCharacter::BeginPlay()
 		OnTakeAnyDamage.AddDynamic(this, &ABaseCharacter::ReceiveDamage); // 피해를 받았을 때 호출되는 함수 바인딩/ 어플라이 대미지는 프로젝타일에서!
 		// 이 함수는 서버에서만 실행되므로 변수 복제시 클라에서도 실행 되게 해야함!
 	}
+
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -98,9 +106,28 @@ void ABaseCharacter::Tick(float DeltaTime)
 		Calculate_AO_Pitch(); // AO 피치를 계산합니다.
 	}
 	*/
+	if( bDisableGamePlay )
+	{
+		bUseControllerRotationYaw = false; // 게임 플레이가 비활성화된 경우 컨트롤러 회전 사용 안함
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 게임 플레이가 비활성화된 경우 회전 상태를 초기화	
+	}
+	else
+	{
+		AimOffset(DeltaTime); // AimOffset 함수 호출
+	}
 
-	AimOffset(DeltaTime); // AimOffset 함수 호출
 	HideCameraIfCharacterClose(); // 캐릭터가 카메라에 너무 가까이 있으면 카메라 숨기기
+	PollInit(); // 리스폰 될 시 허드 세팅
+}
+
+void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// OverlappingWeapon 변수를 네트워크에서 복제합니다.
+	DOREPLIFETIME_CONDITION(ABaseCharacter, OverlappingWeapon, COND_OwnerOnly); // 이 변수는 오직 소유자에게만 복제됩니다.
+	DOREPLIFETIME(ABaseCharacter, Health); // CurrentHealth 변수를 네트워크에서 복제합니다.
+	DOREPLIFETIME(ABaseCharacter, bDisableGamePlay); // 게임 플레이 비활성화 변수 복제
 }
 
 void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -112,16 +139,20 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
         EnhancedInput->BindAction(IA_Jump, ETriggerEvent::Started, this, &ACharacter::Jump);
         EnhancedInput->BindAction(IA_Move, ETriggerEvent::Triggered, this, &ABaseCharacter::Move);
         EnhancedInput->BindAction(IA_Look, ETriggerEvent::Triggered, this, &ABaseCharacter::Look);
+
         EnhancedInput->BindAction(IA_Equip, ETriggerEvent::Started, this, &ABaseCharacter::Equip);
 		EnhancedInput->BindAction(IA_Aim, ETriggerEvent::Started, this, &ABaseCharacter::AimPressed);
 		EnhancedInput->BindAction(IA_Aim, ETriggerEvent::Completed, this, &ABaseCharacter::AimReleased);
 		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Started, this, &ABaseCharacter::FirePressed);
 		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Completed, this, &ABaseCharacter::FireReleased);
+		EnhancedInput->BindAction(IA_Reload, ETriggerEvent::Started, this, &ABaseCharacter::Reload); // 리로드 액션 바인딩
     }
 }
 
 void ABaseCharacter::Move(const FInputActionValue& Value)
 {
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+
     FVector2D MovementVector = Value.Get<FVector2D>();
     if (Controller == nullptr) return;
 
@@ -143,6 +174,13 @@ void ABaseCharacter::Move(const FInputActionValue& Value)
     }
 }
 
+void ABaseCharacter::Jump()
+{
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 점프를 무시합니다.
+
+	Super::Jump(); // 기본 점프 함수 호출
+}
+
 void ABaseCharacter::Look(const FInputActionValue& Value)
 {
     FVector2D LookAxisVector = Value.Get<FVector2D>();
@@ -152,6 +190,8 @@ void ABaseCharacter::Look(const FInputActionValue& Value)
 
 void ABaseCharacter::Equip()
 {
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+
     if(  CombatComponent  ) // CombatComponent가 존재하고,
 	{
 		if( HasAuthority() )
@@ -172,6 +212,8 @@ void ABaseCharacter::Equip()
 
 void ABaseCharacter::AimPressed()
 {
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+
 	if (CombatComponent) // CombatComponent가 존재하는 경우
 	{
 		CombatComponent->SetAiming(true); // Aim 상태를 true로 설정
@@ -180,6 +222,8 @@ void ABaseCharacter::AimPressed()
 
 void ABaseCharacter::AimReleased()
 {
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+	
 	if (CombatComponent) // CombatComponent가 존재하는 경우
 	{
 		CombatComponent->SetAiming(false); // Aim 상태를 false로 설정
@@ -188,6 +232,8 @@ void ABaseCharacter::AimReleased()
 
 void ABaseCharacter::FirePressed()
 {
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+	
 	if (CombatComponent) // CombatComponent가 존재하는 경우
 	{
 		CombatComponent->FireButtonPressed(true); // 발사 버튼이 눌렸음을 CombatComponent에 알립니다.
@@ -196,20 +242,22 @@ void ABaseCharacter::FirePressed()
 
 void ABaseCharacter::FireReleased()
 {
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+	
 	if (CombatComponent) // CombatComponent가 존재하는 경우
 	{
 		CombatComponent->FireButtonPressed(false); // 발사 버튼이 떼어졌음을 CombatComponent에 알립니다.
 	}
 }
 
-void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void ABaseCharacter::Reload()
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	// OverlappingWeapon 변수를 네트워크에서 복제합니다.
-	DOREPLIFETIME_CONDITION(ABaseCharacter, OverlappingWeapon, COND_OwnerOnly); // 이 변수는 오직 소유자에게만 복제됩니다.
-	DOREPLIFETIME(ABaseCharacter, Health); // CurrentHealth 변수를 네트워크에서 복제합니다.
-
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+	
+	if( CombatComponent )
+	{
+		CombatComponent->Reload(); // CombatComponent의 Reload 함수를 호출하여 무기를 재장전합니다.
+	}
 }
 
 void ABaseCharacter::OnRep_OverlappingWeapon( ABaseWeapon* LastWeapon ) // 이 함수는 클라이언트에서만 실행 되므로 서버용도 필요
@@ -393,7 +441,14 @@ void ABaseCharacter::PlayFireMontage()
 	if( AnimInstance && FireWeaponMontage )
 	{
 		AnimInstance->Montage_Play(FireWeaponMontage); // 무기 발사 애니메이션 몽타주를 재생합니다.
-		FName SectionName = "Fire"; // 애니메이션 몽타주의 섹션 이름을 "Fire"로 설정합니다.
+		FName SectionName;
+
+		switch( CombatComponent->EquippedWeapon->GetWeaponType() ) // 무기 타입에 따라 섹션 이름을 설정합니다.
+		{
+			case EWeaponType::EWT_AssaultRifle:
+				SectionName = "AR";
+				break;
+		}
 		AnimInstance->Montage_JumpToSection(SectionName); // 해당 섹션으로 점프합니다.
 	}
 }
@@ -424,6 +479,29 @@ void ABaseCharacter::PlayDieMontage()
 	{
 		AnimInstance->Montage_Play(DieMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
 	}
+}
+
+void ABaseCharacter::PlayReloadMontage()
+{
+	if( CombatComponent == nullptr || HitReactMontage == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
+
+	//UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage called")); // 디버깅용 로그 출력
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if( AnimInstance && ReloadMontage )
+	{
+		AnimInstance->Montage_Play(ReloadMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
+
+		FName SectionName;
+
+		switch( CombatComponent->EquippedWeapon->GetWeaponType() ) // 무기 타입에 따라 섹션 이름을 설정합니다.
+		{
+			case EWeaponType::EWT_AssaultRifle:
+				SectionName = "AR";
+				break;
+		}
+		AnimInstance->Montage_JumpToSection(SectionName); // 해당 섹션으로 점프합니다.
+	}	
 }
 
 void ABaseCharacter::HideCameraIfCharacterClose()
@@ -495,6 +573,11 @@ void ABaseCharacter::UpdateHUDHealth()
 
 void ABaseCharacter::MulticastEliminate_Implementation()
 {
+	if( PlayerController )
+	{
+		PlayerController->SetHUDAmmo(0); // 플레이어 컨트롤러의 HUD 탄약을 0으로 설정합니다.
+	}
+
 	bDead = true;
 	PlayDieMontage(); // 죽었을 때 애니메이션 몽타주를 재생합니다.
 
@@ -507,10 +590,36 @@ void ABaseCharacter::MulticastEliminate_Implementation()
         2.0f, // 2초 뒤에 실행
         false
     );
+
+	FTimerHandle EliminateBotTimer; // 제거 봇 타이머 핸들
+	GetWorldTimerManager().SetTimer(
+		EliminateBotTimer, // 타이머 핸들을 설정합니다.
+		this, // 현재 객체를 타겟으로 설정
+		&ABaseCharacter::EliminateBotTimerFinished, // 타이머가 끝났을 때 호출할 함수
+		2.0f, // 타이머 설정
+		false // 반복하지 않음
+	); // 타이머 설정
+
+	GetCharacterMovement()->DisableMovement(); // 캐릭터의 움직임을 비활성화합니다.
+	GetCharacterMovement()->StopMovementImmediately(); // 즉시 움직임을 중지합니다. == 마우스 회전까지 정지
+	bDisableGamePlay = true; // 게임 플레이를 비활성화합니다.
+	if( CombatComponent ) CombatComponent->FireButtonPressed(false); // CombatComponent의 발사 버튼을 비활성화합니다.
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 캡슐 컴포넌트의 충돌을 비활성화합니다.
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 메쉬의 충돌을 비활성화합니다.
+
 }
 
 void ABaseCharacter::Eliminate()
 {
+	//if( CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 EquippedWeapon이 없으면 함수 종료
+	// CombatComponent->EquippedWeapon->Dropped(); // 무기를 떨어뜨립니다.
+
+    // CombatComponent나 EquippedWeapon이 있을 때만 무기 드랍
+    if(CombatComponent && CombatComponent->EquippedWeapon)
+    {
+        CombatComponent->EquippedWeapon->Dropped();
+    }
+	
 	MulticastEliminate(); // 멀티캐스트로 함수 실행
 
 	// 이 아래로는 서버에서만 실행
@@ -530,9 +639,71 @@ void ABaseCharacter::EliminateTimerFinished()
 	}
 }
 
+void ABaseCharacter::EliminateBotTimerFinished()
+{
+	if( EliminateBotEffect )
+	{
+		FVector EliminateBotLocation( GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z + 200.f ); // 제거 봇 효과 위치 설정
+		EliminateBotEffectComponent = UGameplayStatics::SpawnEmitterAtLocation(
+			GetWorld(), // 현재 월드
+			EliminateBotEffect, // 이펙트
+			EliminateBotLocation, // 위치
+			GetActorRotation(), // 회전값
+			true // 월드 공간에서 스폰
+		);
+	}
+
+	if( EliminateSound )
+	{
+		UGameplayStatics::SpawnSoundAtLocation(
+			this, // 현재 액터
+			EliminateSound, // 사운드 큐
+			GetActorLocation() // 위치
+		);
+	}
+}
+
+void ABaseCharacter::Destroyed()
+{
+	Super::Destroyed(); // 부모 클래스의 Destroyed 함수를 호출합니다.
+
+	if (EliminateBotEffectComponent)
+	{
+		EliminateBotEffectComponent->DestroyComponent();
+	}
+
+	AMainGameMode* LocalMainGameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(this)); // 현재 게임 모드를 AMainGameMode로 캐스팅합니다.
+
+	bool bMatchNoInProgress = LocalMainGameMode && LocalMainGameMode->GetMatchState() != MatchState::InProgress; // 매치가 진행 중인지 확인합니다.
+
+	if( CombatComponent && CombatComponent->EquippedWeapon && bMatchNoInProgress )
+	{
+		CombatComponent->EquippedWeapon->Destroy(); 
+	}
+}
+
+void ABaseCharacter::PollInit()
+{
+	if( CharacterState == nullptr )
+	{
+		CharacterState = GetPlayerState<ACharacterState>(); // 플레이어 상태를 ACharacterState로 캐스팅합니다.
+		if( CharacterState )
+		{
+			CharacterState->AddToScore(0.f); // 플레이어 상태에 점수 0 추가해서 업데이트 시키기!
+			CharacterState->AddToDefeat(0); // 플레이어 상태에 처치 수 0 추가해서 업데이트 시키기!
+
+			ABasePC* BasePC = Cast<ABasePC>(Controller);
+			if (BasePC)
+			{
+				BasePC->HideHUDKilledBy(); // 누구에게 죽었는지 보여주는 위젯을 숨깁니다.
+			}	
+		}
+	}
+}
+
 void ABaseCharacter::UpdateDissolve(float DissolveValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("DissolveValue: %f"), DissolveValue); // 디졸브 값 출력
+	//UE_LOG(LogTemp, Warning, TEXT("DissolveValue: %f"), DissolveValue); // 디졸브 값 출력
 	if( DynamicDissolveMaterialInstanceBody )
 	{
 		DynamicDissolveMaterialInstanceBody->SetScalarParameterValue(TEXT("Dissolve"), DissolveValue); // 디졸브 값을 업데이트합니다.
@@ -569,5 +740,26 @@ void ABaseCharacter::StartDissolve()
 	}
 }
 
+ECombatState ABaseCharacter::GetCombatState() const
+{
+	if( CombatComponent == nullptr ) return ECombatState::ECS_MAX;
+
+	return CombatComponent->CombatState; // CombatComponent의 CombatState를 반환합니다.
+}
+
+void ABaseCharacter::Restart() // Restart는 리스폰/매치 시작 시 호출됨 (클라/서버 모두)
+{
+    Super::Restart();
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			if (DefaultMappingContext)
+			{
+				Subsystem->AddMappingContext(DefaultMappingContext, 0);
+			}
+		}
+	}
+}
 
 

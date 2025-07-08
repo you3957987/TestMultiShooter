@@ -55,6 +55,9 @@ class MULTISHOOTER_API UBaseAnimInstance : public UAnimInstance
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bDead; // 캐릭터가 죽었는지 여부를 저장하는 변수
 
+	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	bool bReloading; // 캐릭터가 재장전 중인지 여부를 저장하는 변수
+
 public:
 	virtual void NativeInitializeAnimation() override; // 비긴 플레이랑 유사
 	virtual void NativeUpdateAnimation(float DeltaTime) override; // 매 프레임마다 호출 틱이랑 유사

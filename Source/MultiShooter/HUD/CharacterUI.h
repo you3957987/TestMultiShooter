@@ -18,5 +18,29 @@ public:
 
 	UPROPERTY(meta = (BindWidget)) // 위젯 바인딩
 	class UProgressBar* HealthBar; // 체력 바 바인딩
-	
+
+	UPROPERTY(meta = (BindWidget)) // 위젯 바인딩
+	class UTextBlock* ScoreAmount; // 플레이어 점수 텍스트 블록 바인딩
+
+	UPROPERTY(meta = (BindWidget)) // 위젯 바인딩
+	class UTextBlock* DefeatAmount; // 플레이어 죽은 점수 텍스트 블록 바인딩
+
+	UPROPERTY(meta = (BindWidget)) 
+	class UTextBlock* DeathMessageText; 
+
+	UPROPERTY(meta = (BindWidget)) 
+	class UTextBlock* KilledByText; 
+
+	UPROPERTY(meta = (BindWidget)) 
+	class UTextBlock* AmmoAmount;
+
+	UPROPERTY(meta = (BindWidget)) 
+	class UTextBlock* CarriedAmmoAmount;
+
+	UPROPERTY(meta = (BindWidget)) 
+	class UImage* WeaponIcon;
+
+	UPROPERTY(meta = (BindWidget)) 
+	class UTextBlock* MatchCountDownText;
+
 };
