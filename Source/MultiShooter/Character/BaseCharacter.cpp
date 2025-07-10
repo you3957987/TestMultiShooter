@@ -435,27 +435,63 @@ void ABaseCharacter::SimProxyTurn()
 
 void ABaseCharacter::PlayFireMontage()
 {
-	if( CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr || FireWeaponMontage == nullptr ) return; // CombatComponent, EquippedWeapon, FireWeaponMontage가 없으면 함수 종료
+    if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr) return;
 
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if( AnimInstance && FireWeaponMontage )
-	{
-		AnimInstance->Montage_Play(FireWeaponMontage); // 무기 발사 애니메이션 몽타주를 재생합니다.
-		FName SectionName;
+    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+    if (!AnimInstance) return;
 
-		switch( CombatComponent->EquippedWeapon->GetWeaponType() ) // 무기 타입에 따라 섹션 이름을 설정합니다.
-		{
-			case EWeaponType::EWT_AssaultRifle:
-				SectionName = "AR";
-				break;
-		}
-		AnimInstance->Montage_JumpToSection(SectionName); // 해당 섹션으로 점프합니다.
-	}
+    switch (CombatComponent->EquippedWeapon->GetWeaponType())
+    {
+        case EWeaponType::EWT_AssaultRifle:
+            if (FireAssultMontage)
+            {
+                AnimInstance->Montage_Play(FireAssultMontage);
+            }
+            break;
+        case EWeaponType::EWT_RocketLauncher:
+            if (FireRocketMontage)
+            {
+                AnimInstance->Montage_Play(FireRocketMontage);
+            }
+            break;
+        case EWeaponType::EWT_Pistol:
+            if (FirePistolMontage)
+            {
+                AnimInstance->Montage_Play(FirePistolMontage);
+            }
+            break;
+		case EWeaponType::EWT_SMG:
+			if (FireSMGMontage)
+			{
+				AnimInstance->Montage_Play(FireSMGMontage);
+			}
+			break;
+		case EWeaponType::EWT_Shotgun:
+			if (FireShotgunMontage)
+			{
+				AnimInstance->Montage_Play(FireShotgunMontage);
+			}
+			break;
+		case EWeaponType::EWT_Sniper:
+			if (FireSniperMontage)
+			{
+				AnimInstance->Montage_Play(FireSniperMontage);
+			}
+			break;
+		case EWeaponType::EWT_GrenadeLauncher:
+			if (FireGrenadeLauncherMontage)
+			{
+				AnimInstance->Montage_Play(FireGrenadeLauncherMontage);
+			}
+			break;
+        default:
+            break;
+    }
 }
 
 void ABaseCharacter::PlayHitReactMontage()
 {
-	if( CombatComponent == nullptr || HitReactMontage == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
+	if( CombatComponent == nullptr || HitReactMontage == nullptr  ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
 
 	//UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage called")); // 디버깅용 로그 출력
 
@@ -470,7 +506,7 @@ void ABaseCharacter::PlayHitReactMontage()
 
 void ABaseCharacter::PlayDieMontage()
 {
-	if( CombatComponent == nullptr || HitReactMontage == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
+	if( CombatComponent == nullptr || DieMontage == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
 
 	//UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage called")); // 디버깅용 로그 출력
 
@@ -483,25 +519,58 @@ void ABaseCharacter::PlayDieMontage()
 
 void ABaseCharacter::PlayReloadMontage()
 {
-	if( CombatComponent == nullptr || HitReactMontage == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
+    if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr) return;
 
-	//UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage called")); // 디버깅용 로그 출력
+    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+    if (!AnimInstance) return;
 
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if( AnimInstance && ReloadMontage )
-	{
-		AnimInstance->Montage_Play(ReloadMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
-
-		FName SectionName;
-
-		switch( CombatComponent->EquippedWeapon->GetWeaponType() ) // 무기 타입에 따라 섹션 이름을 설정합니다.
-		{
-			case EWeaponType::EWT_AssaultRifle:
-				SectionName = "AR";
-				break;
-		}
-		AnimInstance->Montage_JumpToSection(SectionName); // 해당 섹션으로 점프합니다.
-	}	
+    switch (CombatComponent->EquippedWeapon->GetWeaponType())
+    {
+        case EWeaponType::EWT_AssaultRifle:
+            if (ReloadAssultMontage)
+            {
+                AnimInstance->Montage_Play(ReloadAssultMontage);
+            }
+            break;
+        case EWeaponType::EWT_RocketLauncher:
+            if (ReloadRocketMontage)
+            {
+                AnimInstance->Montage_Play(ReloadRocketMontage);
+            }
+            break;
+        case EWeaponType::EWT_Pistol:
+            if (ReloadPistolMontage)
+            {
+                AnimInstance->Montage_Play(ReloadPistolMontage);
+            }
+            break;
+		case EWeaponType::EWT_SMG:
+			if (ReloadSMGMontage)
+			{
+				AnimInstance->Montage_Play(ReloadSMGMontage);
+			}
+			break;
+		case EWeaponType::EWT_Shotgun:
+			if (ReloadShotgunMontage)
+			{
+				AnimInstance->Montage_Play(ReloadShotgunMontage);
+			}
+			break;
+		case EWeaponType::EWT_Sniper:
+			if (ReloadSniperMontage)
+			{
+				AnimInstance->Montage_Play(ReloadSniperMontage);
+			}
+			break;
+		case EWeaponType::EWT_GrenadeLauncher:
+			if (ReloadGrenadeLauncherMontage)
+			{
+				AnimInstance->Montage_Play(ReloadGrenadeLauncherMontage);
+			}
+			break;
+        default:
+            break;
+    }
 }
 
 void ABaseCharacter::HideCameraIfCharacterClose()
@@ -606,6 +675,12 @@ void ABaseCharacter::MulticastEliminate_Implementation()
 	if( CombatComponent ) CombatComponent->FireButtonPressed(false); // CombatComponent의 발사 버튼을 비활성화합니다.
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 캡슐 컴포넌트의 충돌을 비활성화합니다.
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 메쉬의 충돌을 비활성화합니다.
+
+	if( IsLocallyControlled() && CombatComponent && CombatComponent->bIsAiming && CombatComponent->EquippedWeapon 
+		&& CombatComponent->EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Sniper ) 
+	{
+		ShowScopeSniperWidget(false); // 스나이퍼 조준 위젯을 숨깁니다.
+	}
 
 }
 

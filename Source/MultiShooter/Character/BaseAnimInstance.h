@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
 #include "MultiSHooter/TypeHeader/TurningInPlace.h" // 조준시 좌우로 360도 회전하는게 아니라 90도 정도로만 돌아가게 만들기 위한 헤더
+#include "MultiShooter/Weapon/WeaponType.h"
 #include "BaseAnimInstance.generated.h"
 
 UCLASS()
@@ -57,6 +58,9 @@ class MULTISHOOTER_API UBaseAnimInstance : public UAnimInstance
 
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bReloading; // 캐릭터가 재장전 중인지 여부를 저장하는 변수
+
+	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	EWeaponType WeaponType; // 캐릭터가 사용하는 무기 타입을 저장하는 변수
 
 public:
 	virtual void NativeInitializeAnimation() override; // 비긴 플레이랑 유사

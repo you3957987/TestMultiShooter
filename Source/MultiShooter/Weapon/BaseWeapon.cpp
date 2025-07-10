@@ -15,6 +15,7 @@ ABaseWeapon::ABaseWeapon()
 
 	bReplicates = true; // 이 무기는 네트워크에서 복제됩니다.
 	bAlwaysRelevant = true; // 이 무기는 항상 네트워크에서 관련성이 있습니다.
+	SetReplicatingMovement(true); // 이 무기의 이동을 네트워크에서 복제합니다.
 
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	SetRootComponent(WeaponMesh); // 무기 메쉬 컴포넌트를 루트 컴포넌트로 설정합니다.
@@ -22,6 +23,11 @@ ABaseWeapon::ABaseWeapon()
 	WeaponMesh->SetCollisionResponseToAllChannels(ECR_Block); // 모든 채널에 대해 충돌 응답을 차단합니다.
 	WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECR_Ignore); // Pawn 채널에 대해서는 충돌 응답을 무시합니다.
 	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 충돌을 비활성화합니다. 나중에 필요할 때 활성화할 수 있습니다.
+
+	WeaponMesh->SetCustomDepthStencilValue(CUSTOM_DEPTH_BLUE); // 무기 메쉬의 커스텀 깊이 스텐실 값을 설정합니다. 윤곽선 색상을 설정하기 위해 사용됩니다.
+	//#define CUSTOM_DEPTH_PURPLE 250 #define CUSTOM_DEPTH_BLUE 251  CUSTOM_DEPTH_BROWN 252
+	WeaponMesh->MarkRenderStateDirty(); // 렌더 상태를 업데이트하여 커스텀 깊이 스텐실 값이 적용되도록 합니다.
+	EnableCustomDepth(true); // 윤곽선을 활성화합니다. 이 함수는 BaseWeapon.h에서 정의되어 있습니다.
 
 	CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
 	CollisionSphere->SetupAttachment(RootComponent);
@@ -88,28 +94,6 @@ void ABaseWeapon::OnRep_Owner() // 소유자가 변경될 때 호출되는 함�
 
 }
 
-void ABaseWeapon::OnRep_WeaponState() // 무기 상태가 변경될 때 호출되는 함수. 클라이언트에서만 실행
-{
-    switch (WeaponState)
-    {
-        case EWeaponState::EWS_Equiped:
-            ShowPickUpWidget(false); // 무기가 장착되면 위젯을 숨깁니다.
-            CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 충돌을 비활성화합니다.
-			CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
-			WeaponMesh->SetSimulatePhysics(false); 
-			WeaponMesh->SetEnableGravity(false); 
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
-            break;
-        case EWeaponState::EWS_Dropped:
-			WeaponMesh->SetSimulatePhysics(true); // 물리 시뮬레이션을 활성화합니다.
-			WeaponMesh->SetEnableGravity(true); // 중력을 활성화합니다.
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); // 쿼리 및 물리 충돌을 활성화합니다.
-            break;
-        default:
-            break;
-    }	
-}
-
 void ABaseWeapon::OnRep_Ammo() 
 {
     SetHUDAmmo();
@@ -158,8 +142,8 @@ void ABaseWeapon::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent,
     }
 }
 
-void ABaseWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, 
-    int32 OtherBodyIndex)
+void ABaseWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, 
+	UPrimitiveComponent* OtherComp,  int32 OtherBodyIndex)
 {
     ABaseCharacter* OverlappingCharacter = Cast<ABaseCharacter>(OtherActor);
     if( OverlappingCharacter )
@@ -177,6 +161,34 @@ void ABaseWeapon::ShowPickUpWidget(bool bShow)
 	}
 }
 
+void ABaseWeapon::OnRep_WeaponState() // 무기 상태가 변경될 때 호출되는 함수. 클라이언트에서만 실행
+{
+    switch (WeaponState)
+    {
+        case EWeaponState::EWS_Equiped:
+            ShowPickUpWidget(false); // 무기가 장착되면 위젯을 숨깁니다.
+            CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 충돌을 비활성화합니다.
+			CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
+			WeaponMesh->SetSimulatePhysics(false); 
+			WeaponMesh->SetEnableGravity(false); 
+			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			
+			EnableCustomDepth(false); // 윤곽선을 비활성화합니다.
+            break;
+        case EWeaponState::EWS_Dropped:
+			WeaponMesh->SetSimulatePhysics(true); // 물리 시뮬레이션을 활성화합니다.
+			WeaponMesh->SetEnableGravity(true); // 중력을 활성화합니다.
+			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); // 쿼리 및 물리 충돌을 활성화합니다.
+
+			WeaponMesh->SetCustomDepthStencilValue(CUSTOM_DEPTH_BLUE); // 무기 메쉬의 커스텀 깊이 스텐실 값을 설정합니다. 윤곽선 색상을 설정하기 위해 사용됩니다.
+			WeaponMesh->MarkRenderStateDirty(); // 렌더 상태를 업데이트하여 커스텀 깊이 스텐실 값이 적용되도록 합니다.
+			EnableCustomDepth(true); 
+            break;
+        default:
+            break;
+    }	
+}
+
 void ABaseWeapon::SetWeaponState(EWeaponState NewState) // 무기 상태를 설정하는 함수
 {
 	WeaponState = NewState; // 새로운 상태로 설정합니다. 이때 변수 변경하면서 클라이언트에서도 똑같은 함수 실행
@@ -187,7 +199,9 @@ void ABaseWeapon::SetWeaponState(EWeaponState NewState) // 무기 상태를 설�
             CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
 			WeaponMesh->SetSimulatePhysics(false); 
 			WeaponMesh->SetEnableGravity(false); 
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
+			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+			EnableCustomDepth(false); // 윤곽선을 비활성화합니다.
             break;
         case EWeaponState::EWS_Dropped:
             if( HasAuthority() ) // 서버에서만 실행
@@ -197,6 +211,10 @@ void ABaseWeapon::SetWeaponState(EWeaponState NewState) // 무기 상태를 설�
 			WeaponMesh->SetSimulatePhysics(true); // 물리 시뮬레이션을 활성화합니다.
 			WeaponMesh->SetEnableGravity(true); // 중력을 활성화합니다.
 			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); // 쿼리 및 물리 충돌을 활성화합니다.
+
+			WeaponMesh->SetCustomDepthStencilValue(CUSTOM_DEPTH_BLUE); // 무기 메쉬의 커스텀 깊이 스텐실 값을 설정합니다. 윤곽선 색상을 설정하기 위해 사용됩니다.
+			WeaponMesh->MarkRenderStateDirty(); // 렌더 상태를 업데이트하여 커스텀 깊이 스텐실 값이 적용되도록 합니다.
+			EnableCustomDepth(true); 
             break;
         default:
             break;
@@ -239,3 +257,10 @@ void ABaseWeapon::Dropped() // 플레이어 죽음
 }
 
 
+void ABaseWeapon::EnableCustomDepth(bool bEnable) // 윤곽선을 활성화하거나 비활성화하는 함수
+{
+	if( WeaponMesh )
+	{
+		WeaponMesh->SetRenderCustomDepth(bEnable); // 무기 메쉬의 커스텀 깊이 렌더링을 설정합니다.
+	}
+}

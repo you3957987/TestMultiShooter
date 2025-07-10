@@ -59,6 +59,10 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 
 	bool CanFire();
 
+	// 자동 발사-----------------------------------------------------------------------------
+
+	// 총알-----------------------------------------------------------------------------
+
 	UPROPERTY(  ReplicatedUsing = OnRep_CarriedAmmo )
 	int32 CarriedAmmo; // 보유 총알 개수
 
@@ -67,15 +71,33 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 
 	TMap<EWeaponType, int32> CarriedAmmoMap; // 무기 타입별 총알 개수 맵
 
-	UPROPERTY(  EditAnywhere)
-	int32 StartingARAmmo = 30; // 소총 시작 총알 개수
-
 	void InitCarriedAmmo(); // 보유 총알 개수  초기화하는 함수
 
 	UFUNCTION( BlueprintCallable )
 	void UpdateAmmoValues(); // HUD에 총알 개수를 업데이트하는 함수
 
-	// 자동 발사-----------------------------------------------------------------------------
+	UPROPERTY(  EditAnywhere )
+	int32 StartingARAmmo = 30; // 소총 시작 총알 개수
+
+	UPROPERTY(  EditAnywhere )
+	int32 StartingRocketAmmo = 0; // 소총 시작 총알 개수
+
+	UPROPERTY(  EditAnywhere )
+	int32 StartingPistolAmmo = 0; // 권총 시작 총알 개수
+
+	UPROPERTY(  EditAnywhere )
+	int32 StartingSMGAmmo = 0; // 권총 시작 총알 개수
+
+	UPROPERTY(  EditAnywhere )
+	int32 StartingShotgunAmmo = 0; // 샷건 시작 총알 개수
+
+	UPROPERTY(  EditAnywhere )
+	int32 StartingSniperAmmo = 0; // 스나 시작 총알 개수
+
+	UPROPERTY(  EditAnywhere )
+	int32 StartingGrenadeLauncherAmmo = 0; // 유탄 발사기 시작 총
+
+	// 총알-----------------------------------------------------------------------------
 
 	UPROPERTY( ReplicatedUsing = OnRep_CombatState )
 	ECombatState CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 나타내는 변수
@@ -119,6 +141,8 @@ public:
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; // 뱐수 복제 위한 함수 복제는 변수가 변했을떄만!
+
+	FORCEINLINE class ABaseWeapon* GetEquippedWeapon() const { return EquippedWeapon; } // 현재 장착된 무기를 반환하는 함수
 
 	void EquipWeapon(class ABaseWeapon* WeaponToEquip); // 무기를 장착하는 함수
 

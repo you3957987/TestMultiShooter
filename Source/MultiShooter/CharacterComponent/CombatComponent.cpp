@@ -84,9 +84,73 @@ void UCombatComponent::OnRep_EquippedWeapon()
             WeaponMesh->SetRelativeLocation(FVector(-6.796413f, 4.446436f, 1.126907f));
             WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f) ); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
         }
+        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() && WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Bazooka_SK"))
+        {
+            EquippedWeapon->AttachToComponent(
+                Character->GetMesh(),
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                FName("hand_rSocket") // 소켓 지정
+            );
+            WeaponMesh->SetRelativeLocation(FVector(-7.935278f, 2.721333f, 19.447058f));
+            WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.00016f, 0.f) ); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
+        }
+        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Pistol_SK"))
+        {
+            EquippedWeapon->AttachToComponent(
+                Character->GetMesh(),
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                FName("hand_rSocket") // 소켓 지정
+            );
+            WeaponMesh->SetRelativeLocation(FVector(-5.796565f, 3.547575f, -0.468514f));
+            WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f) );
+        }
+        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("SMG_SK"))
+        {
+            EquippedWeapon->AttachToComponent(
+                Character->GetMesh(),
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                FName("hand_rSocket") // 소켓 지정
+            );
+            WeaponMesh->SetRelativeLocation(FVector(-8.003382f, 3.45388f, -3.464114f));
+            WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f) );
+        }
+        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Shotgun_SK"))
+        {
+            EquippedWeapon->AttachToComponent(
+                Character->GetMesh(),
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                FName("hand_rSocket") // 소켓 지정
+            );
+            WeaponMesh->SetRelativeLocation(FVector(-6.928853f, 5.209436f, 10.59279f));
+            WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f) );
+        }
+        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("SniperRifle_SK"))
+        {
+            EquippedWeapon->AttachToComponent(
+                Character->GetMesh(),
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                FName("hand_rSocket") // 소켓 지정
+            );
+            WeaponMesh->SetRelativeLocation(FVector(-3.726387, 2.377795, -0.399829));
+            WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f) );
+        }
+        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("GravityGun_SK"))
+        {
+            EquippedWeapon->AttachToComponent(
+                Character->GetMesh(),
+                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                FName("hand_rSocket") // 소켓 지정
+            );
+            WeaponMesh->SetRelativeLocation(FVector(-8.923258f, 5.280822f, 2.778548f));
+            WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f) );
+        }
 
         // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
-
 
         Character->GetCharacterMovement()->bOrientRotationToMovement = false; // 캐릭터가 이동 방향을 바라보지 않도록 설정
         Character->bUseControllerRotationYaw = true; // 캐릭터
@@ -150,6 +214,12 @@ void UCombatComponent::InitCarriedAmmo()
 {
     // 무기 타입별로 초기 보유 총알 개수를 설정합니다.
     CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartingARAmmo);   // 소총 시작 총알 개수
+    CarriedAmmoMap.Emplace(EWeaponType::EWT_RocketLauncher, StartingRocketAmmo); // 로켓 런처 시작 총알 개수
+    CarriedAmmoMap.Emplace(EWeaponType::EWT_Pistol, StartingPistolAmmo); // 권총 시작 총알 개수
+    CarriedAmmoMap.Emplace(EWeaponType::EWT_SMG, StartingSMGAmmo); // SMG 시작 총알 개수
+    CarriedAmmoMap.Emplace(EWeaponType::EWT_Shotgun, StartingShotgunAmmo); // 샷건 시작 총알 개수
+    CarriedAmmoMap.Emplace(EWeaponType::EWT_Sniper, StartingSniperAmmo); // 스나이퍼 시작 총알 개수
+    CarriedAmmoMap.Emplace(EWeaponType::EWT_GrenadeLauncher, StartingGrenadeLauncherAmmo); // 유탄 발사기 시작 총알 개수
 }
 
 void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 서버에서만 실행됨
@@ -178,6 +248,72 @@ void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 
         );
         WeaponMesh->SetRelativeLocation(FVector(-6.796413f, 4.446436f, 1.126907f));
         WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f) ); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
+    }
+    else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+        WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Bazooka_SK"))
+    {
+        EquippedWeapon->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            FName("hand_rSocket") // 소켓 지정
+        );
+        WeaponMesh->SetRelativeLocation(FVector(-7.935278f, 2.721333f, 19.447058f));
+        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.00016f, 0.f) ); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
+    }
+    else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+        WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Pistol_SK"))
+    {
+        EquippedWeapon->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            FName("hand_rSocket") // 소켓 지정
+        );
+        WeaponMesh->SetRelativeLocation(FVector(-5.796565f, 3.547575f, -0.468514f));
+        WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f) );
+    }
+    else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+        WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("SMG_SK"))
+    {
+        EquippedWeapon->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            FName("hand_rSocket") // 소켓 지정
+        );
+        WeaponMesh->SetRelativeLocation(FVector(-8.003382f, 3.45388f, -3.464114f));
+        WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f) );
+    }
+    else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+        WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Shotgun_SK"))
+    {
+        EquippedWeapon->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            FName("hand_rSocket") // 소켓 지정
+        );
+        WeaponMesh->SetRelativeLocation(FVector(-6.928853f, 5.209436f, 10.59279f));
+        WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f) );
+    }
+    else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+        WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("SniperRifle_SK"))
+    {
+        EquippedWeapon->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            FName("hand_rSocket") // 소켓 지정
+        );
+        WeaponMesh->SetRelativeLocation(FVector(-3.726387, 2.377795, -0.399829));
+        WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f) );
+    }
+    else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+        WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("GravityGun_SK"))
+    {
+        EquippedWeapon->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            FName("hand_rSocket") // 소켓 지정
+        );
+        WeaponMesh->SetRelativeLocation(FVector(-8.923258f, 5.280822f, 2.778548f));
+        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f) );
     }
 
     // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -294,8 +430,14 @@ void UCombatComponent::UpdateAmmoValues()
 
 void UCombatComponent::SetAiming(bool IsAiming)
 {
+    if( Character == nullptr || EquippedWeapon == nullptr ) return; // 캐릭터가 없으면 함수 종료
     bIsAiming = IsAiming; // Aim 상태를 설정합니다.
     ServerSetAiming(IsAiming); // 서버에 Aim 상태를 설정합니다.
+
+    if( Character->IsLocallyControlled() && EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Sniper ) // 로컬 플레이어만 FOV를 업데이트합니다.
+    {
+        Character->ShowScopeSniperWidget( bIsAiming ); // 스코프 위젯을 보이게 합니다.
+    }
 }
 
 void UCombatComponent::ServerSetAiming_Implementation(bool IsAiming)
@@ -409,7 +551,7 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
             Start += CrosshairWorldDirection * (DistanceToCharacter + 100.f ); // 시작 위치를 캐릭터와 십자선 사이의 거리의 50 단위 만큼 앞으로 이동
         }
 
-        FVector End = Start + (CrosshairWorldDirection * 80000.f); // 끝 위치는 십자선 월드 방향으로 80000 단위 떨어진 위치
+        FVector End = Start + (CrosshairWorldDirection * TRACE_LENGTH); // 끝 위치는 십자선 월드 방향으로 80000 단위 떨어진 위치
 
         // 자기 자신 무시 파라미터 추가
         FCollisionQueryParams TraceParams;
@@ -419,22 +561,24 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
         }
         
         // 라인 트레이스를 수행하여 십자선 아래의 물체를 추적
-        GetWorld()->LineTraceSingleByChannel(
+        bool bHit = GetWorld()->LineTraceSingleByChannel(
             TraceHitResult,
             Start,
             End,
-            ECC_Visibility, // 가시성  
-            TraceParams 
+            ECollisionChannel::ECC_Visibility
         );
-    }
-
-    if( TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UCrosshairInterface>() ) // 히트된 액터가 있는 경우와 인터페이스가 구현된 경우
-    {
-        HUDPackage.CrosshairColor = FLinearColor::Red; // 십자선 색상을 빨간색으로 설정
-    }
-    else // 히트된 액터가 없거나 인터페이스가 구현되지 않은 경우
-    {
-        HUDPackage.CrosshairColor = FLinearColor::White; // 십자선 색상을 흰색으로 설정
+        if (!bHit)
+        {
+            TraceHitResult.ImpactPoint = End; // 트레이스 실패 시 정면 먼 곳으로
+        }
+        if( TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UCrosshairInterface>() ) // 히트된 액터가 있는 경우와 인터페이스가 구현된 경우
+        {
+            HUDPackage.CrosshairColor = FLinearColor::Red; // 십자선 색상을 빨간색으로 설정
+        }
+        else // 히트된 액터가 없거나 인터페이스가 구현되지 않은 경우
+        {
+            HUDPackage.CrosshairColor = FLinearColor::White; // 십자선 색상을 흰색으로 설정
+        }
     }
 
 }

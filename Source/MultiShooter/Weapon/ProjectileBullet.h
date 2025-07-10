@@ -16,4 +16,7 @@ protected:
 
 public:
 
+	AProjectileBullet();
+
+
 };

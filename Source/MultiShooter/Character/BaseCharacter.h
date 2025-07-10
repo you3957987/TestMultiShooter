@@ -73,7 +73,48 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
 	UPROPERTY(EditAnywhere)
-	class UAnimMontage* FireWeaponMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주 
+	class UAnimMontage* FireAssultMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주 
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* FireRocketMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주
+	
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* FirePistolMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주 
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* FireSMGMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주
+	
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* FireShotgunMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* FireSniperMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* FireGrenadeLauncherMontage; // 유탄 발사기를 발사할 때 사용할 애니메이션 몽타주
+
+	//-------------------------------------------------------------------------------------------------
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ReloadAssultMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ReloadRocketMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ReloadPistolMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ReloadSMGMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ReloadShotgunMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ReloadSniperMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ReloadGrenadeLauncherMontage; // 유탄 발사기를 재장전할 때 사용할 애니메이션 몽타주
 
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* HitReactMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
@@ -81,8 +122,6 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* DieMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
-	class UAnimMontage* ReloadMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
 	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
 
 	//플레이어 상태-------------------------------------------------------------------------------------------------------
@@ -229,5 +268,8 @@ public:
 	//UFUNCTION( NetMulticast, Unreliable ) // 이거는 전달 안되도 상관 없음
 	//void MulticastPlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 멀티캐스트로 재생하는 함수
 	//void ABaseCharacter::MulticastPlayHitReactMontage_Implementation() { PlayHitReactMontage();} // 멀티캐스트로 애니메이션 몽타주를 재생합니다. 
+
+	UFUNCTION( BlueprintImplementableEvent) // 이 함수는 블루프린트에서 구현됩니다.
+	void ShowScopeSniperWidget( bool bShow ); // 스코프 위젯을 보이게 하는 함수
 
 };

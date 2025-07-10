@@ -152,6 +152,38 @@
 		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
 	},
 	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\GameState\\BaseGameState.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\GameState\\BaseGameState.h",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\HUD\\Announcement.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\HUD\\Announcement.h",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
 		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\HUD\\CharacterHUD.cpp",
 		"arguments": [
 			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
@@ -288,6 +320,22 @@
 		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
 	},
 	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\HitScanWeapon.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\HitScanWeapon.h",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
 		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\OutBullet.cpp",
 		"arguments": [
 			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
@@ -336,6 +384,38 @@
 		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
 	},
 	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\ProjectileGrenade.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\ProjectileGrenade.h",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\ProjectileRocket.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\ProjectileRocket.h",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
 		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\ProjectileWeapon.cpp",
 		"arguments": [
 			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
@@ -345,6 +425,38 @@
 	},
 	{
 		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\ProjectileWeapon.h",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\RocketMovementComponent.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\RocketMovementComponent.h",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\ShotGun.cpp",
+		"arguments": [
+			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
+			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"
+		],
+		"directory": "C:\\Program Files\\Epic Games\\UE_5.6\\Engine\\Source"
+	},
+	{
+		"file": "C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\Source\\MultiShooter\\Weapon\\ShotGun.h",
 		"arguments": [
 			"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.41.34120\\bin\\Hostx64\\x64\\cl.exe",
 			"@C:\\Users\\YJH\\Documents\\GitHub\\TestMultiShooter\\.vscode\\compileCommands_Default\\MultiShooter.1.rsp"

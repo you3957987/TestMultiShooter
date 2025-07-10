@@ -3,6 +3,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "MultiShooter/TypeHeader/CombatState.h" 
+#include "MultiShooter/Weapon/WeaponType.h"
+#include "MultiShooter/CharacterComponent/CombatComponent.h"
+#include "MultiShooter/Weapon/BaseWeapon.h"
 
 void UBaseAnimInstance::NativeInitializeAnimation()
 {
@@ -62,4 +65,10 @@ void UBaseAnimInstance::NativeUpdateAnimation(float DeltaTime)
 
     bDead = BaseCharacter->IsDead(); // 캐릭터가 죽었는지 여부를 가져옵니다.
     bReloading = BaseCharacter->GetCombatState() != ECombatState::ECS_Reloading; // 캐릭터가 재장전 중인지 여부를 가져옵니다. 이거 안쓰긴 함.
+
+    auto CombatComp = BaseCharacter->GetCombatComponent();
+    if (CombatComp && CombatComp->GetEquippedWeapon())
+    {
+        WeaponType = CombatComp->GetEquippedWeapon()->GetWeaponType();
+    }
 }
