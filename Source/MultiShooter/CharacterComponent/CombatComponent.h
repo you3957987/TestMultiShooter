@@ -16,7 +16,7 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 	UPROPERTY()
 	class ABaseCharacter* Character; // 이 컴포넌트를 소유한 캐릭터
 	UPROPERTY()
-	class APlayerController* PlayerController; // 플레이어 컨트롤러
+	class ABasePC* PlayerController; // 플레이어 컨트롤러
 	UPROPERTY()
 	class ACharacterHUD* CharacterHUD; // 캐릭터 HUD
 	UPROPERTY( ReplicatedUsing = OnRep_EquippedWeapon )
@@ -76,6 +76,17 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 	UFUNCTION( BlueprintCallable )
 	void UpdateAmmoValues(); // HUD에 총알 개수를 업데이트하는 함수
 
+	UPROPERTY( ReplicatedUsing = OnRep_Grenade )
+	int32 Grenade = 4; // 소총 시작 총알 개수
+
+	UPROPERTY( EditAnywhere )
+	int32 MaxGrenade = 4;
+
+	UFUNCTION()
+	void OnRep_Grenade(); // 수류탄 개수가 변경되었을 때 호출되는 함수
+
+	void UpdateGrenade(); // HUD에 수류탄 개수를 업데이트하는 함수
+
 	UPROPERTY(  EditAnywhere )
 	int32 StartingARAmmo = 30; // 소총 시작 총알 개수
 
@@ -96,6 +107,9 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 
 	UPROPERTY(  EditAnywhere )
 	int32 StartingGrenadeLauncherAmmo = 0; // 유탄 발사기 시작 총
+
+	UPROPERTY(  EditAnywhere )
+	int32 StartingMinigunAmmo = 0; // 유탄 발사기 시작 총
 
 	// 총알-----------------------------------------------------------------------------
 
@@ -134,6 +148,26 @@ protected:
 
 	int32 AmountToReload(); // 리로드할 총알 개수
 
+	void ThrowGrenade(); // 수류탄을 던지는 함수
+
+	UFUNCTION( Server, Reliable )
+	void ServerThrowGrenade(); // 서버에서 수류탄을 던지는 함수
+	void DropEquippedWeapon(); // 현재 장착된 무기를 드롭하는 함수
+	void AttachWeaponToSocket(ABaseWeapon* WeaponToAttach); // 무기를 소켓에 부착하는 함수
+	void PlayEquipSound();
+	void ReloadEmptyWeapon(); // 빈 무기를 리로드하는 함수
+	void SetWeaponMesh( bool bShow ); // 수류탄 던질 떄 무기 메쉬를 숨기는 함수
+	void SetGrenadeMesh( bool bShow ); // 수류탄 메쉬를 보이거나 숨기는 함수
+
+	UFUNCTION( BlueprintCallable ) // 수류탄 몽타주 노티파이로 연결
+	void FireGrenade(); // 수류탄을 발사하는 함수
+
+	UFUNCTION( Server, Reliable )
+	void Server_FireGrenade( const FVector_NetQuantize& Target ); // 서버에서 수류탄을 발사하는 함수
+
+	UPROPERTY( EditAnywhere )
+	TSubclassOf<class AProjectile> GrenadeClass; // 수류탄 클래스
+
 public:	
 	UCombatComponent();
 
@@ -143,6 +177,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; // 뱐수 복제 위한 함수 복제는 변수가 변했을떄만!
 
 	FORCEINLINE class ABaseWeapon* GetEquippedWeapon() const { return EquippedWeapon; } // 현재 장착된 무기를 반환하는 함수
+	FORCEINLINE int32 GetGrenade() const { return Grenade; } // 현재 보유한 수류탄 개수를 반환하는 함수
 
 	void EquipWeapon(class ABaseWeapon* WeaponToEquip); // 무기를 장착하는 함수
 
@@ -152,6 +187,9 @@ public:
 
 	UFUNCTION( BlueprintCallable )
 	void FinshedReload(); // 리로드가 완료되었을 때 호출되는 함수 -> 애님 몽타주 노타퍼아에서 블루프린트로 연결후 거기서 사용!
+
+	UFUNCTION( BlueprintCallable )
+	void FinishedThrowGrenade(); // 수류탄 던지기가 완료되었을 때 호출되는 함수 -> 애님 몽타주 노타퍼아에서 블루프린트로 연결후 거기서 사용!
 
 	void ClearEquippedWeapon();
 

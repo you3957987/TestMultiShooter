@@ -49,6 +49,7 @@ public:
 	void SetHUDWeponIconClear(); // HUD의 무기 아이콘을 지우는 함수
 	void SetHUDMatchCountDown( float CountDownTime ); // HUD의 매치 카운트다운을 설정하는 함수
 	void SetHUDAnnouncementCountDown( float CountDownTime ); // HUD의 매치 카운트다운을 설정하는 함수
+	void SetHUDGrenade( int32 Grenade ); // HUD의 수류탄 개수를 설정하는 함수
 	
 	void OnMatchStateSet(FName State); // 매치 상태가 변경될 때 호출되는 함수
 	UFUNCTION()
@@ -68,7 +69,7 @@ public:
 	float ClientServerDeltaTime = 0.f; // 클라이언트와 서버 간의 시간 차이
 
 	UPROPERTY(EditAnyWhere, Category = "Time")
-	float TimeSyncFrequency = 5.f; // 시간 동기화 빈도 (초 단위)
+	float TimeSyncFrequency = 2.f; // 시간 동기화 빈도 (초 단위)
 
 	float LastTimeSync = 0.f; // 마지막 시간 동기화 시간
 

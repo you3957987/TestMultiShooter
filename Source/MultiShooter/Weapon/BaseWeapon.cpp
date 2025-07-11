@@ -118,6 +118,12 @@ bool ABaseWeapon::IsEmptyAmmo()
 	return Ammo <= 0; // 총알 개수가 0 이하이면 true를 반환합니다.
 }
 
+bool ABaseWeapon::IsFull()
+{
+	return Ammo == MaxAmmo;	 // 총알 개수가 최대값과 같으면 true를 반환합니다.
+}
+
+
 void ABaseWeapon::SetHUDAmmo()
 {
     Character = Character == nullptr ? Cast<ABaseCharacter>(GetOwner()) : Character; // 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
@@ -255,7 +261,6 @@ void ABaseWeapon::Dropped() // 플레이어 죽음
 	Character = nullptr; // 캐릭터를 nullptr로 설정합니다. (플레이어가 죽었으므로)
 	PlayerController = nullptr; // 플레이어 컨트롤러를 nullptr로 설정합니다. (플레이어가 죽었으므로)
 }
-
 
 void ABaseWeapon::EnableCustomDepth(bool bEnable) // 윤곽선을 활성화하거나 비활성화하는 함수
 {

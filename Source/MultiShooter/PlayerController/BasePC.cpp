@@ -18,7 +18,6 @@ void ABasePC::BeginPlay()
     Super::BeginPlay();
 
     CharacterHUD = Cast<ACharacterHUD>(GetHUD()); // 현재 플레이어의 HUD를 캐릭터 HUD로 캐스팅합니다.
-
     ServerCheckMatchState(); // 서버에서 매치 상태를 확인합니다.
 }
 
@@ -29,6 +28,7 @@ void ABasePC::Tick(float DeltaTime)
     SetHUDTime(); // HUD의 시간을 설정합니다.
 
     CheckTimeSync(DeltaTime); // 시간 동기화 확인 함수 호출
+
 }
 
 void ABasePC::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -38,7 +38,7 @@ void ABasePC::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
     DOREPLIFETIME(ABasePC, MatchState); // MatchState 변수를 복제할 수 있도록 설정합니다.
 }
 
-void ABasePC::OnPossess(APawn* InPawn)
+void ABasePC::OnPossess(APawn* InPawn) // 초기 UI 상태 설정
 {
     Super::OnPossess(InPawn); // 부모 클래스의 OnPossess 함수를 호출합니다.
 
@@ -46,7 +46,10 @@ void ABasePC::OnPossess(APawn* InPawn)
     if (BaseCharacter)
     {
         SetHUDHealth(BaseCharacter->GetHealth(), BaseCharacter->GetMaxHealth()); // 캐릭터의 체력을 HUD에 설정합니다.
+       
+        SetHUDGrenade(BaseCharacter->GetCombatComponent()->GetGrenade());
     }
+    
 }
 
 void ABasePC::ReceivedPlayer()
@@ -328,6 +331,24 @@ void ABasePC::SetHUDTime()
     CountDownTimeInt = SecondsLeft;
 }
 
+void ABasePC::SetHUDGrenade(int32 Grenade )
+{
+    if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
+    {
+        CharacterHUD->AddCharacterUI();
+        if (CharacterHUD->CharacterUI == nullptr)
+            return;
+    }
+
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
+    if (CharacterHUD && CharacterHUD->CharacterUI && CharacterHUD->CharacterUI->GrenadeText) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
+    {
+        FString GrenadeText = FString::Printf(TEXT("%d"), Grenade); // 총알 개수 텍스트 포맷팅
+        CharacterHUD->CharacterUI->GrenadeText->SetText(FText::FromString(GrenadeText)); // 총알 개수 텍스트를 설정합니다.
+    }
+}
+
 void ABasePC::ServerRequestServerTime_Implementation(float TimeOfClientRequest) // 클라 요청 -> 서버 실행
 {
     float CurrentServerTIme = GetWorld()->GetTimeSeconds(); // 서버의 현재 시간 가져오기
@@ -413,6 +434,7 @@ void ABasePC::OnRep_MatchState()
             if( CharacterHUD->Announcement )
             {
                 CharacterHUD->Announcement->SetVisibility(ESlateVisibility::Visible); // 시작전 안내 위젯을 보이도록 설정합니다
+                //UE_LOG(LogTemp, Warning, TEXT("OnRep_MatchState: MatchState is WaitingToStart.")); // 디버그용 로그 출력
             }
         }
     }
@@ -428,13 +450,6 @@ void ABasePC::HandleMatchHasStarted()
             if( CharacterHUD->Announcement ) // 시작전 안내 위젯이 있는 경우
             {
                 CharacterHUD->Announcement->SetVisibility(ESlateVisibility::Collapsed); // 시작전 안내 위젯을 숨깁니다.
-
-                if (CharacterHUD->Announcement->AnnouncementText)
-                    CharacterHUD->Announcement->AnnouncementText->SetText(FText());
-                if (CharacterHUD->Announcement->InfoText)
-                    CharacterHUD->Announcement->InfoText->SetText(FText());
-                if (CharacterHUD->Announcement->WarmUpTimeText)
-                    CharacterHUD->Announcement->WarmUpTimeText->SetText(FText());
             }
             CharacterHUD->AddCharacterUI(); // 캐릭터 오버레이를 추가합니다.
 

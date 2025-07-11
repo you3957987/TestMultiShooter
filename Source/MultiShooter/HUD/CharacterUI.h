@@ -43,4 +43,7 @@ public:
 	UPROPERTY(meta = (BindWidget)) 
 	class UTextBlock* MatchCountDownText;
 
+	UPROPERTY(meta = (BindWidget)) 
+	class UTextBlock* GrenadeText;
+
 };

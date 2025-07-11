@@ -36,6 +36,8 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	class UInputAction* IA_Fire;
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	class UInputAction* IA_Reload;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	class UInputAction* IA_Grenade; // 수류탄 던지는 액션
 
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
 	class ABaseWeapon* OverlappingWeapon;
@@ -93,6 +95,9 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* FireGrenadeLauncherMontage; // 유탄 발사기를 발사할 때 사용할 애니메이션 몽타주
 
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* FireMinigunMontage; // 미니건을 발사할 때 사용할 애니메이션 몽타주
+
 	//-------------------------------------------------------------------------------------------------
 
 	UPROPERTY(EditAnywhere)
@@ -115,6 +120,12 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* ReloadGrenadeLauncherMontage; // 유탄 발사기를 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ReloadMinigunMontage; // 미니건을 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere)
+	class UAnimMontage* ThrowGrenadeMontage; // 유탄 발사기를 재장전할 때 사용할 애니메이션 몽타주
 
 	UPROPERTY(EditAnywhere)
 	class UAnimMontage* HitReactMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
@@ -189,6 +200,9 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY()
 	class ACharacterState* CharacterState; // 플레이어의 상태를 저장하는 CharacterState 클래스의 인스턴스
 
+	UPROPERTY( VisibleAnywhere )
+	UStaticMeshComponent* GrenadeMesh; // 수류탄 메쉬 컴포넌트
+
 protected:
     virtual void BeginPlay() override;
 
@@ -209,6 +223,8 @@ protected:
 	void FireReleased();
 	UFUNCTION()
 	void Reload();
+	UFUNCTION()
+	void Grenade(); // 수류탄 던지기 입력을 처리하는 함수
 
 
     void AimOffset(float DeltaTime); // 조준 오프셋을 계산하는 함수
@@ -218,7 +234,9 @@ protected:
 	UFUNCTION()
 	void ReceiveDamage( AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser ); 
 
-	void UpdateHUDHealth(); 
+	void UpdateHUDHealth();
+
+	void UpdateHUDGrenade(); // HUD에 수류탄 개수를 업데이트하는 함수 
 
 	void PollInit(); // 관련 클래스를 확인해서 HUD를 세팅
 
@@ -230,7 +248,6 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; // 뱐수 복제 위한 함수 복제는 변수가 변했을떄만!
 	virtual void OnRep_ReplicatedMovement() override; // ReplicatedMovement가 변경되었을 때 호출되는 함수
 	virtual void Destroyed() override; // 액터가 파괴될 때 호출되는 함수
-
     virtual void Restart() override; // 매치 스타트 할 시 서버에서 입력이 안되는거 해결 위한 함수 
 
 	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; } // AO_Yaw를 반환하는 함수
@@ -245,6 +262,7 @@ public:
 	FORCEINLINE float GetHealth() const { return Health; } // Health를 반환하는 함수
 	FORCEINLINE float GetMaxHealth() const { return MAxHealth; } // MaxHealth를 반환하는 함수
 	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; } // CombatComponent를 반환하는 함수
+	FORCEINLINE UStaticMeshComponent* GetGrenadeMesh() const { return GrenadeMesh; } // GrenadeMesh를 반환하는 함수
 
 	bool IsWeaponEquipped();
 	bool IsAiming(); // CombatComponent가 존재할 때만 bIsAiming을 반환
@@ -254,6 +272,7 @@ public:
 	void PlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 재생하는 함수
 	void PlayDieMontage(); // 플레이어가 죽었을 때 애니메이션 몽타주를 재생하는 함수
 	void PlayReloadMontage(); // 무기를 재장전할 때 애니메이션 몽타주를 재생하는 함수
+	void PlayThrowGrenadeMontage(); // 유탄 발사기를 던질 때 애니메이션 몽타주를 재생하는 함수
 
 	UFUNCTION( NetMulticast, Reliable )
 	void MulticastEliminate(); // 플레이어가 제거되었을 때 호출되는 멀티캐스트 함수

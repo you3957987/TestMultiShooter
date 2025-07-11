@@ -11,6 +11,8 @@
 #include "Camera/CameraComponent.h" // 카메라 컴포넌트 헤더 파일
 #include "TimerManager.h" // 타이머 매니저 헤더 파일
 #include "Sound/SoundCue.h" // 사운드 큐 헤더 파일
+#include "MultiShooter/Weapon/Projectile.h" // 수류탄 클래스 헤더 파일
+#include "Components/BoxComponent.h" // 박스 컴포넌트 헤더 파일
 
 UCombatComponent::UCombatComponent()
 {
@@ -61,6 +63,7 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
     DOREPLIFETIME(UCombatComponent, bIsAiming); // bIsAiming 변수를 네트워크에서 복제하도록 설정
     DOREPLIFETIME_CONDITION(UCombatComponent, CarriedAmmo, COND_OwnerOnly);// CarriedAmmo 변수를 네트워크에서 복제하도록 설정
     DOREPLIFETIME(UCombatComponent, CombatState); // CombatState 변수를 네트워크에서 복제하도록 설정
+    DOREPLIFETIME(UCombatComponent, Grenade); // Grenade 변수를 네트워크에서 복제하도록 설정
 }
 
 void UCombatComponent::OnRep_EquippedWeapon()
@@ -68,102 +71,15 @@ void UCombatComponent::OnRep_EquippedWeapon()
     if (EquippedWeapon && Character )
     {
         // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equiped); 
 
-        USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetWeaponMesh();
-        if (WeaponMesh == nullptr) return;
-
-        if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
-            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("AssaultRifle_SK"))
-        {
-            EquippedWeapon->AttachToComponent(
-                Character->GetMesh(),
-                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                FName("hand_rSocket") // 소켓 지정
-            );
-            WeaponMesh->SetRelativeLocation(FVector(-6.796413f, 4.446436f, 1.126907f));
-            WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f) ); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
-        }
-        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() && WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Bazooka_SK"))
-        {
-            EquippedWeapon->AttachToComponent(
-                Character->GetMesh(),
-                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                FName("hand_rSocket") // 소켓 지정
-            );
-            WeaponMesh->SetRelativeLocation(FVector(-7.935278f, 2.721333f, 19.447058f));
-            WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.00016f, 0.f) ); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
-        }
-        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
-            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Pistol_SK"))
-        {
-            EquippedWeapon->AttachToComponent(
-                Character->GetMesh(),
-                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                FName("hand_rSocket") // 소켓 지정
-            );
-            WeaponMesh->SetRelativeLocation(FVector(-5.796565f, 3.547575f, -0.468514f));
-            WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f) );
-        }
-        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
-            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("SMG_SK"))
-        {
-            EquippedWeapon->AttachToComponent(
-                Character->GetMesh(),
-                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                FName("hand_rSocket") // 소켓 지정
-            );
-            WeaponMesh->SetRelativeLocation(FVector(-8.003382f, 3.45388f, -3.464114f));
-            WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f) );
-        }
-        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
-            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Shotgun_SK"))
-        {
-            EquippedWeapon->AttachToComponent(
-                Character->GetMesh(),
-                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                FName("hand_rSocket") // 소켓 지정
-            );
-            WeaponMesh->SetRelativeLocation(FVector(-6.928853f, 5.209436f, 10.59279f));
-            WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f) );
-        }
-        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
-            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("SniperRifle_SK"))
-        {
-            EquippedWeapon->AttachToComponent(
-                Character->GetMesh(),
-                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                FName("hand_rSocket") // 소켓 지정
-            );
-            WeaponMesh->SetRelativeLocation(FVector(-3.726387, 2.377795, -0.399829));
-            WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f) );
-        }
-        else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
-            WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("GravityGun_SK"))
-        {
-            EquippedWeapon->AttachToComponent(
-                Character->GetMesh(),
-                FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                FName("hand_rSocket") // 소켓 지정
-            );
-            WeaponMesh->SetRelativeLocation(FVector(-8.923258f, 5.280822f, 2.778548f));
-            WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f) );
-        }
+        AttachWeaponToSocket(EquippedWeapon); // 무기를 소켓에 부착합니다.
 
         // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 
         Character->GetCharacterMovement()->bOrientRotationToMovement = false; // 캐릭터가 이동 방향을 바라보지 않도록 설정
         Character->bUseControllerRotationYaw = true; // 캐릭터
 
-
-        if( EquippedWeapon->EquipSound )
-        {
-            UGameplayStatics::PlaySoundAtLocation(
-                this,
-                EquippedWeapon->EquipSound,
-                Character->GetActorLocation()
-            ); // 무기 장착 사운드를 재생합니다.
-        }
+        PlayEquipSound(); // 무기 장착 사운드를 재생합니다.
 
         ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
         if(Controller)
@@ -200,14 +116,27 @@ void UCombatComponent::OnRep_CombatState()
             {
                 Fire(); // 발사 함수를 호출합니다.
             }
+            SetWeaponMesh(true); // 무기 메시 숨김
             break;
         case ECombatState::ECS_Reloading:
             // 리로드 중일 때 처리할 로직
             HandleReload(); // 리로드를 처리하는 함수를 호출합니다.
             break;
+        case ECombatState::ECS_ThrowingGrenade:
+            if(  Character && !Character->IsLocallyControlled() )// 
+            {
+                Character->PlayThrowGrenadeMontage(); // 수류탄을 던지는 함수를 호출합니다.
+                SetWeaponMesh(false); // 무기 메시 숨김
+                SetGrenadeMesh(true); // 수류탄 메시 보이게 (서버/클라 모두)
+            }
         default:
             break;
     }
+}
+
+void UCombatComponent::OnRep_Grenade()
+{
+    UpdateGrenade(); // HUD에 수류탄 개수를 업데이트합니다.
 }
 
 void UCombatComponent::InitCarriedAmmo()
@@ -220,19 +149,62 @@ void UCombatComponent::InitCarriedAmmo()
     CarriedAmmoMap.Emplace(EWeaponType::EWT_Shotgun, StartingShotgunAmmo); // 샷건 시작 총알 개수
     CarriedAmmoMap.Emplace(EWeaponType::EWT_Sniper, StartingSniperAmmo); // 스나이퍼 시작 총알 개수
     CarriedAmmoMap.Emplace(EWeaponType::EWT_GrenadeLauncher, StartingGrenadeLauncherAmmo); // 유탄 발사기 시작 총알 개수
+    CarriedAmmoMap.Emplace(EWeaponType::EWT_MiniGun, StartingMinigunAmmo); // 미니건 시작 총알 개수
 }
 
 void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 서버에서만 실행됨
 {
     if (Character == nullptr || WeaponToEquip == nullptr) return;
+    if( CombatState != ECombatState::ECS_Unoccupied ) return; // 무기를 장착할 수 없습니다. // 전투 상태가 비활성화 상태가 아닐 때
 
-    if( EquippedWeapon )
-    {
-        EquippedWeapon->Dropped(); // 이미 장착된 무기가 있다면 드롭합니다.
-    } 
+    DropEquippedWeapon(); // 현재 장착된 무기가 있다면 드롭합니다.
 
-    EquippedWeapon = WeaponToEquip;
     // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    EquippedWeapon = WeaponToEquip;
+
+    AttachWeaponToSocket(EquippedWeapon); // 무기를 소켓에 부착합니다.
+
+    // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    EquippedWeapon->SetOwner(Character); // 복사 자동으로 됨
+    EquippedWeapon->SetHUDAmmo(); // 무기의 HUD에 총알 수를 설정합니다.
+
+    if( CarriedAmmoMap.Contains( EquippedWeapon->GetWeaponType() ) )
+    {
+        CarriedAmmo = CarriedAmmoMap[ EquippedWeapon->GetWeaponType() ]; // 무기 타입에 해당하는 보유 총알 개수를 설정합니다.
+    }
+
+    ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
+    if(Controller)
+    {
+        Controller->SetHUDCarriedAmmo( CarriedAmmo );
+
+        if( EquippedWeapon->WeaponIcon)
+        {
+            Controller->SetHUDWeaponIcon( EquippedWeapon->WeaponIcon ); // HUD에 무기 아이콘을 설정합니다.
+        }
+        else
+        {
+            Controller->SetHUDWeponIconClear(); // 무기 아이콘이 없으면 HUD에서 무기 아이콘을 지웁니다.
+        }
+    }
+
+    PlayEquipSound(); // 무기 장착 사운드를 재생합니다.
+
+    ReloadEmptyWeapon(); // 빈 무기를 리로드합니다.
+
+    Character->GetCharacterMovement()->bOrientRotationToMovement = false; // 캐릭터가 이동 방향을 바라보지 않도록 설정
+    Character->bUseControllerRotationYaw = true; // 캐릭터
+
+}
+
+void UCombatComponent::DropEquippedWeapon()
+{
+    if( EquippedWeapon ) EquippedWeapon->Dropped(); // 이미 장착된 무기가 있다면 드롭합니다.
+}
+
+void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 각 무기마다 다르게 위치 지정해주어야 함!!!!!
+{
     EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equiped); 
 
     USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetWeaponMesh();
@@ -315,33 +287,22 @@ void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 
         WeaponMesh->SetRelativeLocation(FVector(-8.923258f, 5.280822f, 2.778548f));
         WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f) );
     }
-
-    // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-    EquippedWeapon->SetOwner(Character); // 복사 자동으로 됨
-    EquippedWeapon->SetHUDAmmo(); // 무기의 HUD에 총알 수를 설정합니다.
-
-    if( CarriedAmmoMap.Contains( EquippedWeapon->GetWeaponType() ) )
+    else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+        WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("MiniGun_SK"))
     {
-        CarriedAmmo = CarriedAmmoMap[ EquippedWeapon->GetWeaponType() ]; // 무기 타입에 해당하는 보유 총알 개수를 설정합니다.
+        EquippedWeapon->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            FName("hand_rSocket") // 소켓 지정
+        );
+        WeaponMesh->SetRelativeLocation(FVector(-10.5811f, 25.454687, -9.787731f));
+        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.f) );
     }
+}
 
-    ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
-    if(Controller)
-    {
-        Controller->SetHUDCarriedAmmo( CarriedAmmo );
-
-        if( EquippedWeapon->WeaponIcon)
-        {
-            Controller->SetHUDWeaponIcon( EquippedWeapon->WeaponIcon ); // HUD에 무기 아이콘을 설정합니다.
-        }
-        else
-        {
-            Controller->SetHUDWeponIconClear(); // 무기 아이콘이 없으면 HUD에서 무기 아이콘을 지웁니다.
-        }
-    }
-
-    if( EquippedWeapon->EquipSound )
+void UCombatComponent::PlayEquipSound()
+{
+    if( EquippedWeapon->EquipSound && Character && EquippedWeapon ) // 무기 장착 사운드가 있고 캐릭터가 존재하는 경우
     {
         UGameplayStatics::PlaySoundAtLocation(
             this,
@@ -349,20 +310,19 @@ void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 
             Character->GetActorLocation()
         ); // 무기 장착 사운드를 재생합니다.
     }
+}
 
-    if( EquippedWeapon->IsEmptyAmmo() )
+void UCombatComponent::ReloadEmptyWeapon()
+{
+    if( EquippedWeapon && EquippedWeapon->IsEmptyAmmo() )
     {
         Reload(); // 무기가 비어있으면 리로드 함수를 호출합니다.
     }
-
-    Character->GetCharacterMovement()->bOrientRotationToMovement = false; // 캐릭터가 이동 방향을 바라보지 않도록 설정
-    Character->bUseControllerRotationYaw = true; // 캐릭터
-
 }
 
 void UCombatComponent::Reload()
 {
-    if( CarriedAmmo > 0 && CombatState != ECombatState::ECS_Reloading ) // 보유 총알이 있고 재장전 상태 아닐떄
+    if( CarriedAmmo > 0 && CombatState == ECombatState::ECS_Unoccupied && EquippedWeapon && !EquippedWeapon->IsFull() ) // 보유 총알이 
     {
         ServerReload(); // 서버에 리로드 요청을 보냅니다.
     }
@@ -517,10 +477,7 @@ void UCombatComponent::FireTimerFinished()
     {
         Fire(); // 발사 함수를 호출합니다.
     }
-    if( EquippedWeapon->IsEmptyAmmo() )
-    {
-        Reload(); // 무기가 비어있으면 리로드 함수를 호출합니다.
-    }
+    ReloadEmptyWeapon(); // 빈 무기를 리로드합니다.
 }
 
 void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
@@ -587,7 +544,7 @@ void UCombatComponent::SetHUDCrosshair(float DeltaTime)
 {
     if( Character == nullptr || Character->Controller == nullptr ) return;
 
-    PlayerController = PlayerController == nullptr ? Cast<APlayerController>(Character->GetController()) : PlayerController; // 플레이어 컨트롤러를 가져옵니다.
+    PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Character->Controller) : PlayerController; // 플레이어 컨트롤러를 가져옵니다.
     if( PlayerController == nullptr ) return;
 
     CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(PlayerController->GetHUD()) : CharacterHUD; // 캐릭터 HUD를 가져옵니다.
@@ -713,3 +670,119 @@ void UCombatComponent::ClearEquippedWeapon()
     EquippedWeapon = nullptr;
 }
 
+void UCombatComponent::SetWeaponMesh( bool bShow )
+{
+    if( EquippedWeapon == nullptr || Character == nullptr ) return; // EquippedWeapon이 없으면 함수 종료
+
+    if( bShow ) // 수류탄을 던지지 않는 경우
+    {
+        EquippedWeapon->SetActorHiddenInGame(false); // 무기를 보이게 합니다.
+    }
+    else // 수류탄을 던지는 경우
+    {
+        EquippedWeapon->SetActorHiddenInGame(true); // 무기를 숨깁니다.
+    }
+}
+
+void UCombatComponent::SetGrenadeMesh( bool bShow )
+{
+    if( Character && Character->GetGrenadeMesh() ) // 캐릭터가 존재하고, 캐릭터의 수류탄 메시가 존재하는 경우
+    {
+        Character->GetGrenadeMesh()->SetVisibility(bShow); // 수류탄 메시의 가시성을 설정합니다.
+    }
+}
+
+void UCombatComponent::FireGrenade()
+{
+    SetGrenadeMesh(false); // 수류탄 메시 숨김 (서버/클라 모두)
+    if( Character && Character->IsLocallyControlled() ) // 로컬 플레이어만 수류탄을 던집니다.
+    {
+        Server_FireGrenade(HitTarget); // 서버에 수류탄 투척 요청을 보냅니다. 
+    } 
+}
+
+void UCombatComponent::Server_FireGrenade_Implementation( const FVector_NetQuantize& Target )
+{
+    if( Character && GrenadeClass && Character->GetGrenadeMesh() ) // 서버에서만 실행
+    {
+        const FVector StartingLocation = Character->GetGrenadeMesh()->GetComponentLocation(); // 수류탄 시작 위치
+        FVector ToTarget = Target - StartingLocation; // 타겟 위치에서 시작 위치를 뺀 벡터
+        FActorSpawnParameters SpawnParams; // 액터 스폰 파라미터
+        SpawnParams.Owner = Character; // 스폰할 액터의 소유자를 캐릭터로 설정
+        SpawnParams.Instigator = Character; // 스폰할 액터의 인스티게이터를 캐릭터로 설정
+
+        UWorld* World = GetWorld(); // 현재 월드를 가져옵니다.
+        if( World )
+        {
+            // 수류탄을 스폰합니다.
+            AProjectile* SpawnGrenade = World->SpawnActor<AProjectile>(
+                GrenadeClass,
+                StartingLocation,
+                ToTarget.Rotation(), // 타겟 방향으로 회전
+                SpawnParams
+            );
+            if (SpawnGrenade)
+            {
+                // 내 캐릭터를 충돌 무시 대상으로 등록
+                if (SpawnGrenade->GetCollisionBox())
+                {
+                    SpawnGrenade->GetCollisionBox()->IgnoreActorWhenMoving(Character, true);
+                }
+            }
+        }
+    }
+}
+
+void UCombatComponent::FinishedThrowGrenade()
+{
+    CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 비활성화 상태로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
+    SetWeaponMesh(true); // 무기 메시 다시 보이게 (서버/클라 모두)
+}
+
+void UCombatComponent::ThrowGrenade()
+{
+    if( Grenade <= 0 ) return; // 수류탄이 없으면 던질 수 없습니다.
+    if( CombatState != ECombatState::ECS_Unoccupied || EquippedWeapon == nullptr ) return; // 전투 상태가 비활성화 상태가 아닐 때 수류탄을 던질 수 없습니다.
+
+
+    CombatState = ECombatState::ECS_ThrowingGrenade; // 전투 상태를 수류탄 투척 상태로 -> on_rep_CombatState() 함수가 호출됩니다.
+    SetWeaponMesh(false); // 무기 메시 숨김 (서버/클라 모두)
+    if(  Character ) // 서버에서만 실행
+    {
+        Character->PlayThrowGrenadeMontage(); // 수류탄을 던지는 함수를 호출합니다.
+        SetGrenadeMesh(true); // 수류탄 메시 보이게 (서버/클라 모두)
+    }
+    if( Character && !Character->HasAuthority() )
+    {
+        ServerThrowGrenade(); // 서버에 수류탄 투척 요청을 보냅니다.
+    }
+    if( Character && Character->HasAuthority() )
+    {
+        Grenade = FMath::Clamp(Grenade - 1, 0, 5); // 수류탄 개수를 감소시킵니다. 최소 0, 최대 5로 제한합니다.
+        UpdateGrenade(); // HUD에 수류탄 개수를 업데이트합니다.
+    }
+}
+
+void UCombatComponent::ServerThrowGrenade_Implementation()
+{
+    if( Grenade <= 0 ) return; // 수류탄이 없으면 던질 수 없습니다.
+
+    CombatState = ECombatState::ECS_ThrowingGrenade; // 전투 상태를 수류탄 투척 상태로 -> on_rep_CombatState() 함수가 호출됩니다.
+    SetWeaponMesh(false); // 무기 메시 숨김 (서버/클라 모두)
+    if(  Character ) // 서버에서만 실행
+    {
+        Character->PlayThrowGrenadeMontage(); // 수류탄을 던지는 함수를 호출합니다.
+        SetGrenadeMesh(true); // 수류탄 메시 보이게 (서버/클라 모두)
+    }
+    Grenade = FMath::Clamp(Grenade - 1, 0, 5); // 수류탄 개수를 감소시킵니다. 최소 0, 최대 5로 제한합니다.
+    UpdateGrenade(); // HUD에 수류탄 개수를 업데이트합니다.
+}
+
+void UCombatComponent::UpdateGrenade()
+{
+    PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Character->Controller) : PlayerController; // 플레이어 컨트롤러를 가져옵니다.
+    if( PlayerController )
+    {
+        PlayerController->SetHUDGrenade(Grenade); // HUD에 수류탄 개수를 설정합니다.
+    }
+}

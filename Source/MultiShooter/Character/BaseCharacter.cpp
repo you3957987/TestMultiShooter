@@ -59,6 +59,20 @@ ABaseCharacter::ABaseCharacter()
 
 	DissolveTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("DissolveTimeline")); // 디졸브 타임라인 컴포넌트 생성
 
+	// 수류탄 메쉬 컴포넌트 생성
+	GrenadeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GrenadeMesh"));
+	GrenadeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 충돌 비활성화
+	if (GrenadeMesh && GetMesh())
+	{
+		GrenadeMesh->AttachToComponent(
+			GetMesh(),
+			FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+			FName("hand_rSocket")
+		);
+		GrenadeMesh->SetRelativeLocation(FVector(-15.603674f, 8.142267f, -0.512289f ));
+		GrenadeMesh->SetRelativeRotation(FRotator(0.000051f, 109.77877f,0.000034f ));
+	}
+
 }
 
 void ABaseCharacter::BeginPlay()
@@ -78,13 +92,17 @@ void ABaseCharacter::BeginPlay()
     }
 	*/
 	UpdateHUDHealth();
+	UpdateHUDGrenade(); // HUD에 수류탄 개수를 업데이트합니다.
 
 	if( HasAuthority() )
 	{
 		OnTakeAnyDamage.AddDynamic(this, &ABaseCharacter::ReceiveDamage); // 피해를 받았을 때 호출되는 함수 바인딩/ 어플라이 대미지는 프로젝타일에서!
 		// 이 함수는 서버에서만 실행되므로 변수 복제시 클라에서도 실행 되게 해야함!
 	}
-
+	if( GrenadeMesh )
+	{
+		GrenadeMesh->SetVisibility(false); // 수류탄 메쉬를 처음에는 보이지 않게 설정합니다.
+	}
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -146,6 +164,7 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Started, this, &ABaseCharacter::FirePressed);
 		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Completed, this, &ABaseCharacter::FireReleased);
 		EnhancedInput->BindAction(IA_Reload, ETriggerEvent::Started, this, &ABaseCharacter::Reload); // 리로드 액션 바인딩
+		EnhancedInput->BindAction(IA_Grenade, ETriggerEvent::Started, this, &ABaseCharacter::Grenade); // 수류탄 액션 바인딩
     }
 }
 
@@ -257,6 +276,14 @@ void ABaseCharacter::Reload()
 	if( CombatComponent )
 	{
 		CombatComponent->Reload(); // CombatComponent의 Reload 함수를 호출하여 무기를 재장전합니다.
+	}
+}
+
+void ABaseCharacter::Grenade()
+{
+	if( CombatComponent ) 
+	{
+		CombatComponent->ThrowGrenade(); // CombatComponent의 ThrowGrenade 함수를 호출하여 수류탄을 던집니다.
 	}
 }
 
@@ -484,6 +511,12 @@ void ABaseCharacter::PlayFireMontage()
 				AnimInstance->Montage_Play(FireGrenadeLauncherMontage);
 			}
 			break;
+		case EWeaponType::EWT_MiniGun:
+			if (FireMinigunMontage)
+			{
+				AnimInstance->Montage_Play(FireMinigunMontage);
+			}
+			break;
         default:
             break;
     }
@@ -568,9 +601,28 @@ void ABaseCharacter::PlayReloadMontage()
 				AnimInstance->Montage_Play(ReloadGrenadeLauncherMontage);
 			}
 			break;
+		case EWeaponType::EWT_MiniGun:
+			if (ReloadMinigunMontage)
+			{
+				AnimInstance->Montage_Play(ReloadMinigunMontage);
+			}
+			break;
         default:
             break;
     }
+}
+
+void ABaseCharacter::PlayThrowGrenadeMontage()
+{
+	if( CombatComponent == nullptr || ThrowGrenadeMontage == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
+
+	//UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage called")); // 디버깅용 로그 출력
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if( AnimInstance && ThrowGrenadeMontage )
+	{
+		AnimInstance->Montage_Play(ThrowGrenadeMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
+	}
 }
 
 void ABaseCharacter::HideCameraIfCharacterClose()
@@ -637,6 +689,15 @@ void ABaseCharacter::UpdateHUDHealth()
 	if( PlayerController )
 	{
 		PlayerController->SetHUDHealth(Health, MAxHealth); // 플레이어 컨트롤러의 HUD 체력을 설정합니다.
+	}
+}
+
+void ABaseCharacter::UpdateHUDGrenade()
+{
+	PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
+	if( PlayerController )
+	{
+		PlayerController->SetHUDGrenade( CombatComponent->GetGrenade() ); // 플레이어 컨트롤러의 HUD 체력을 설정합니다.
 	}
 }
 

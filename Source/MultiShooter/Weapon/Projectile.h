@@ -69,4 +69,6 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void Destroyed() override;
 
+	FORCEINLINE UBoxComponent* GetCollisionBox() const { return CollisionBox; }
+
 };
