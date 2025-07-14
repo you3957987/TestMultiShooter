@@ -13,6 +13,7 @@
 #include "Sound/SoundCue.h" // 사운드 큐 헤더 파일
 #include "MultiShooter/Weapon/Projectile.h" // 수류탄 클래스 헤더 파일
 #include "Components/BoxComponent.h" // 박스 컴포넌트 헤더 파일
+#include "MultiShooter/Weapon/ShotGun.h" // 산탄총 클래스 헤더 파일
 
 UCombatComponent::UCombatComponent()
 {
@@ -64,37 +65,36 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
     DOREPLIFETIME_CONDITION(UCombatComponent, CarriedAmmo, COND_OwnerOnly);// CarriedAmmo 변수를 네트워크에서 복제하도록 설정
     DOREPLIFETIME(UCombatComponent, CombatState); // CombatState 변수를 네트워크에서 복제하도록 설정
     DOREPLIFETIME(UCombatComponent, Grenade); // Grenade 변수를 네트워크에서 복제하도록 설정
+    DOREPLIFETIME(UCombatComponent, SecondaryWeapon); // SecondaryWeapon 변수를 네트워크에서 복제하도록 설정
 }
 
 void UCombatComponent::OnRep_EquippedWeapon()
 {
     if (EquippedWeapon && Character )
     {
-        // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        AttachWeaponToSocket(EquippedWeapon); // 무기를 소켓에 부착합니다.
-
-        // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+        EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equiped);
+        AttachWeaponToSocket(EquippedWeapon); // 무기를 소켓에 부착합니다. 
+        EquippedWeapon->SetOwner(Character); // 복사 자동으로 됨
+        EquippedWeapon->SetHUDAmmo(); // 무기의 HUD에 총알 수를 설정합니다.
+        UpdateCarriedAmmo();
+        UpdateWeaponIcon(); // HUD에 무기 아이콘을 업데이트합니다.
+        PlayEquipSound(EquippedWeapon); // 무기 장착 사운드를 재생합니다.
+        ReloadEmptyWeapon(); // 빈 무기를 리로드합니다.
+        EquippedWeapon->EnableCustomDepth(false); // 윤곽선을 활성화합니다.
 
         Character->GetCharacterMovement()->bOrientRotationToMovement = false; // 캐릭터가 이동 방향을 바라보지 않도록 설정
         Character->bUseControllerRotationYaw = true; // 캐릭터
+    }
+}
 
-        PlayEquipSound(); // 무기 장착 사운드를 재생합니다.
-
-        ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
-        if(Controller)
-        {
-            //Controller->SetHUDCarriedAmmo( CarriedAmmo );  이거 넣어야 하는지 모르겠음
-
-            if( EquippedWeapon->WeaponIcon)
-            {
-                Controller->SetHUDWeaponIcon( EquippedWeapon->WeaponIcon ); // HUD에 무기 아이콘을 설정합니다.
-            }
-            else
-            {
-                Controller->SetHUDWeponIconClear(); // 무기 아이콘이 없으면 HUD에서 무기 아이콘을 지웁니다.
-            }
-        }
+void UCombatComponent::OnRep_SecondaryWeapon()
+{
+    if (SecondaryWeapon && Character )
+    {
+        SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
+        AttachWeaponToBackpack(SecondaryWeapon); // 무기를 백팩에 부착합니다.
+        SecondaryWeapon->SetOwner(Character); // 복사 자동으로 됨
+        PlayEquipSound(SecondaryWeapon); // 무기 장착 사운드를 재생합니다.
     }
 }
 
@@ -120,7 +120,7 @@ void UCombatComponent::OnRep_CombatState()
             break;
         case ECombatState::ECS_Reloading:
             // 리로드 중일 때 처리할 로직
-            HandleReload(); // 리로드를 처리하는 함수를 호출합니다.
+            if( Character && !Character->IsLocallyControlled() )HandleReload(); // 리로드를 처리하는 함수를 호출합니다.
             break;
         case ECombatState::ECS_ThrowingGrenade:
             if(  Character && !Character->IsLocallyControlled() )// 
@@ -139,7 +139,15 @@ void UCombatComponent::OnRep_Grenade()
     UpdateGrenade(); // HUD에 수류탄 개수를 업데이트합니다.
 }
 
-void UCombatComponent::InitCarriedAmmo()
+void UCombatComponent::OnRep_Aiming() // 렉걸릴 시 클라 쪽에서 줌 광클 시 지연되는거 방지
+{
+    if (Character && Character->IsLocallyControlled())
+    {
+        bIsAiming = bAimButtonPressed; // Aim 버튼이 눌렸는지 여부를 설정합니다.
+    }
+}
+
+void UCombatComponent::InitCarriedAmmo() // 무기 추가시 탄약도 추가
 {
     // 무기 타입별로 초기 보유 총알 개수를 설정합니다.
     CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartingARAmmo);   // 소총 시작 총알 개수
@@ -152,22 +160,111 @@ void UCombatComponent::InitCarriedAmmo()
     CarriedAmmoMap.Emplace(EWeaponType::EWT_MiniGun, StartingMinigunAmmo); // 미니건 시작 총알 개수
 }
 
+void UCombatComponent::PickUpAmmo(EWeaponType WeaponType, int32 Amount)
+{
+    if( CarriedAmmoMap.Contains(WeaponType) ) // 무기 타입에 해당하는 총알 개수가 있는지 확인
+    {
+        CarriedAmmoMap[WeaponType]  = FMath::Clamp(CarriedAmmoMap[WeaponType] + Amount, 0, MaxCarriedAmmo); // 총알 개수를 증가시키고 최대값을 초과하지 않도록 합니다.
+        UpdateCarriedAmmo(); // HUD에 총알 개수를 업데이트합니다.
+    }
+    if( EquippedWeapon && EquippedWeapon->IsEmptyAmmo() && EquippedWeapon->GetWeaponType() == WeaponType ) // 장착된 무기가 있고, 총알이 비어있는 경우
+    {
+        Reload(); // 무기를 리로드합니다.
+    }
+}
+
+void UCombatComponent::PickUpGrenade(int32 Amount)
+{
+    Grenade = FMath::Clamp(Grenade + Amount, 0, MaxGrenade); // 수류탄 개수를 증가시키고 최대값을 초과하지 않도록 합니다.
+    UpdateGrenade(); // HUD에 수류탄 개수를 업데이트합니다.
+}
+
 void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 서버에서만 실행됨
 {
     if (Character == nullptr || WeaponToEquip == nullptr) return;
     if( CombatState != ECombatState::ECS_Unoccupied ) return; // 무기를 장착할 수 없습니다. // 전투 상태가 비활성화 상태가 아닐 때
 
+    if( EquippedWeapon != nullptr && SecondaryWeapon == nullptr ) // 이미 장착된 무기가 있고, 보조 무기가 없는 경우
+    {
+        EquipSecondaryWeapon(WeaponToEquip); // 보조 무기를 장착합니다.
+    }
+    else
+    {
+        EquipFirstWeapon(WeaponToEquip); // 기본 무기를 장착합니다.
+    }
+
+    Character->GetCharacterMovement()->bOrientRotationToMovement = false; // 캐릭터가 이동 방향을 바라보지 않도록 설정
+    Character->bUseControllerRotationYaw = true; // 캐릭터 가 컨트롤러의 회전을 사용하도록 설정
+}
+
+void UCombatComponent::EquipFirstWeapon(ABaseWeapon* WeaponToEquip) // 기본 무기를 장착하는 함수
+{
+    if(WeaponToEquip == nullptr) return;
+
     DropEquippedWeapon(); // 현재 장착된 무기가 있다면 드롭합니다.
+    EquippedWeapon = WeaponToEquip; // OnRep_EquippedWeapon 함수 실행
 
-    // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    EquippedWeapon = WeaponToEquip;
-
-    AttachWeaponToSocket(EquippedWeapon); // 무기를 소켓에 부착합니다.
-
-    // 이 구간은 네트워크 에서 늦게 전달되는 경우 막기 위해 onrep에서 똑같이 넣어야 함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+    EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equiped); 
+    AttachWeaponToSocket(WeaponToEquip); // 무기를 소켓에 부착합니다.
     EquippedWeapon->SetOwner(Character); // 복사 자동으로 됨
     EquippedWeapon->SetHUDAmmo(); // 무기의 HUD에 총알 수를 설정합니다.
+    UpdateCarriedAmmo(); // 보유 총알 개수를 업데이트합니다.
+    UpdateWeaponIcon();
+    PlayEquipSound(WeaponToEquip); // 무기 장착 사운드를 재생합니다.
+    ReloadEmptyWeapon(); // 빈 무기를 리로드합니다.
+    EquippedWeapon->EnableCustomDepth(false); // 윤곽선을 활성화합니다.
+}
+	
+void UCombatComponent::EquipSecondaryWeapon(ABaseWeapon* WeaponToEquip) // 보조 무기를 장착하는 함수
+{
+    if(WeaponToEquip == nullptr) return;
+
+    SecondaryWeapon = WeaponToEquip; // 보조 무기를 설정합니다. OnRep_SecondaryWeapon 함수가 호출됩니다.
+
+    SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary); // 보조 무기의 상태를 장착됨으로 설정합니다.
+    AttachWeaponToBackpack(WeaponToEquip); // 현재 장착된 무기를 백팩에 부착합니다.
+    PlayEquipSound(WeaponToEquip); // 보조 무기 장착 사운드를 재생합니다.
+    SecondaryWeapon->SetOwner(Character); // 보조 무기의 소유자를 캐릭터로 설정합니다.
+}
+
+void UCombatComponent::AttachWeaponToBackpack(ABaseWeapon* WeaponToAttach) // 무기를 백팩에 부착하는 함수
+{
+    if( Character == nullptr || WeaponToAttach == nullptr || Character->GetMesh() == nullptr ) return;
+
+    const USkeletalMeshSocket* BackpackSocket = Character->GetMesh()->GetSocketByName(FName("BackpackSocket")); // 백팩 소켓을 가져옵니다.
+    if(BackpackSocket)
+    {
+        BackpackSocket->AttachActor(WeaponToAttach, Character->GetMesh()); // 백팩 소켓에 무기를 부착합니다.
+    }
+}
+
+void UCombatComponent::SwapWeapon()
+{
+	if (CombatState != ECombatState::ECS_Unoccupied) return; // 전투 상태가 비활성화 상태가 아닐 때 무기를 교체할 수 없습니다.
+
+    ABaseWeapon* TempWeapon = EquippedWeapon; // 현재 장착된 무기를 임시 변수에 저장합니다.
+    EquippedWeapon = SecondaryWeapon; // 보조 무기를 현재 장착된 무기로 설정합니다.
+    SecondaryWeapon = TempWeapon; // 임시 변수에 저장된 무기를 보조 무기로 설정합니다.
+
+    EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equiped); // 장착된 무기의 상태를 설정합니다.
+    AttachWeaponToSocket(EquippedWeapon); // 장착된 무기를 소켓에 부착합니다.
+    EquippedWeapon->SetHUDAmmo(); // 장착된 무기의 HUD에 총알 수를 설정합니다.
+    UpdateCarriedAmmo(); // 보유 총알 개수를 업데이트합니다.
+    UpdateWeaponIcon(); // HUD에 무기 아이콘을 업데이트합니다.
+    PlayEquipSound(EquippedWeapon); // 무기 장착 사운드를 재생합니다.
+
+    SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary); // 보조 무기의 상태를 장착됨으로 설정합니다.
+    AttachWeaponToBackpack(SecondaryWeapon); // 현재 장착된 무기를 백팩에 부착합니다.
+}
+
+bool UCombatComponent::ShouldSwapWeapon()
+{
+    return( EquippedWeapon != nullptr && SecondaryWeapon != nullptr ); // 현재 장착된 무기와 보조 무기가 다를 때 true를 반환합니다.
+}
+
+void UCombatComponent::UpdateCarriedAmmo()
+{
+    if (EquippedWeapon == nullptr) return;
 
     if( CarriedAmmoMap.Contains( EquippedWeapon->GetWeaponType() ) )
     {
@@ -178,7 +275,14 @@ void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 
     if(Controller)
     {
         Controller->SetHUDCarriedAmmo( CarriedAmmo );
+    }
+}
 
+void UCombatComponent::UpdateWeaponIcon() // HUD에 무기 아이콘을 업데이트하는 함수
+{
+    ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
+    if( Controller )
+    {
         if( EquippedWeapon->WeaponIcon)
         {
             Controller->SetHUDWeaponIcon( EquippedWeapon->WeaponIcon ); // HUD에 무기 아이콘을 설정합니다.
@@ -188,14 +292,6 @@ void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 
             Controller->SetHUDWeponIconClear(); // 무기 아이콘이 없으면 HUD에서 무기 아이콘을 지웁니다.
         }
     }
-
-    PlayEquipSound(); // 무기 장착 사운드를 재생합니다.
-
-    ReloadEmptyWeapon(); // 빈 무기를 리로드합니다.
-
-    Character->GetCharacterMovement()->bOrientRotationToMovement = false; // 캐릭터가 이동 방향을 바라보지 않도록 설정
-    Character->bUseControllerRotationYaw = true; // 캐릭터
-
 }
 
 void UCombatComponent::DropEquippedWeapon()
@@ -203,10 +299,8 @@ void UCombatComponent::DropEquippedWeapon()
     if( EquippedWeapon ) EquippedWeapon->Dropped(); // 이미 장착된 무기가 있다면 드롭합니다.
 }
 
-void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 각 무기마다 다르게 위치 지정해주어야 함!!!!!
+void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무기 추가시 각 무기마다 다르게 위치 지정해주어야 함!!!!!
 {
-    EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equiped); 
-
     USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetWeaponMesh();
     if (WeaponMesh == nullptr) return;
 
@@ -300,13 +394,13 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 각 
     }
 }
 
-void UCombatComponent::PlayEquipSound()
+void UCombatComponent::PlayEquipSound( ABaseWeapon* WeaponToEquip  )
 {
-    if( EquippedWeapon->EquipSound && Character && EquippedWeapon ) // 무기 장착 사운드가 있고 캐릭터가 존재하는 경우
+    if( WeaponToEquip && Character && WeaponToEquip->EquipSound ) // 무기 장착 사운드가 있고 캐릭터가 존재하는 경우
     {
         UGameplayStatics::PlaySoundAtLocation(
             this,
-            EquippedWeapon->EquipSound,
+            WeaponToEquip->EquipSound,
             Character->GetActorLocation()
         ); // 무기 장착 사운드를 재생합니다.
     }
@@ -322,16 +416,21 @@ void UCombatComponent::ReloadEmptyWeapon()
 
 void UCombatComponent::Reload()
 {
-    if( CarriedAmmo > 0 && CombatState == ECombatState::ECS_Unoccupied && EquippedWeapon && !EquippedWeapon->IsFull() ) // 보유 총알이 
+    if( CarriedAmmo > 0 && CombatState == ECombatState::ECS_Unoccupied && 
+        EquippedWeapon && !EquippedWeapon->IsFull() && !bLocallyReloading) // 보유 총알이 
     {
         ServerReload(); // 서버에 리로드 요청을 보냅니다.
+		HandleReload(); // 리로드를 처리하는 함수를 호출합니다.
+		bLocallyReloading = true; // 로컬에서 리로드 중임을 표시합니다.
     }
 }
 
 void UCombatComponent::ServerReload_Implementation()
 {
+	if (Character == nullptr || EquippedWeapon == nullptr) return; // 캐릭터나 장착된 무기가 없으면 함수 종료
+
     CombatState = ECombatState::ECS_Reloading; // 전투 상태를 리로드 중으로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
-    HandleReload(); // 리로드를 처리하는 함수를 호출합니다.
+	if (!Character->IsLocallyControlled()) HandleReload(); // 서버에서 리로드를 처리합니다.
 }
 
 int32 UCombatComponent::AmountToReload()
@@ -351,12 +450,17 @@ int32 UCombatComponent::AmountToReload()
 
 void UCombatComponent::HandleReload()
 {
-    Character->PlayReloadMontage(); // 캐릭터의 리로드 애니메이션 몽타주를 재생합니다.
+    if (Character)
+    {
+        Character->PlayReloadMontage(); // 캐릭터의 리로드 애니메이션 몽타주를 재생합니다.
+    }
 }
 
 void UCombatComponent::FinshedReload()
 {
     if( Character == nullptr ) return;
+
+    bLocallyReloading = false; // 로컬에서 리로드 중임을 표시합니다.
     if( Character->HasAuthority() )
     {
         CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 비활성화 상태로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
@@ -385,7 +489,7 @@ void UCombatComponent::UpdateAmmoValues()
         Controller->SetHUDCarriedAmmo( CarriedAmmo );
     }
 
-    EquippedWeapon->AddAmmo( -ReloadAmount ); // 무기에 리로드할 총알 개수를 추가합니다.
+    EquippedWeapon->AddAmmo( ReloadAmount ); // 무기에 리로드할 총알 개수를 추가합니다.
 }
 
 void UCombatComponent::SetAiming(bool IsAiming)
@@ -398,6 +502,7 @@ void UCombatComponent::SetAiming(bool IsAiming)
     {
         Character->ShowScopeSniperWidget( bIsAiming ); // 스코프 위젯을 보이게 합니다.
     }
+	if( Character->IsLocallyControlled() ) bAimButtonPressed = IsAiming; // Aim 버튼이 눌렸는지 여부를 설정합니다.
 }
 
 void UCombatComponent::ServerSetAiming_Implementation(bool IsAiming)
@@ -412,12 +517,47 @@ void UCombatComponent::Server_Fire_Implementation( const FVector_NetQuantize& Tr
 
 void UCombatComponent::Multicast_Fire_Implementation( const FVector_NetQuantize& TraceHitTarget )
 {
-    if( EquippedWeapon == nullptr ) return; // EquippedWeapon이 없으면 함수 종료
-    if( Character && CombatState == ECombatState::ECS_Unoccupied ) // 캐릭터가 존재하고 전투 상태가 비활성화 상태인 경우
+    if (Character && Character->IsLocallyControlled() && !Character->HasAuthority()) return; // 로컬 플레이어가 아닌 경우 함수 종료
+
+	LocalFire(TraceHitTarget); // 로컬 플레이어에서 발사 함수를 호출합니다.
+}
+
+void UCombatComponent::ServerShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTarget)
+{
+    MulticastShotgunFire(TraceHitTarget);
+}
+
+void UCombatComponent::MulticastShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTarget)
+{
+    if (Character && Character->IsLocallyControlled() && !Character->HasAuthority()) return; // 로컬 플레이어가 아닌 경우 함수 종료
+
+    LocalShoutgunFire(TraceHitTarget); // 로컬 플레이어에서 샷건 발사 함수를 호출합니다.
+}
+
+void UCombatComponent::LocalFire(const FVector_NetQuantize& TraceHitTarget)
+{
+    if (EquippedWeapon == nullptr) return; // EquippedWeapon이 없으면 함수 종료
+    if (Character && CombatState == ECombatState::ECS_Unoccupied) // 캐릭터가 존재하고 전투 상태가 비활성화 상태인 경우
     {
         Character->PlayFireMontage(); // 캐릭터의 무기 발사 애니메이션 몽타주를 재생합니다.
 
         EquippedWeapon->Fire(TraceHitTarget); // EquippedWeapon의 Fire 함수를 호출합니다.
+    }
+}
+
+void UCombatComponent::LocalShoutgunFire(const TArray<FVector_NetQuantize>& TraceHitTarget)
+{
+    if (EquippedWeapon == nullptr || Character == nullptr ) return; // EquippedWeapon이 없거나 캐릭터가 없는 경우 함수 종료
+
+    if (CombatState == ECombatState::ECS_Unoccupied) // 캐릭터가 존재하고 전투 상태가 비활성화 상태인 경우
+    {
+        Character->PlayFireMontage(); // 캐릭터의 무기 발사 애니메이션 몽타주를 재생합니다.
+
+        AShotGun* Shotgun = Cast<AShotGun>(EquippedWeapon); // 장착된 무기가 샷건인지 확인합니다.
+        if (Shotgun)
+        {
+            Shotgun->FireShotgun(TraceHitTarget);
+        }
     }
 }
 
@@ -437,20 +577,65 @@ void UCombatComponent::Fire()
         bCanFire = false;
         // FHitResult HitResult; // 십자선 아래의 물체를 추적하기 위한 히트 결과 변수
         // TraceUnderCrosshair(HitResult); // 십자선 아래의 물체를 추적하는 함수 호출 이때 힛 리절트 값이 HitResult에 저장됩니다.
-        Server_Fire(HitTarget); // 서버에 발사 버튼이 눌렸는지 여부를 알립니다.
-
         if (EquippedWeapon)
         {
             CrosshairShootingFactor = 0.75f;
+
+            switch (EquippedWeapon->FireType)
+            {
+                case EFireType::EFT_Projectile: // 발사체 무기
+                    FireProjectileWeapon(); // 발사체 무기를 발사하는 함수를 호출합니다.
+                    break;
+                case EFireType::EFT_HitScan: // 히트스캔 무기
+                    FireHitscanWeapon(); // 히트스캔 무기를 발사하는 함수를 호출합니다.
+                    break;
+                case EFireType::EFT_Shotgun: // 샷건 무기
+                    FireShotgun(); // 샷건 무기를 발사하는 함수를 호출합니다.
+					break;
+            }
         }
         StartFireTimer(); // 발사 타이머를 시작합니다.
     }
 
 }
 
+void UCombatComponent::FireProjectileWeapon()
+{
+    if (EquippedWeapon && Character)
+    {
+        HitTarget = EquippedWeapon->bUseScatter ? EquippedWeapon->TraceEndWithScatter(HitTarget) : HitTarget; // 산란을 사용할 경우 십자선 아래의 물체를 추적합니다.
+        Server_Fire(HitTarget); // 서버에 발사 버튼이 눌렸는지 여부를 알립니
+        if( !Character->HasAuthority() )LocalFire(HitTarget); // 로컬 플레이어에서 발사 함수를 호출합니다.
+    }
+}
+
+void UCombatComponent::FireHitscanWeapon() // 히트스캔 무기를 발사하는 함수
+{
+    if (EquippedWeapon && Character )
+    {
+		HitTarget = EquippedWeapon->bUseScatter ? EquippedWeapon->TraceEndWithScatter(HitTarget) : HitTarget; // 산란을 사용할 경우 십자선 아래의 물체를 추적합니다.
+        Server_Fire(HitTarget); // 서버에 발사 버튼이 눌렸는지 여부를 알립니
+        if (!Character->HasAuthority())LocalFire(HitTarget); // 로컬 플레이어에서 발사 함수를 호출합니다.
+    }
+}
+
+void UCombatComponent::FireShotgun() // 샷건 무기를 발사하는 함수
+{
+    AShotGun* Shotgun = Cast<AShotGun>(EquippedWeapon); // 장착된 무기가 샷건인지 확인합니다.
+    if (Shotgun && Character)
+    {
+        TArray<FVector_NetQuantize> HitTargets;
+        Shotgun->ShotgunTraceEndWithScatter(HitTarget, HitTargets);
+        if (!Character->HasAuthority())LocalShoutgunFire(HitTargets); // 로컬 플레이어에서 샷건 발사 함수를 호출합니다.
+		ServerShotgunFire(HitTargets); // 서버에 샷건 발사 버튼이 눌렸는지 여부를 알립니다.
+    }
+}
+
 bool UCombatComponent::CanFire()
 {
-    if( EquippedWeapon == nullptr || Character == nullptr ) return false; // EquippedWeapon이 없으면 발사 불가능
+    if( EquippedWeapon == nullptr || Character == nullptr || 
+		bLocallyReloading || Character->GetCombatState() == ECombatState::ECS_Reloading) return false; 
+    // EquippedWeapon이 없거나 캐릭터가 없거나 로컬에서 리로드 중이거나 전투 상태가 리로드 중인 경우 발사할 수 없습니다.
 
     return !EquippedWeapon->IsEmptyAmmo() && bCanFire && CombatState == ECombatState::ECS_Unoccupied; // 무기가 비어있지 않거나 발사 가능 상태인 경우에만 발사 가능
 }
@@ -786,3 +971,4 @@ void UCombatComponent::UpdateGrenade()
         PlayerController->SetHUDGrenade(Grenade); // HUD에 수류탄 개수를 설정합니다.
     }
 }
+

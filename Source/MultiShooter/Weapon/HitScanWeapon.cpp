@@ -1,9 +1,9 @@
 #include "HitScanWeapon.h"
 #include "MultiShooter/Character/BaseCharacter.h" // 캐릭터 클래스 사용을 위한 헤더 파일
-#include "Kismet/GameplayStatics.h" // 게임 관련 유틸리티 함수들을 사용하기 위한 헤더 파일
 #include "Particles/ParticleSystemComponent.h" // 파티클 시스템을 사용하기 위한 헤더 파일
 #include "Sound/SoundCue.h" // 사운드 큐를 사용하기 위한 헤더 파일
 #include "DrawDebugHelpers.h" // 디버그용 선을 그리기 위한 헤더 파일
+#include "Kismet/GameplayStatics.h" // 게임 관련 유틸리티 함수들을 사용하기 위한 헤더 파일
 #include "WeaponType.h" // 무기 타입 정의를 위한 헤더 파일
 
 void AHitScanWeapon::Fire(const FVector& HitTarget)
@@ -58,7 +58,7 @@ void AHitScanWeapon::WeaponTraceHit( const FVector& TraceStart, const FVector& H
     UWorld* World = GetWorld(); // 현재 월드를 가져옵니다.
     if (World)
     {   
-        FVector End = bUseScatter ? TraceEndWithScatter( TraceStart, HitTarget ) : TraceStart + ( HitTarget - TraceStart ) * 1.25f; // 산탄 사용 여부에 따라 트레이스 끝점을 계산합니다. 
+        FVector End = TraceStart + ( HitTarget - TraceStart ) * 1.25f; //  트레이스 끝점을 계산합니다. 
 
         World->LineTraceSingleByChannel(
                 OutHit, // Hit 결과를 저장할 변수
@@ -71,6 +71,14 @@ void AHitScanWeapon::WeaponTraceHit( const FVector& TraceStart, const FVector& H
         {
             BeamEnd = OutHit.ImpactPoint; // 빔의 끝 위치를 충돌 지점으로 설정
         }
+        DrawDebugSphere(
+            World, // 현재 월드
+            BeamEnd, // 빔의 끝 위치
+            4.f, // 구의 반지름
+            12, // 구의 세그먼트 수
+            FColor::Orange, // 구의 색상
+            true // 지속적으로 그리기
+        );
         if( BeamParticle ) // 빔 파티클이 설정되어 있는 경우
         {
             UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
@@ -86,44 +94,4 @@ void AHitScanWeapon::WeaponTraceHit( const FVector& TraceStart, const FVector& H
             }
         }
     }
-}
-
-FVector AHitScanWeapon::TraceEndWithScatter(const FVector& TraceStart, const FVector& HitTarget)
-{
-    FVector ToTargetNormalized = (HitTarget - TraceStart).GetSafeNormal(); // 타겟 방향 벡터를 정규화합니다.
-    FVector SphereCenter = TraceStart + ToTargetNormalized * DinstanceToSphere; // 구의 중심을 계산합니다.
-
-    FVector RandomScatter = FMath::VRand() * FMath::RandRange(0.f, SphereRadius); // 랜덤한 산탄 효과를 위해 무작위 벡터를 생성합니다.
-    FVector EndLoc = SphereCenter + RandomScatter; // 구의 중심에 랜덤 산탄 벡터를 더하여 최종 위치를 계산합니다.
-    FVector ToEndLoc = EndLoc - TraceStart; // 시작 위치에서 최종 위치까지의 벡터를 계산합니다.
-
-    /*
-    DrawDebugSphere(
-        GetWorld(), // 현재 월드
-        SphereCenter, // 구의 중심
-        SphereRadius, // 구의 반지름
-        12, // 구의 세그먼트 수
-        FColor::Red, // 구의 색상
-        true
-    );
-
-    DrawDebugSphere(
-        GetWorld(), // 현재 월드
-        EndLoc, // 최종 위치
-        4.f, // 구의 반지름
-        12, // 구의 세그먼트 수
-        FColor::Orange, // 구의 색상
-        true
-    );
-
-    DrawDebugLine(
-        GetWorld(), // 현재 월드
-        TraceStart, // 시작 위치
-        FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size() ), // 최종 위치
-        FColor::Green, // 선의 색상
-        true
-    );
-    */
-
-    return FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size() ); // 현재는 산탄을 사용하지 않으므로, 기본적으로 (0,0,0)을 반환합니다.
 }

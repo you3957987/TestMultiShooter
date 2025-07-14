@@ -17,26 +17,26 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	class USpringArmComponent* CameraBoom;
 	UPROPERTY(VisibleAnywhere)
 	class UCameraComponent* FollowCamera;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Category = "자체설정", BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* OverHeadWidget;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputMappingContext* DefaultMappingContext;
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Jump;
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Move;
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Look;
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Equip;
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Aim;
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Fire;
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Reload;
-	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Grenade; // 수류탄 던지는 액션
 
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
@@ -47,6 +47,11 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent; // 전투 컴포넌트
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UBuffComponent* BuffComponent; // 버프 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class ULagCompensationComponent* LagCompensationComponent; // 지연 보상 컴포넌트
 
 	UFUNCTION( Server, Reliable )
 	void ServerEquipWeapon(); // 클라이언트에게 무기 장착하라고 지시하는 함수
@@ -74,76 +79,85 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 
 	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FireAssultMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주 
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FireRocketMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FirePistolMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주 
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FireSMGMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FireShotgunMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FireSniperMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FireGrenadeLauncherMontage; // 유탄 발사기를 발사할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FireMinigunMontage; // 미니건을 발사할 때 사용할 애니메이션 몽타주
 
 	//-------------------------------------------------------------------------------------------------
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ReloadAssultMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ReloadRocketMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ReloadPistolMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ReloadSMGMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ReloadShotgunMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ReloadSniperMontage; // 무기를 재장전할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ReloadGrenadeLauncherMontage; // 유탄 발사기를 재장전할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ReloadMinigunMontage; // 미니건을 재장전할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ThrowGrenadeMontage; // 유탄 발사기를 재장전할 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* HitReactMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* DieMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
 
 	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
 
 	//플레이어 상태-------------------------------------------------------------------------------------------------------
-	UPROPERTY(EditAnywhere, Category = "Player Status", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, Category = "자체설정", meta = (AllowPrivateAccess = "true"))
 	float MAxHealth = 100.f; // 최대 체력
 	
-	UPROPERTY( ReplicatedUsing = OnRep_Health, VisibleAnyWhere, Category = "Player Status", meta = (AllowPrivateAccess = "true") )
+	UPROPERTY( ReplicatedUsing = OnRep_Health, VisibleAnyWhere, meta = (AllowPrivateAccess = "true") )
 	float Health = 100.f; // 현재 체력
 
+	UPROPERTY(EditAnywhere, Category = "자체설정", meta = (AllowPrivateAccess = "true"))
+	float MAXShield = 100.f; 
+	
+	UPROPERTY( ReplicatedUsing = OnRep_Shield, VisibleAnyWhere, meta = (AllowPrivateAccess = "true") )
+	float Shield = 0.f; 
+
 	UFUNCTION()
-	void OnRep_Health(); // 체력이 변경되었을 때 호출되는 함수
+	void OnRep_Health(float LastHealth); // 체력이 변경되었을 때 호출되는 함수
+
+	UFUNCTION()
+	void OnRep_Shield(float LastShield); // 방어력이 변경되었을 때 호출되는 함수
 
 	UPROPERTY()
 	class ABasePC* PlayerController; // 플레이어 컨트롤러
@@ -172,27 +186,27 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY( EditAnywhere )
 	class UCurveFloat* DissolveCurve; // 디졸브를 위한 커브
 
-	UPROPERTY( VisibleAnyWhere, Category = "Dissolve" )
+	UPROPERTY( VisibleAnyWhere, Category = "자체설정" )
 	UMaterialInstanceDynamic* DynamicDissolveMaterialInstanceBody; // 디졸브를 위한 동적 머티리얼 인스턴스. 게임 도중 바꿀 수 있음
 
-	UPROPERTY( EditAnywhere, Category = "Dissolve" )
+	UPROPERTY( EditAnywhere, Category = "자체설정" )
 	UMaterialInstance* DIssolveMaterialInstanceBody; // 디졸브를 위한 머티리얼 인스턴스
 
-	UPROPERTY( VisibleAnyWhere, Category = "Dissolve" )
+	UPROPERTY( VisibleAnyWhere, Category = "자체설정" )
 	UMaterialInstanceDynamic* DynamicDissolveMaterialInstanceHead; // 디졸브를 위한 동적 머티리얼 인스턴스. 게임 도중 바꿀 수 있음
 
-	UPROPERTY( EditAnywhere, Category = "Dissolve" )
+	UPROPERTY( EditAnywhere, Category = "자체설정" )
 	UMaterialInstance* DIssolveMaterialInstanceHead; // 디졸브를 위한 머티리얼 인스턴스
 
 	void EliminateBotTimerFinished(); // 제거 봇 타이머가 끝났을 때 호출되는 함수
 
-	UPROPERTY( EditAnywhere, Category = "Dissolve" )
+	UPROPERTY( EditAnywhere, Category = "자체설정" )
 	UParticleSystem* EliminateBotEffect; // 플레이어가 제거되었을 때 생성되는 파티클 시스템
 
 	UPROPERTY( VisibleAnyWhere)
 	UParticleSystemComponent* EliminateBotEffectComponent; // 플레이어가 제거되었을 때 생성되는 파티클 시스템 컴포넌트
 
-	UPROPERTY( EditAnywhere, Category = "Dissolve" )
+	UPROPERTY( EditAnywhere, Category = "자체설정" )
 	class USoundCue* EliminateSound; // 플레이어가 제거되었을 때 재생되는 사운드 큐
 
 	//디졸브 및 죽으면 나오는 봇 -------------------------------------------------------------------------------------------------------
@@ -202,6 +216,11 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY( VisibleAnywhere )
 	UStaticMeshComponent* GrenadeMesh; // 수류탄 메쉬 컴포넌트
+
+	UPROPERTY( EditAnywhere, Category = "자체설정")
+	TSubclassOf<ABaseWeapon> DefaultWeaponClass; // 기본 무기 클래스
+
+	FTimerHandle StartWeaponTimer; // 기본 무기를 장착하기 위한 타이머 핸들
 
 protected:
     virtual void BeginPlay() override;
@@ -234,8 +253,6 @@ protected:
 	UFUNCTION()
 	void ReceiveDamage( AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser ); 
 
-	void UpdateHUDHealth();
-
 	void UpdateHUDGrenade(); // HUD에 수류탄 개수를 업데이트하는 함수 
 
 	void PollInit(); // 관련 클래스를 확인해서 HUD를 세팅
@@ -261,11 +278,20 @@ public:
 	FORCEINLINE bool IsDead() const { return bDead; } // bDie를 반환하는 함수
 	FORCEINLINE float GetHealth() const { return Health; } // Health를 반환하는 함수
 	FORCEINLINE float GetMaxHealth() const { return MAxHealth; } // MaxHealth를 반환하는 함수
+	FORCEINLINE void SetHealth( float Amount ) { Health = Amount; } // Health를 설정하는 함수
+	FORCEINLINE float GetShield() const { return Shield; } // Shield를 반환하는 함수
+	FORCEINLINE float GetMaxShield() const { return MAXShield; } // MaxShield를 반환하는 함수
+	FORCEINLINE void SetShield( float Amount ) { Shield = Amount; } // Shield를 설정하는 함수
 	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; } // CombatComponent를 반환하는 함수
+	FORCEINLINE UBuffComponent* GetBuffComponent() const { return BuffComponent; } // BuffComponent를 반환하는 함수
 	FORCEINLINE UStaticMeshComponent* GetGrenadeMesh() const { return GrenadeMesh; } // GrenadeMesh를 반환하는 함수
-
+	FORCEINLINE ULagCompensationComponent* GetLagCompensationComponent() const { return LagCompensationComponent; } // LagCompensationComponent를 반환하는 함수
 	bool IsWeaponEquipped();
 	bool IsAiming(); // CombatComponent가 존재할 때만 bIsAiming을 반환
+	bool IsLocallyReloading(); // 로컬 플레이어가 리로드 중인지 확인하는 함수
+	ECombatState GetCombatState() const; // CombatComponent가 존재할 때만 CombatState를 반환
+	ABaseWeapon* GetEquippedWeapon() const; // CombatComponent가 존재할 때만 EquippedWeapon을 반환
+
 	void SetOverlappingWeapon(ABaseWeapon* Weapon);
 
 	void PlayFireMontage(); // 무기 발사 애니메이션 몽타주를 재생하는 함수. 
@@ -282,8 +308,6 @@ public:
 	UPROPERTY( Replicated )
 	bool bDisableGamePlay = false; // 게임 플레이를 비활성화하는 변수
 
-	ECombatState GetCombatState() const;
-
 	//UFUNCTION( NetMulticast, Unreliable ) // 이거는 전달 안되도 상관 없음
 	//void MulticastPlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 멀티캐스트로 재생하는 함수
 	//void ABaseCharacter::MulticastPlayHitReactMontage_Implementation() { PlayHitReactMontage();} // 멀티캐스트로 애니메이션 몽타주를 재생합니다. 
@@ -291,4 +315,49 @@ public:
 	UFUNCTION( BlueprintImplementableEvent) // 이 함수는 블루프린트에서 구현됩니다.
 	void ShowScopeSniperWidget( bool bShow ); // 스코프 위젯을 보이게 하는 함수
 
+	void UpdateHUDHealth(); // HUD에 체력을 업데이트하는 함수  버프 컴포넌트에서 사용할 예정이므로 퍼블릭
+
+	void UpdateHUDShield(); // HUD에 방어력을 업데이트하는 함수  버프 컴포넌트에서 사용할 예정이므로 퍼블릭
+
+	void UpdateHUDAmmo();
+
+	void SpawnDefaultWeapon(); // 기본 무기를 스폰하는 함수
+	void InitWeaponAndHUD(); // 기본 무기를 장착하고 HUD를 초기화하는 함수
+
+	// 서버에서 렉걸릴떄 히트 박스 조정하기 위한 박스----------------------------------------------------------------
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* head;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* pelvis;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* spine_02;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* spine_03;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* upperarm_l;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* upperarm_r;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* lowerarm_l;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* lowerarm_r;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* hand_l;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* hand_r;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* thigh_l;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* thigh_r;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* calf_l;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* calf_r;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* foot_l;
+	UPROPERTY(EditAnywhere)
+	UBoxComponent* foot_r;
+
+	UPROPERTY()
+	TMap<FName, UBoxComponent* > HitCollisionBoxes; // 히트 박스 맵. 이름과 박스 컴포넌트를 매핑합니다.
 };

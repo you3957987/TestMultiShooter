@@ -12,6 +12,7 @@
 #include "MultiShooter/CharacterComponent/CombatComponent.h" // 전투 컴포넌트 헤더 파일
 #include "MultiShooter/GameState/BaseGameState.h" // 게임 상태 헤더 파일
 #include "MultiShooter/CharacterState/CharacterState.h" // 플레이어 상태 헤더 파일
+#include "Components/Image.h"
 
 void ABasePC::BeginPlay()
 {
@@ -29,6 +30,7 @@ void ABasePC::Tick(float DeltaTime)
 
     CheckTimeSync(DeltaTime); // 시간 동기화 확인 함수 호출
 
+	CheckPing(DeltaTime); // 핑 체크 함수 호출
 }
 
 void ABasePC::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -46,7 +48,7 @@ void ABasePC::OnPossess(APawn* InPawn) // 초기 UI 상태 설정
     if (BaseCharacter)
     {
         SetHUDHealth(BaseCharacter->GetHealth(), BaseCharacter->GetMaxHealth()); // 캐릭터의 체력을 HUD에 설정합니다.
-       
+        SetHUDShield(BaseCharacter->GetShield(), BaseCharacter->GetMaxShield()); // 캐릭터의 방어력을 HUD에 설정합니다.
         SetHUDGrenade(BaseCharacter->GetCombatComponent()->GetGrenade());
     }
     
@@ -84,6 +86,31 @@ void ABasePC::SetHUDHealth(float Health, float MaxHealth)
         
         FString HealthText = FString::Printf(TEXT("%d/%d"), FMath::CeilToInt(Health), FMath::CeilToInt(MaxHealth) ); // 체력 텍스트 포맷팅
         CharacterHUD->CharacterUI->HealthText->SetText(FText::FromString(HealthText)); // 체력 텍스트를 설정합니다.
+    }
+}
+
+void ABasePC::SetHUDShield( float Shield, float MaxShield ) // HUD의 방어력을 설정하는 함수
+{
+    if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
+    {
+        CharacterHUD->AddCharacterUI();
+        if (CharacterHUD->CharacterUI == nullptr)
+            return;
+    }
+
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
+    //if( CharacterHUD ) UE_LOG(LogTemp, Warning, TEXT("CharacterHUD is valid.")); // 캐릭터 HUD가 유효한 경우 로그 출력
+    //if( CharacterHUD && CharacterHUD->CharacterUI ) UE_LOG(LogTemp, Warning, TEXT("CharacterUI is valid.")); // 캐릭터 UI가 유효한 경우 로그 출력
+
+    if (CharacterHUD && CharacterHUD->CharacterUI 
+        && CharacterHUD->CharacterUI->ShieldBar && CharacterHUD->CharacterUI->ShieldText ) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
+    {
+        const float ShieldPercent = Shield / MaxShield; // 체력 비율 계산
+        CharacterHUD->CharacterUI->ShieldBar->SetPercent(ShieldPercent); // 체력 바의 비율을 설정합니다.
+        
+        FString ShieldText = FString::Printf(TEXT("%d/%d"), FMath::CeilToInt(Shield), FMath::CeilToInt(MaxShield) ); // 체력 텍스트 포맷팅
+        CharacterHUD->CharacterUI->ShieldText->SetText(FText::FromString(ShieldText)); // 체력 텍스트를 설정합니다.
     }
 }
 
@@ -546,6 +573,83 @@ void ABasePC::ClientJoinMidGame_Implementation( FName StateOfMatch, float WarmUp
     if( CharacterHUD && MatchState == MatchState::WaitingToStart ) // 캐릭터 HUD가 유효하고 매치 상태가 WaitingToStart인 경우
     {
         CharacterHUD->AddAnnouncement(); // 시작전 안내 위젯을 추가합니다.
+    }
+}
+
+void ABasePC::CheckPing(float DeltaTime)
+{
+    HighPingRunningTime += DeltaTime; // 핑 경고 실행 시간 증가
+    if (HighPingRunningTime >= CheckPingFrequency)
+    {
+        PlayerState = PlayerState == nullptr ? GetPlayerState<ACharacterState>() : PlayerState; // 플레이어 상태가 nullptr인 경우 현재 플레이어의 게임 상태를 가져옵니다.
+        if (PlayerState)
+        {
+            if (PlayerState->GetPingInMilliseconds() > HighPingThreshold)
+            {
+                HighPingWarning();
+                PingAnimationRunningTime = 0.f; // 핑 애니메이션 실행 시간 초기화
+            }
+        }
+        HighPingRunningTime = 0.f; // 핑 경고 실행 시간 초기화
+    }
+    if (CharacterHUD && CharacterHUD->CharacterUI && CharacterHUD->CharacterUI->WifiAnim
+        && CharacterHUD->CharacterUI->IsAnimationPlaying(CharacterHUD->CharacterUI->WifiAnim))
+    {
+        PingAnimationRunningTime += DeltaTime; // 핑 애니메이션 실행 시간 증가
+        if (PingAnimationRunningTime >= HighPingDuration)
+        {
+            StopHighPingWarning();
+        }
+    }
+}
+
+void ABasePC::HighPingWarning() // 핑 경고 함수
+{
+    if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
+    {
+        CharacterHUD->AddCharacterUI();
+        if (CharacterHUD->CharacterUI == nullptr)
+            return;
+    }
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
+    //if( CharacterHUD ) UE_LOG(LogTemp, Warning, TEXT("CharacterHUD is valid.")); // 캐릭터 HUD가 유효한 경우 로그 출력
+    //if( CharacterHUD && CharacterHUD->CharacterUI ) UE_LOG(LogTemp, Warning, TEXT("CharacterUI is valid.")); // 캐릭터 UI가 유효한 경우 로그 출력
+
+    if (CharacterHUD && CharacterHUD->CharacterUI
+        && CharacterHUD->CharacterUI->WifiImage && CharacterHUD->CharacterUI->WifiAnim) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
+    {
+        CharacterHUD->CharacterUI->WifiImage->SetOpacity(1.0f);
+        CharacterHUD->CharacterUI->PlayAnimation(
+            CharacterHUD->CharacterUI->WifiAnim,
+            0.f, // 시작 시간
+            5
+        );
+    }
+}
+
+void ABasePC::StopHighPingWarning() // 핑 경고 중지 함수
+{
+    if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
+    {
+        CharacterHUD->AddCharacterUI();
+        if (CharacterHUD->CharacterUI == nullptr)
+            return;
+    }
+
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
+    //if( CharacterHUD ) UE_LOG(LogTemp, Warning, TEXT("CharacterHUD is valid.")); // 캐릭터 HUD가 유효한 경우 로그 출력
+    //if( CharacterHUD && CharacterHUD->CharacterUI ) UE_LOG(LogTemp, Warning, TEXT("CharacterUI is valid.")); // 캐릭터 UI가 유효한 경우 로그 출력
+
+    if (CharacterHUD && CharacterHUD->CharacterUI
+        && CharacterHUD->CharacterUI->WifiImage && CharacterHUD->CharacterUI->WifiAnim) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
+    {
+        CharacterHUD->CharacterUI->WifiImage->SetOpacity(0.0f); // WiFi 이미지를 보이도록 설정
+		if (CharacterHUD->CharacterUI->IsAnimationPlaying(CharacterHUD->CharacterUI->WifiAnim) ) // WiFi 애니메이션이 재생 중인 경우
+        {
+            CharacterHUD->CharacterUI->StopAnimation(CharacterHUD->CharacterUI->WifiAnim); // WiFi 애니메이션을 중지합니다.
+        }
     }
 }
 

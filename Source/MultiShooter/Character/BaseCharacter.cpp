@@ -9,6 +9,7 @@
 #include "Net/UnrealNetwork.h" // 네트워크 복제를 위한 헤더 파일
 #include "MultiShooter/Weapon/BaseWeapon.h" // ABaseWeapon 클래스 사용을 위한 헤더 파일
 #include "MultiShooter/CharacterComponent/CombatComponent.h" // UCombatComponent 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/CharacterComponent/BuffComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "BaseAnimInstance.h" // ABaseAnimInstance 클래스 사용을 위한 헤더 파일
 #include "MultiSHooter/MultiShooter.h" // MultiShooter 헤더 파일을 포함합니다. -> 스켈레탈 콜리전 정의 가져오기
@@ -20,6 +21,9 @@
 #include "Particles/ParticleSystemComponent.h" // 파티클 시스템 컴포넌트 사용을 위한 헤더 파일
 #include "MultiShooter/CharacterState/CharacterState.h" // ACharacterState 클래스 사용을 위한 헤더 파일
 #include "MultiShooter/Weapon/WeaponType.h" // EWeaponType 열거형 사용을 위한 헤더 파일
+#include "MultiShooter/GameMode/MainGameMode.h" // ABaseGameMode 클래스 사용을 위한 헤더 파일
+#include "Components/BoxComponent.h" // 박스 컴포넌트 사용을 위한 헤더 파일
+#include "MultiShooter/CharacterComponent/LagCompensationComponent.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -46,6 +50,11 @@ ABaseCharacter::ABaseCharacter()
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent")); // 전투 컴포넌트 생성
 	CombatComponent->SetIsReplicated(true); // 전투 컴포넌트도 네트워크에서 복제되도록 설정
 
+	BuffComponent = CreateDefaultSubobject<UBuffComponent>(TEXT("BuffComponent")); // 버프 컴포넌트 생성
+	BuffComponent->SetIsReplicated(true); // 버프 컴포넌트도 네트워크에서 복제되도록 설정
+
+	LagCompensationComponent = CreateDefaultSubobject<ULagCompensationComponent>(TEXT("LagCompensationComponent")); // 지연 보상 컴포넌트 생성
+	
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore); // 캡슐 컴포넌트가 카메라 채널에 반응하지 않도록 설정
 	GetMesh()->SetCollisionObjectType( ECC_SkeletalMesh ); // 메쉬의 충돌 오브젝트 타입을 스켈레탈 메쉬로 설정
 	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore); // 메쉬가 카메라 채널에 반응하지 않도록 설정
@@ -61,18 +70,80 @@ ABaseCharacter::ABaseCharacter()
 
 	// 수류탄 메쉬 컴포넌트 생성
 	GrenadeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("GrenadeMesh"));
-	GrenadeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 충돌 비활성화
-	if (GrenadeMesh && GetMesh())
-	{
-		GrenadeMesh->AttachToComponent(
-			GetMesh(),
-			FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-			FName("hand_rSocket")
-		);
-		GrenadeMesh->SetRelativeLocation(FVector(-15.603674f, 8.142267f, -0.512289f ));
-		GrenadeMesh->SetRelativeRotation(FRotator(0.000051f, 109.77877f,0.000034f ));
-	}
+    GrenadeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
+    if (GrenadeMesh && GetMesh())
+    {
+        GrenadeMesh->SetupAttachment(GetMesh(), FName("hand_rSocket")); // 생성자에서는 반드시 SetupAttachment 사용
+        GrenadeMesh->SetRelativeLocation(FVector(-15.603674f, 8.142267f, -0.512289f ));
+        GrenadeMesh->SetRelativeRotation(FRotator(0.000051f, 109.77877f,0.000034f ));
+    }
+
+	// 렉걸릴때 서버에서 리와인드 위한 박스 컴포넌트---------------------------------------
+	head = CreateDefaultSubobject<UBoxComponent>(TEXT("HeadBox"));
+	head->SetupAttachment(GetMesh(), FName("head")); // 헤드 소켓에 박스 컴포넌트 연결
+	head->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("head"), head); // 히트 박스 리스트에 헤드 박스 추가
+	pelvis = CreateDefaultSubobject<UBoxComponent>(TEXT("PelvisBox"));
+	pelvis->SetupAttachment(GetMesh(), FName("pelvis")); // 펠비스 소켓에 박스 컴포넌트 연결
+	pelvis->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("pelvis"), pelvis); // 히트 박스 리스트에 펠비스 박스 추가
+	spine_02 = CreateDefaultSubobject<UBoxComponent>(TEXT("Spine_02Box"));
+	spine_02->SetupAttachment(GetMesh(), FName("spine_02")); // 스파인_02 소켓에 박스 컴포넌트 연결
+	spine_02->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("spine_02"), spine_02); // 히트 박스 리스트에 스파인_02 박스 추가
+	spine_03 = CreateDefaultSubobject<UBoxComponent>(TEXT("Spine_03Box"));
+	spine_03->SetupAttachment(GetMesh(), FName("spine_03")); // 스파인_03 소켓에 박스 컴포넌트 연결
+	spine_03->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("spine_03"), spine_03); // 히트 박스 리스트에 스파인_03 박스 추가
+	upperarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Upperarm_LBox"));
+	upperarm_l->SetupAttachment(GetMesh(), FName("upperarm_l")); // 어퍼암_L 소켓에 박스 컴포넌트 연결
+	upperarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("upperarm_l"), upperarm_l); // 히트 박스 리스트에 어퍼암_L 박스 추가
+	upperarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Upperarm_RBox"));
+	upperarm_r->SetupAttachment(GetMesh(), FName("upperarm_r")); // 어퍼암_R 소켓에 박스 컴포넌트 연결
+	upperarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("upperarm_r"), upperarm_r); // 히트 박스 리스트에 어퍼암_R 박스 추가
+	lowerarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Lowerarm_LBox"));
+	lowerarm_l->SetupAttachment(GetMesh(), FName("lowerarm_l")); // 로워암_L 소켓에 박스 컴포넌트 연결
+	lowerarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("lowerarm_l"), lowerarm_l); // 히트 박스 리스트에 로워암_L 박스 추가
+	lowerarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Lowerarm_RBox"));
+	lowerarm_r->SetupAttachment(GetMesh(), FName("lowerarm_r")); // 로워암_R 소켓에 박스 컴포넌트 연결
+	lowerarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("lowerarm_r"), lowerarm_r); // 히트 박스 리스트에 로워암_R 박스 추가
+	hand_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Hand_LBox"));
+	hand_l->SetupAttachment(GetMesh(), FName("hand_l")); // 핸드_L 소켓에 박스 컴포넌트 연결
+	hand_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("hand_l"), hand_l); // 히트 박스 리스트에 핸드_L 박스 추가
+	hand_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Hand_RBox"));
+	hand_r->SetupAttachment(GetMesh(), FName("hand_r")); // 핸드_R 소켓에 박스 컴포넌트 연결
+	hand_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("hand_r"), hand_r); // 히트 박스 리스트에 핸드_R 박스 추가
+	thigh_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Thigh_LBox"));
+	thigh_l->SetupAttachment(GetMesh(), FName("thigh_l")); // 타이_L 소켓에 박스 컴포넌트 연결
+	thigh_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("thigh_l"), thigh_l); // 히트 박스 리스트에 타이_L 박스 추가
+	thigh_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Thigh_RBox"));
+	thigh_r->SetupAttachment(GetMesh(), FName("thigh_r")); // 타이_R 소켓에 박스 컴포넌트 연결
+	thigh_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("thigh_r"), thigh_r); // 히트 박스 리스트에 타이_R 박스 추가
+	calf_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Calf_LBox"));
+	calf_l->SetupAttachment(GetMesh(), FName("calf_l")); // 칼프_L 소켓에 박스 컴포넌트 연결
+	calf_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("calf_l"), calf_l); // 히트 박스 리스트에 칼프_L 박스 추가
+	calf_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Calf_RBox"));
+	calf_r->SetupAttachment(GetMesh(), FName("calf_r")); // 칼프_R 소켓에 박스 컴포넌트 연결
+	calf_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("calf_r"), calf_r); // 히트 박스 리스트에 칼프_R 박스 추가
+	foot_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Foot_LBox"));
+	foot_l->SetupAttachment(GetMesh(), FName("foot_l")); // 풋_L 소켓에 박스 컴포넌트 연결
+	foot_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("foot_l"), foot_l); // 히트 박스 리스트에 풋_L 박스 추가
+	foot_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Foot_RBox"));
+	foot_r->SetupAttachment(GetMesh(), FName("foot_r")); // 풋_R 소켓에 박스 컴포넌트 연결
+	foot_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
+	HitCollisionBoxes.Add(FName("foot_r"), foot_r); // 히트 박스 리스트에 풋_R 박스 추가
 }
 
 void ABaseCharacter::BeginPlay()
@@ -91,7 +162,18 @@ void ABaseCharacter::BeginPlay()
         }
     }
 	*/
+
+	// 이 코드 없애면 기본 무기 사라짐
+	FTimerHandle WeaponInitTimerHandle;
+    GetWorldTimerManager().SetTimer(
+        WeaponInitTimerHandle,
+        this,
+        &ABaseCharacter::InitWeaponAndHUD, 
+        0.1f
+    );
+
 	UpdateHUDHealth();
+	UpdateHUDShield(); // HUD에 체력과 방어구 업데이트
 	UpdateHUDGrenade(); // HUD에 수류탄 개수를 업데이트합니다.
 
 	if( HasAuthority() )
@@ -145,9 +227,35 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	// OverlappingWeapon 변수를 네트워크에서 복제합니다.
 	DOREPLIFETIME_CONDITION(ABaseCharacter, OverlappingWeapon, COND_OwnerOnly); // 이 변수는 오직 소유자에게만 복제됩니다.
 	DOREPLIFETIME(ABaseCharacter, Health); // CurrentHealth 변수를 네트워크에서 복제합니다.
+	DOREPLIFETIME(ABaseCharacter, Shield); // MaxHealth 변수를 네트워크에서 복제합니다.
 	DOREPLIFETIME(ABaseCharacter, bDisableGamePlay); // 게임 플레이 비활성화 변수 복제
 }
+// 컴포넌트 초기화시 실행. 컴뱃 컴포넌트 및 버프 컴포넌트 초기화
+void ABaseCharacter::PostInitializeComponents() 
+{
+	Super::PostInitializeComponents();
 
+	// CombatComponent의 Character를 이 캐릭터로 설정
+	if (CombatComponent)
+	{
+		CombatComponent->Character = this;
+	}
+	if( BuffComponent )
+	{
+		BuffComponent->Character = this; // BuffComponent의 Character를 이 캐릭터로 설정
+		BuffComponent->SetInitialSpeed(GetCharacterMovement()->MaxWalkSpeed); // 초기 속도를 설정합니다.
+		BuffComponent->SetInitialJumpZVelocity(GetCharacterMovement()->JumpZVelocity); // 초기 점프 속도를 설정합니다.
+	}
+	if (LagCompensationComponent)
+	{
+		LagCompensationComponent->Character = this; // LagCompensationComponent의 Character를 이 캐릭터로 설정
+		if (Controller)
+		{
+			LagCompensationComponent->Controller = Cast<ABasePC>(Controller);
+		}
+	}
+}
+// 입력 바인딩 함수
 void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -215,7 +323,14 @@ void ABaseCharacter::Equip()
 	{
 		if( HasAuthority() )
 		{
-			CombatComponent->EquipWeapon(OverlappingWeapon); // CombatComponent의 EquipWeapon 함수를 호출하여 무기를 장착합니다.
+			if( OverlappingWeapon )
+			{
+				CombatComponent->EquipWeapon(OverlappingWeapon); // CombatComponent의 EquipWeapon 함수를 호출하여 무기를 장착합니다.
+			}
+			else if( CombatComponent->ShouldSwapWeapon() )
+			{
+				CombatComponent->SwapWeapon(); // CombatComponent의 SwapWeapon 함수를 호출하여 무기를 교체합니다.
+			}
 		}
 		else // 서버 권한이 없는 경우
 		{
@@ -224,7 +339,7 @@ void ABaseCharacter::Equip()
 
 		if (IsLocallyControlled())
         {
-            StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+            StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f); // 무기 먹었을떄 이상한 곳으로 회전하는거 고치는 코드
         }
 	}
 }
@@ -299,10 +414,23 @@ void ABaseCharacter::OnRep_OverlappingWeapon( ABaseWeapon* LastWeapon ) // 이 �
 	}
 }
 
-void ABaseCharacter::OnRep_Health()
+void ABaseCharacter::OnRep_Health(float LastHealth)
 {
 	UpdateHUDHealth();
-	PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
+	
+	if( Health < LastHealth ) // 체력이 감소했을떄만
+	{
+		PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
+	}
+}
+
+void ABaseCharacter::OnRep_Shield(float LastShield)
+{
+	UpdateHUDShield(); // HUD에 방어력을 업데이트합니다.
+	if( Shield < LastShield ) // 방어력이 감소했을떄만
+	{
+		PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
+	}
 }
 
 void ABaseCharacter::SetOverlappingWeapon(ABaseWeapon* Weapon) // 겹치면 무기, 아니면 널값 받아옴. 이 함수는 서버에서만 실행됨
@@ -323,33 +451,19 @@ void ABaseCharacter::SetOverlappingWeapon(ABaseWeapon* Weapon) // 겹치면 무�
 	}
 }
 
-void ABaseCharacter::PostInitializeComponents() // 컴포넌트 초기화시 실행. 컴뱃 컴포넌트 초기화
-{
-	Super::PostInitializeComponents();
-
-	// CombatComponent의 Character를 이 캐릭터로 설정
-	if (CombatComponent)
-	{
-		CombatComponent->Character = this;
-	}
-}
-
 void ABaseCharacter::ServerEquipWeapon_Implementation() // 서버에서 지시하는 클라이언트가 무기 장착하는 함수
 {
 	if( CombatComponent ) // CombatComponent가 존재하고, 서버 권한이 있는 경우
 	{
-		CombatComponent->EquipWeapon(OverlappingWeapon); // CombatComponent의 EquipWeapon 함수를 호출하여 무기를 장착합니다.
+		if( OverlappingWeapon )
+		{
+			CombatComponent->EquipWeapon(OverlappingWeapon); // CombatComponent의 EquipWeapon 함수를 호출하여 무기를 장착합니다.
+		}
+		else if( CombatComponent->ShouldSwapWeapon() )
+		{
+			CombatComponent->SwapWeapon(); // CombatComponent의 SwapWeapon 함수를 호출하여 무기를 교체합니다.
+		}
 	}
-}
-
-bool ABaseCharacter::IsWeaponEquipped()
-{
-	return ( CombatComponent && CombatComponent->EquippedWeapon ); // CombatComponent가 존재하고, 장착된 무기가 있는지 확인
-}
-
-bool ABaseCharacter::IsAiming()
-{
-	return ( CombatComponent && CombatComponent->bIsAiming ); // CombatComponent가 존재하고, Aim 상태인지 확인
 }
 
 void ABaseCharacter::AimOffset( float DeltaTime )
@@ -393,10 +507,10 @@ void ABaseCharacter::AimOffset( float DeltaTime )
 void ABaseCharacter::Calculate_AO_Pitch()
 {
 	AO_Pitch = GetBaseAimRotation().Pitch; // AO 피치를 현재 조준 회전의 Pitch로 설정합니다. -90 ~ 90도 사이로 제한됩니다.
-	if( AO_Pitch > 90.f && !IsLocallyControlled() ) // 로컬 플레이어가 아닌 경우
+	if (AO_Pitch > 90.f && !IsLocallyControlled()) // 로컬 플레이어가 아닌 경우
 	{
 		FVector2D InRange(270.f, 360.f); // 270도에서 360도 사이로 제한합니다.
-		FVector2D OutRange( -90.f, 0.f ); // -90도에서 0도 사이로 변환합니다.
+		FVector2D OutRange(-90.f, 0.f); // -90도에서 0도 사이로 변환합니다.
 		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch); // 범위 변환
 		/*
 		언리얼 엔진에서 Pitch 값이 네트워크로 복제될 때 0~360도로 변환되어
@@ -460,7 +574,7 @@ void ABaseCharacter::SimProxyTurn()
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
 }
 
-void ABaseCharacter::PlayFireMontage()
+void ABaseCharacter::PlayFireMontage() // 무기 추가시 몽타주 추가
 {
     if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr) return;
 
@@ -550,7 +664,7 @@ void ABaseCharacter::PlayDieMontage()
 	}
 }
 
-void ABaseCharacter::PlayReloadMontage()
+void ABaseCharacter::PlayReloadMontage() // 무기 추가시 장전 몽타주 추가
 {
     if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr) return;
 
@@ -662,11 +776,30 @@ void ABaseCharacter::OnRep_ReplicatedMovement()
 
 void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser)
 {
-	Health = FMath::Clamp(Health - Damage, 0.f, MAxHealth); // 피해를 받아 Health를 감소시키고, 0과 MAxHealth 사이로 제한합니다.
+	if( bDead ) return;
+
+	float DamageToHealth = Damage; // 피해를 Health에 적용할 값으로 설정합니다.
+
+	if( Shield > 0.f )
+	{
+		if( Shield >= DamageToHealth ) // 방어구가 피해보다 크거나 같으면
+		{
+			Shield = FMath::Clamp(Shield - DamageToHealth, 0.f, MAXShield); // 방어구에서 피해를 제거하고, 0과 MAXShield 사이로 제한합니다.
+			DamageToHealth = 0.f; // Health에 적용할 피해를 0으로 설정합니다.
+		}
+		else // 방어구가 피해보다 작으면
+		{
+			DamageToHealth = FMath::Clamp(DamageToHealth - Shield, 0.f, Damage); // Health에 적용할 피해를 방어구를 제외한 나머지 피해로 설정합니다.
+			Shield = 0.f; // 방어구를 0으로 설정합니다.
+		}
+	}
+
+	Health = FMath::Clamp(Health - DamageToHealth, 0.f, MAxHealth); // 피해를 받아 Health를 감소시키고, 0과 MAxHealth 사이로 제한합니다.
 	// 이떄 OnRep_Health가 호출 클라이언트에서 플레이 힛 몽타주 실행
 	// 이떄 캐릭터 체력이 0 이면 변수 변경 없고 복제도 안 일어남. 그레서 0 이하로 내려가면 힛 몽타주가 한쪽에서 안보임!
 	PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
 	UpdateHUDHealth();
+	UpdateHUDShield(); // HUD에 체력과 방어구 업데이트
 
 	if(  Health == 0.f ) // Health가 0 이하로 떨어지면
 	{
@@ -692,12 +825,31 @@ void ABaseCharacter::UpdateHUDHealth()
 	}
 }
 
+void ABaseCharacter::UpdateHUDShield() // HUD에 방어력을 업데이트하는 함수  버프 컴포넌트에서 사용할 예정이므로 퍼블릭
+{
+	PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
+	if( PlayerController )
+	{
+		PlayerController->SetHUDShield(Shield, MAXShield); // 플레이어 컨트롤러의 HUD 방어력을 설정합니다.
+	}
+}
+
 void ABaseCharacter::UpdateHUDGrenade()
 {
 	PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
 	if( PlayerController )
 	{
 		PlayerController->SetHUDGrenade( CombatComponent->GetGrenade() ); // 플레이어 컨트롤러의 HUD 체력을 설정합니다.
+	}
+}
+
+void ABaseCharacter::UpdateHUDAmmo()
+{
+	PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
+	if( PlayerController && CombatComponent && CombatComponent->EquippedWeapon )
+	{
+		PlayerController->SetHUDCarriedAmmo( CombatComponent->CarriedAmmo ); // 플레이어 컨트롤러의 HUD 탄약을 설정합니다.
+		PlayerController->SetHUDAmmo( CombatComponent->EquippedWeapon->GetAmmo() ); // 플레이어 컨트롤러의 HUD 무기 탄약을 설정합니다.
 	}
 }
 
@@ -753,7 +905,14 @@ void ABaseCharacter::Eliminate()
     // CombatComponent나 EquippedWeapon이 있을 때만 무기 드랍
     if(CombatComponent && CombatComponent->EquippedWeapon)
     {
-        CombatComponent->EquippedWeapon->Dropped();
+		if(CombatComponent->EquippedWeapon->bDestroyWeapon)
+		{
+			CombatComponent->EquippedWeapon->Destroy(); // 무기를 파괴합니다.
+		}
+		else
+		{
+			CombatComponent->EquippedWeapon->Dropped();
+		}
     }
 	
 	MulticastEliminate(); // 멀티캐스트로 함수 실행
@@ -876,13 +1035,6 @@ void ABaseCharacter::StartDissolve()
 	}
 }
 
-ECombatState ABaseCharacter::GetCombatState() const
-{
-	if( CombatComponent == nullptr ) return ECombatState::ECS_MAX;
-
-	return CombatComponent->CombatState; // CombatComponent의 CombatState를 반환합니다.
-}
-
 void ABaseCharacter::Restart() // Restart는 리스폰/매치 시작 시 호출됨 (클라/서버 모두)
 {
     Super::Restart();
@@ -898,4 +1050,58 @@ void ABaseCharacter::Restart() // Restart는 리스폰/매치 시작 시 호출�
 	}
 }
 
+void ABaseCharacter::SpawnDefaultWeapon() // 기본 무기를 스폰하는 함수
+{
+	AMainGameMode* BaseGameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(this)); // 현재 게임 모드를 ABaseGameMode로 캐스팅합니다.
+	UWorld* World = GetWorld(); // 현재 월드를 가져옵니다.
+	if( BaseGameMode && World && !bDead && DefaultWeaponClass )
+	{
+		ABaseWeapon* StartingWeapon = World->SpawnActor<ABaseWeapon>(DefaultWeaponClass); // 기본 무기를 스폰합니다.
+		StartingWeapon->bDestroyWeapon = true; // 무기를 파괴할 수 있도록 설정합니다.
+		if( CombatComponent )
+		{
+			CombatComponent->EquipWeapon(StartingWeapon);
+		}
+		if (IsLocallyControlled())
+        {
+            StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f); // 무기 먹었을떄 이상한 곳으로 회전하는거 고치는 코드
+        }
+	}
+}
+
+void ABaseCharacter::InitWeaponAndHUD()
+{
+    SpawnDefaultWeapon();
+    UpdateHUDAmmo();
+}
+
+// 게터 함수들 모음-------------------------------------------------------------------
+bool ABaseCharacter::IsWeaponEquipped()
+{
+	return (CombatComponent && CombatComponent->EquippedWeapon); // CombatComponent가 존재하고, 장착된 무기가 있는지 확인
+}
+
+bool ABaseCharacter::IsAiming()
+{
+	return (CombatComponent && CombatComponent->bIsAiming); // CombatComponent가 존재하고, Aim 상태인지 확인
+}
+
+bool ABaseCharacter::IsLocallyReloading()
+{
+	return CombatComponent->bLocallyReloading; // 로컬 플레이어가 리로드 중인지 확인합니다.
+}
+
+ECombatState ABaseCharacter::GetCombatState() const
+{
+	if (CombatComponent == nullptr) return ECombatState::ECS_MAX;
+
+	return CombatComponent->CombatState; // CombatComponent의 CombatState를 반환합니다.
+}
+
+ABaseWeapon* ABaseCharacter::GetEquippedWeapon() const
+{
+	if (CombatComponent == nullptr) return nullptr; // CombatComponent가 없으면 nullptr 반환
+
+	return CombatComponent->EquippedWeapon; // CombatComponent의 EquippedWeapon을 반환합니다.
+}
 

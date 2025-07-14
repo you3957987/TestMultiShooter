@@ -19,6 +19,13 @@ public:
 	class UTexture2D* CrosshairTop;    // 십자선 위쪽
 	UPROPERTY()
 	class UTexture2D* CrosshairBottom; // 십자선 아래쪽
+	FHUDPackage()
+        : CrosshairCenter(nullptr)
+        , CrosshairLeft(nullptr)
+        , CrosshairRight(nullptr)
+        , CrosshairTop(nullptr)
+        , CrosshairBottom(nullptr)
+    {}
 	float CrosshairSpread; // 십자선 확산 정도
 	FLinearColor CrosshairColor;
 };

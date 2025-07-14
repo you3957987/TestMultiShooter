@@ -20,6 +20,16 @@ class MULTISHOOTER_API ABasePC : public APlayerController
 
 	UPROPERTY( ReplicatedUsing = OnRep_MatchState )
 	FName MatchState; // 매치 상태 이름
+
+	// 핑 관련 == 이거 디폴트 엔진.ini 마지막에 [PacketSimulationSettings] PktLag = 100 설정 해놓아야 확인 가능해서 넣어놈!!!!!!
+	float HighPingRunningTime = 0.f; // 핑 경고 실행 시간
+	UPROPERTY(EditAnywhere)
+	float HighPingDuration = 5.f; // 핑 경고 지속 시간
+	UPROPERTY(EditAnywhere)
+	float CheckPingFrequency = 20.f; // 핑 체크 빈도 (초 단위)
+	UPROPERTY(EditAnywhere)
+	float HighPingThreshold = 50.f; // 핑 경고 임계값 (ms 단위)
+	float PingAnimationRunningTime = 0.f; // 핑 애니메이션 실행 시간
 	
 protected:
 	virtual void BeginPlay() override; // 플레이 시작 시 호출되는 함수
@@ -30,6 +40,10 @@ protected:
 	UFUNCTION( Client, Reliable )
 	void ClientJoinMidGame(FName StateOfMatch, float WarmUp, float Match, float LevelStarting, float CoolTime); // 클라이언트가 중간에 게임에 참여할 때 호출되는 함수
 
+	void CheckPing(float DeltaTime);
+	void HighPingWarning(); // 핑 경고 함수
+	void StopHighPingWarning(); // 핑 경고 중지 함수
+
 public:
 	virtual void OnPossess(APawn* InPawn) override; // 플레이어가 조종하는 폰이 변경될 때 호출되는 함수
 	virtual void Tick(float DeltaTime) override; // 매 프레임마다 호출되는 함수
@@ -39,6 +53,7 @@ public:
 	virtual float GetServerTime(); 
 	
 	void SetHUDHealth( float Health, float MaxHealth ); // HUD의 체력을 설정하는 함수
+	void SetHUDShield( float Shield, float MaxShield ); // HUD의 방어력을 설정하는 함수
 	void SetHUDScore( float Score ); // HUD의 점수를 설정하는 함수
 	void SetHUDDefeat( int32 Defeat ); // HUD의 죽은 횟수 상태를 설정하는 함수
 	void SetHUDKilledBy( FString KilledBy ); // HUD의 죽은 메시지를 설정하는 함수

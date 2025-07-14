@@ -13,6 +13,9 @@ class MULTISHOOTER_API AShotGun : public AHitScanWeapon
 	uint32 NumberOfPellets = 10; // 샷건의 총알 개수
 
 public:
-	virtual void Fire(const FVector& HitTarget) override; // 발사 함수, 타겟 위치를 인자로 받음
+	virtual void FireShotgun(const TArray<FVector_NetQuantize>& HitTargets);
+
+	void ShotgunTraceEndWithScatter(const FVector& HitTarget, TArray<FVector_NetQuantize>& HitTargets);
+
 	
 };
