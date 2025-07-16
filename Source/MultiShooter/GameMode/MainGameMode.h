@@ -27,9 +27,14 @@ public:
 	AMainGameMode();
 	virtual void Tick(float DeltaTime) override; // 게임 모드의 틱 함수
 	virtual void OnMatchStateSet() override; // 매치 상태가 변경될 때 호출되는 함수
+	virtual void Logout(AController* Exiting) override; // 플레이어가 강종으로 나갈떄
 
-	virtual void PlayerEliminated(class ABaseCharacter* EliminatedCharacter, class ABasePC* EliminatedController,class ABasePC* AttackerController ); // 플레이어가 제거되었을 때 호출되는 함수
-	virtual void RequestRespawn(class ACharacter* EliminatedCharacter, class AController* EliminatedController); // 플레이어가 제거되었을 때 리스폰 요청하는 함수
+	virtual void PlayerEliminated(class ABaseCharacter* EliminatedCharacter, class ABasePC* EliminatedController,class ABasePC* AttackerController ); 
+	// 플레이어가 제거되었을 때 호출되는 함수
+	virtual void RequestRespawn(class ACharacter* EliminatedCharacter, class AController* EliminatedController); 
+	// 플레이어가 제거되었을 때 리스폰 요청하는 함수
+
+	void PlayerLeftGame(class ACharacterState* PlayerLeaving); // 플레이어가 게임을 떠났을 때 호출되는 함수
 
 	FORCEINLINE float GetCountDownTime() const { return CountDownTime; } // 카운트다운 시간 반환 함수
 
@@ -44,4 +49,5 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	float CooldownTime = 10.0f; // 워밍업 시간
 
+	void SendChatMsg(const FText& Text, const FString& PlayerName);
 };

@@ -14,13 +14,13 @@ protected:
 	virtual void BeginPlay() override; // 게임 시작 시 호출되는 함수, AProjectile의 BeginPlay를 오버라이드하여 구현합니다.
 	virtual void Destroyed() override; // 발사체가 파괴될 때 호출되는 함수, AProjectile의 Destroyed를 오버라이드하여 구현합니다.
 
-	UPROPERTY( EditAnywhere )
+	UPROPERTY( EditAnywhere, Category = "자체설정")
 	USoundCue* ProjectileLoop;
 
 	UPROPERTY()
 	UAudioComponent* ProjectileLoopComponent; // 발사체 루프 사운드 컴포넌트
 
-	UPROPERTY( EditAnywhere )
+	UPROPERTY( EditAnywhere, Category = "자체설정")
 	USoundAttenuation* SoundAttenuation; // 사운드 감쇠 설정
 
 	UPROPERTY( VisibleAnywhere )

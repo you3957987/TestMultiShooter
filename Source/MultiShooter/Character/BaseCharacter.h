@@ -8,6 +8,8 @@
 #include "MultiShooter/TypeHeader/CombatState.h" // HUD 패키지 구조체 헤더 파일
 #include "BaseCharacter.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLeftGame);
+
 UCLASS()
 class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInterface // ICrosshairInterface 인터페이스를 구현합니다.
 {
@@ -138,6 +140,9 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* DieMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주
 
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UAnimMontage* SwapMontage; // 무기를 교체할 때 사용할 애니메이션 몽타주
+
 	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
 
 	//플레이어 상태-------------------------------------------------------------------------------------------------------
@@ -169,6 +174,7 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	float EliminateDelay = 5.f; // 플레이어가 제거되었을 때 타이머 딜레이
 
 	void EliminateTimerFinished(); // 플레이어가 제거되었을 때 타이머가 끝났을 때 호출되는 함수
+
 	//플레이어 상태-------------------------------------------------------------------------------------------------------
 
 	//디졸브 및 죽으면 나오는 봇 -------------------------------------------------------------------------------------------------------
@@ -221,6 +227,12 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	TSubclassOf<ABaseWeapon> DefaultWeaponClass; // 기본 무기 클래스
 
 	FTimerHandle StartWeaponTimer; // 기본 무기를 장착하기 위한 타이머 핸들
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UNiagaraSystem* CrownSystem; // 최고 점수 플레이어에게 생성되는 크라운 이펙트
+
+	UPROPERTY()
+	class UNiagaraComponent* CrownComponent; // 크라운 이펙트를 생성하기 위한 Niagara 컴포넌트
 
 protected:
     virtual void BeginPlay() override;
@@ -299,11 +311,12 @@ public:
 	void PlayDieMontage(); // 플레이어가 죽었을 때 애니메이션 몽타주를 재생하는 함수
 	void PlayReloadMontage(); // 무기를 재장전할 때 애니메이션 몽타주를 재생하는 함수
 	void PlayThrowGrenadeMontage(); // 유탄 발사기를 던질 때 애니메이션 몽타주를 재생하는 함수
+	void PlaySwapMontage(); // 무기를 교체할 때 애니메이션 몽타주를 재생하는 함수
 
 	UFUNCTION( NetMulticast, Reliable )
-	void MulticastEliminate(); // 플레이어가 제거되었을 때 호출되는 멀티캐스트 함수
+	void MulticastEliminate(bool bPlayerLeftGame); // 플레이어가 제거되었을 때 호출되는 멀티캐스트 함수
 
-	void Eliminate(); // 플레이어가 제거되었을 때 호출되는 서버에서만 실행하는 함수
+	void Eliminate(bool bPlayerLeftGame); // 플레이어가 제거되었을 때 호출되는 서버에서만 실행하는 함수
 
 	UPROPERTY( Replicated )
 	bool bDisableGamePlay = false; // 게임 플레이를 비활성화하는 변수
@@ -312,7 +325,7 @@ public:
 	//void MulticastPlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 멀티캐스트로 재생하는 함수
 	//void ABaseCharacter::MulticastPlayHitReactMontage_Implementation() { PlayHitReactMontage();} // 멀티캐스트로 애니메이션 몽타주를 재생합니다. 
 
-	UFUNCTION( BlueprintImplementableEvent) // 이 함수는 블루프린트에서 구현됩니다.
+	UFUNCTION( BlueprintImplementableEvent) // 이 함수는 블루프린트에서 구현됩니다. 그러니깐 cpp에 없음,,
 	void ShowScopeSniperWidget( bool bShow ); // 스코프 위젯을 보이게 하는 함수
 
 	void UpdateHUDHealth(); // HUD에 체력을 업데이트하는 함수  버프 컴포넌트에서 사용할 예정이므로 퍼블릭
@@ -323,6 +336,17 @@ public:
 
 	void SpawnDefaultWeapon(); // 기본 무기를 스폰하는 함수
 	void InitWeaponAndHUD(); // 기본 무기를 장착하고 HUD를 초기화하는 함수
+
+	UFUNCTION(Server, Reliable)
+	void ServerLeaveGame(); // 서버에서 게임을 떠나는 함수
+
+	FOnLeftGame OnLeftGame; // 플레이어가 게임을 떠났을 때 호출되는 델리게이트
+	bool bLeftGame = false; // 플레이어가 게임을 떠났는지 여부를 저장하는 변수
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastGainedTheLead(); // 최고 점수 플레이어에게 크라운 이펙트를 생성하는 멀티캐스트 함수
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastLostTheLead();
 
 	// 서버에서 렉걸릴떄 히트 박스 조정하기 위한 박스----------------------------------------------------------------
 	UPROPERTY(EditAnywhere)

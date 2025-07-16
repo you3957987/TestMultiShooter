@@ -9,19 +9,16 @@ class MULTISHOOTER_API AHitScanWeapon : public ABaseWeapon
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	UParticleSystem* BeamParticle; // 총구 플래시 이펙트
 
 protected:
 	void WeaponTraceHit(const FVector& TraceStart, const FVector& HitTarget, FHitResult& OutHit ); // 무기 트레이스 히트 함수
 
-	UPROPERTY(EditAnywhere)
-	float Damage = 20.f;
-	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	USoundCue* HitSound; // 충돌 사운드
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UParticleSystem* ImpactParticle; // 충돌 이펙트 파티클
 
 public:

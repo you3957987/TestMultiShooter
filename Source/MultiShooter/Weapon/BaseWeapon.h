@@ -67,11 +67,6 @@ class MULTISHOOTER_API ABaseWeapon : public AActor
 	UFUNCTION(Client, Reliable)
 	void ClientAddAmmo(int32 AmmoToAdd); // 클라이언트에서 총알을 추가하는 함수
 
-	UPROPERTY()
-	class ABaseCharacter* Character; // 캐릭터 클래스 포인터
-	UPROPERTY()
-	class ABasePC* PlayerController; // 플레이어 컨트롤러 클래스 포인터
-
 	UPROPERTY(EditAnywhere)
 	EWeaponType WeaponType; // 무기 타입
 
@@ -83,6 +78,17 @@ protected:
 	virtual void OnEquipped(); // 무기가 장착될 때 호출되는 함수
 	virtual void OnDropped(); // 무기가 드롭될 때 호출되는 함수
 	virtual void OnEquippedSecondary(); // 보조 무기가 장착될 때 호출되는 함수
+
+	UPROPERTY()
+	class ABaseCharacter* BaseOwnerCharacter; // 캐릭터 클래스 포인터
+	UPROPERTY()
+	class ABasePC* BaseOwnerContoller; // 플레이어 컨트롤러 클래스 포인터
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	float Damage = 20.f; // 무기의 대미지
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	float HeadShotDamage = 40.f; // 무기의 대미지
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class USceneComponent* MuzzlePoint; // 총구 위치를 나타내는 컴포넌트
@@ -104,6 +110,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float SphereRadius = 75.f; // 타겟과의 거리
+
+	UPROPERTY(Replicated, EditAnywhere, Category = "자체설정")
+	bool bUseServerSideRewind = false; // 서버 측 리와인드를 사용할지 여부
+
+	UFUNCTION()
+	void OnPingToHigh(bool bPingTooHigh);
 
 public:	
 	ABaseWeapon();
@@ -133,6 +145,8 @@ public:
 	FORCEINLINE int32 GetAmmo() const { return Ammo; } // 현재 총알 개수를 반환하는 함수
 	FORCEINLINE int32 GetMaxAmmo() const { return MaxAmmo; } // 최대 총알 개수를 반환하는 함수
 	FORCEINLINE UTexture2D* GetWeaponIcon() const { return WeaponIcon; } // 무기 상태를 반환하는 함수
+	FORCEINLINE float GetDamage() const { return Damage; } // 무기의 대미지를 반환하는 함수
+	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; } // 무기의 헤드샷 대미지를 반환하는 함수
 
 	// 십자선 HUD------------------------------------------------------- 팔로우 카메라 focal distance 초점 거리 10000으로 설정, camere->조리개 값 4-> 32로 설정!
 	UPROPERTY(EditAnywhere, Category = "자체설정")
@@ -199,4 +213,5 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	bool bUseScatter = false; // 산탄 사용 여부
+
 };

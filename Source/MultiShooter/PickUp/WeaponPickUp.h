@@ -1,3 +1,5 @@
+#pragma once
+
 #include "CoreMinimal.h"
 #include "PickUp.h"
 #include "WeaponPickUp.generated.h"

@@ -150,13 +150,13 @@ protected:
 	void LocalFire(const FVector_NetQuantize& TraceHitTarget); // 로컬에서 발사하는 함수
 	void LocalShoutgunFire(const TArray<FVector_NetQuantize>& TraceHitTarget); // 로컬에서 샷건을 발사하는 함수
 
-    UFUNCTION( Server, Reliable )
-	void Server_Fire( const FVector_NetQuantize& TraceHitTarget ); // 서버에서 발사 버튼이 눌렸을 때 호출되는 함수
+    UFUNCTION( Server, Reliable, WithValidation )
+	void Server_Fire( const FVector_NetQuantize& TraceHitTarget, float FireDelay ); // 서버에서 발사 버튼이 눌렸을 때 호출되는 함수
 	UFUNCTION( NetMulticast, Reliable )
 	void Multicast_Fire( const FVector_NetQuantize& TraceHitTarget ); // 멀티캐스트로 발사 버튼이 눌렸을 때 호출되는 함수
 	//  FVector_NetQuantize 네트워크 전송용 벡터 타입
-	UFUNCTION(Server, Reliable)
-	void ServerShotgunFire(const TArray<FVector_NetQuantize>& TraceHitTarget);
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerShotgunFire(const TArray<FVector_NetQuantize>& TraceHitTarget, float FireDelay);
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastShotgunFire(const TArray<FVector_NetQuantize>& TraceHitTarget);
 
@@ -220,6 +220,12 @@ public:
 	UFUNCTION( BlueprintCallable )
 	void FinishedThrowGrenade(); // 수류탄 던지기가 완료되었을 때 호출되는 함수 -> 애님 몽타주 노타퍼아에서 블루프린트로 연결후 거기서 사용!
 
+	UFUNCTION(BlueprintCallable)
+	void FinisheSwap();
+
+	UFUNCTION(BlueprintCallable)
+	void FinishedSwapAttachWeapon();
+	
 	void ClearEquippedWeapon();
 
 	void PickUpAmmo( EWeaponType WeaponType, int32 AmmoAmount ); // 무기 타입에 따라 총알을 획득하는 함수

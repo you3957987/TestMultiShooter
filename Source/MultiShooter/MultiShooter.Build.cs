@@ -8,7 +8,8 @@ public class MultiShooter : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "Niagara" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", 
+			"Niagara", "MultiplayerSessions", "OnlineSubsystem", "OnlineSubsystemSteam", "SlateCore" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

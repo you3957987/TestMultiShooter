@@ -15,10 +15,10 @@ class MULTISHOOTER_API AOutBullet : public AActor
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* BulletMesh; // 총알 메쉬 컴포넌트
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float ImpulsePwoer;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class USoundCue* BulletSound; // 총알 소리
 
 	bool IsSoundPlayed; // 소리가 재생되었는지 여부

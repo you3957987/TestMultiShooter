@@ -9,7 +9,7 @@ class MULTISHOOTER_API AShotGun : public AHitScanWeapon
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	uint32 NumberOfPellets = 10; // 샷건의 총알 개수
 
 public:

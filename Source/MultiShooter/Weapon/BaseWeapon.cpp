@@ -60,7 +60,6 @@ void ABaseWeapon::BeginPlay()
 	{
 		PickUpWidget->SetVisibility(false); // 위젯을 초기에는 보이지 않도록 설정합니다.
 	}
-
 }
 
 void ABaseWeapon::Tick(float DeltaTime)
@@ -75,21 +74,23 @@ void ABaseWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 
 	// 무기 상태를 네트워크에서 복제합니다.
 	DOREPLIFETIME(ABaseWeapon, WeaponState);
+	DOREPLIFETIME_CONDITION(ABaseWeapon, bUseServerSideRewind, COND_OwnerOnly);
 }
 
-void ABaseWeapon::OnRep_Owner() // 소유자가 변경될 때 호출되는 함수
+// 무기의 소유자가 변경될 때 호출되는 함수
+void ABaseWeapon::OnRep_Owner() 
 {
 	Super::OnRep_Owner(); // 부모 클래스의 OnRep_Owner 함수를 호출합니다.
 
 	if( Owner == nullptr ) // 만약 소유자가 nullptr인 경우, 즉 플레이어가 죽은 경우
 	{
-		Character = nullptr; // 캐릭터를 nullptr로 설정합니다. (플레이어가 죽었으므로)
-		PlayerController = nullptr; // 플레이어 컨트롤러를 nullptr로 설정합니다. (플레이어가 죽었으므로)
+		BaseOwnerCharacter = nullptr; // 캐릭터를 nullptr로 설정합니다. (플레이어가 죽었으므로)
+		BaseOwnerContoller = nullptr; // 플레이어 컨트롤러를 nullptr로 설정합니다. (플레이어가 죽었으므로)
 	}
 	else
 	{
-		Character = Character == nullptr ? Cast<ABaseCharacter>(GetOwner()) : Character; // 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
-		if( Character && Character->GetEquippedWeapon() && Character->GetEquippedWeapon() == this) // 캐릭터가 존재하고, 현재 무기가 캐릭터의 장착된 무기인 경우
+		BaseOwnerCharacter = BaseOwnerCharacter == nullptr ? Cast<ABaseCharacter>(GetOwner()) : BaseOwnerCharacter; // 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
+		if( BaseOwnerCharacter && BaseOwnerCharacter->GetEquippedWeapon() && BaseOwnerCharacter->GetEquippedWeapon() == this) // 캐릭터가 존재하고, 현재 무기가 캐릭터의 장착된 무기인 경우
 		{
 			SetHUDAmmo();
 		}
@@ -134,6 +135,7 @@ void ABaseWeapon::AddAmmo(int32 AmmoToAdd) // 총알을 추가하는 함수
 	ClientAddAmmo(AmmoToAdd); // 클라이언트에서 총알을 추가합니다.
 }
 
+// 총알 다 있는지 비었는지
 bool ABaseWeapon::IsEmptyAmmo() 
 {
 	return Ammo <= 0; // 총알 개수가 0 이하이면 true를 반환합니다.
@@ -144,19 +146,21 @@ bool ABaseWeapon::IsFull()
 	return Ammo == MaxAmmo;	 // 총알 개수가 최대값과 같으면 true를 반환합니다.
 }
 
+// BASE_PC의 셋 허드 아모 호출하는 함수. 허드는 PC에서 관리합니다.
 void ABaseWeapon::SetHUDAmmo()
 {
-    Character = Character == nullptr ? Cast<ABaseCharacter>(GetOwner()) : Character; // 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
-    if (Character)
+    BaseOwnerCharacter = BaseOwnerCharacter == nullptr ? Cast<ABaseCharacter>(GetOwner()) : BaseOwnerCharacter; // 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
+    if (BaseOwnerCharacter)
     {
-        PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Character->GetController()) : PlayerController; // 플레이어 컨트롤러가 nullptr인 경우 캐릭터의 컨트롤러를 캐스팅합니다.
-        if (PlayerController)
+        BaseOwnerContoller = BaseOwnerContoller == nullptr ? Cast<ABasePC>(BaseOwnerCharacter->GetController()) : BaseOwnerContoller; // 플레이어 컨트롤러가 nullptr인 경우 캐릭터의 컨트롤러를 캐스팅합니다.
+        if (BaseOwnerContoller)
         {
-            PlayerController->SetHUDAmmo(Ammo); // 플레이어 컨트롤러의 HUD에 총알 개수를 설정합니다.
+            BaseOwnerContoller->SetHUDAmmo(Ammo); // 플레이어 컨트롤러의 HUD에 총알 개수를 설정합니다.
         }
     }
 }
 
+// 캐릭터가 스피어에 오버랩 처리 해서 픽업 할 수 있게
 void ABaseWeapon::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, 
     int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -178,6 +182,7 @@ void ABaseWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, A
     }
 }
 
+// 무기 픽업 위젯 보이도록
 void ABaseWeapon::ShowPickUpWidget(bool bShow)
 {
 	if( PickUpWidget )
@@ -186,7 +191,8 @@ void ABaseWeapon::ShowPickUpWidget(bool bShow)
 	}
 }
 
-void ABaseWeapon::SetWeaponState(EWeaponState NewState) // 무기 상태를 설정하는 함수
+// 무기 상태를 설정하는 함수
+void ABaseWeapon::SetWeaponState(EWeaponState NewState) 
 {
 	EWeaponState LastState = WeaponState;
 	WeaponState = NewState;
@@ -199,11 +205,13 @@ void ABaseWeapon::SetWeaponState(EWeaponState NewState) // 무기 상태를 설�
 	}
 }
 
+//SetWeaponState 랑 같이
 void ABaseWeapon::OnRep_WeaponState() // 무기 상태가 변경될 때 호출되는 함수. 클라이언트에서만 실행
 {
     OnWeaponStateSet(); // 무기 상태가 변경되었을 때 호출되는 함수를 실행합니다.	
 }
 
+// 무기 상태가 변경되었을 때 호출되는 함수
 void ABaseWeapon::OnWeaponStateSet()
 {
 	switch (WeaponState) // on_rep_WeaponState 호출
@@ -222,7 +230,8 @@ void ABaseWeapon::OnWeaponStateSet()
     }
 }
 
-void ABaseWeapon::OnEquipped() // 무기가 장착될 때 호출되는 함수
+// 무기가 장착될 때 호출되는 함수 == OnWeaponStateSet에서 사용
+void ABaseWeapon::OnEquipped() 
 {
 	ShowPickUpWidget(false); // 무기가 장착되면 위젯을 숨깁니다.
 	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
@@ -230,9 +239,22 @@ void ABaseWeapon::OnEquipped() // 무기가 장착될 때 호출되는 함수
 	WeaponMesh->SetEnableGravity(false); 
 	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	EnableCustomDepth(false); // 윤곽선을 비활성화합니다.
+
+	BaseOwnerCharacter = BaseOwnerCharacter == nullptr ? Cast<ABaseCharacter>(GetOwner()) : BaseOwnerCharacter; 
+	// 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
+	if (BaseOwnerCharacter && bUseServerSideRewind )
+	{
+		BaseOwnerContoller = BaseOwnerContoller == nullptr ? Cast<ABasePC>(BaseOwnerCharacter->GetController()) : BaseOwnerContoller; 
+		// 플레이어 컨트롤러가 nullptr인 경우 캐릭터의 컨트롤러를 캐스팅합니다.
+		if (BaseOwnerContoller && HasAuthority() && BaseOwnerContoller->HighPingDelegate.IsBound() == false )
+		{
+			BaseOwnerContoller->HighPingDelegate.AddDynamic(this, &ABaseWeapon::OnPingToHigh); // 핑이 너무 높을 때 호출되는 델리게이트를 바인딩합니다.
+		}
+	}
 }
 
-void ABaseWeapon::OnDropped() // 무기가 드롭될 때 호출되는 함수
+// 무기가 드롭될 때 호출되는 함수 == OnWeaponStateSet에서 사용
+void ABaseWeapon::OnDropped() 
 {
 	if( HasAuthority() ) // 서버에서만 실행
 	{
@@ -246,24 +268,50 @@ void ABaseWeapon::OnDropped() // 무기가 드롭될 때 호출되는 함수
 	WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore); 
 
 	WeaponMesh->SetCustomDepthStencilValue(CUSTOM_DEPTH_BLUE); // 무기 메쉬의 커스텀 깊이 스텐실 값을 설정합니다. 윤곽선 색상을 설정하기 위해 사용됩니다.
-	WeaponMesh->SetRenderCustomDepth(true); // << 이 줄 추가!
     WeaponMesh->MarkRenderStateDirty(); // 렌더 상태를 업데이트하여 커스텀 깊이 스텐실 값이 적용되도록 합니다.
+	WeaponMesh->SetRenderCustomDepth(true); // << 이 줄 추가!
+
+	BaseOwnerCharacter = BaseOwnerCharacter == nullptr ? Cast<ABaseCharacter>(GetOwner()) : BaseOwnerCharacter;
+	// 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
+	if (BaseOwnerCharacter && bUseServerSideRewind)
+	{
+		BaseOwnerContoller = BaseOwnerContoller == nullptr ? Cast<ABasePC>(BaseOwnerCharacter->GetController()) : BaseOwnerContoller;
+		// 플레이어 컨트롤러가 nullptr인 경우 캐릭터의 컨트롤러를 캐스팅합니다.
+		if (BaseOwnerContoller && HasAuthority() && BaseOwnerContoller->HighPingDelegate.IsBound() )
+		{
+			BaseOwnerContoller->HighPingDelegate.RemoveDynamic(this, &ABaseWeapon::OnPingToHigh); // 핑이 너무 높을 때 호출되는 델리게이트를 바인딩합니다.
+		}
+	}
 }
 
-void ABaseWeapon::OnEquippedSecondary() // 보조 무기가 장착될 때 호출되는 함수
+// 보조 무기가 장착될 때 호출되는 함수 == OnWeaponStateSet에서 사용
+void ABaseWeapon::OnEquippedSecondary()
 {
 	ShowPickUpWidget(false); // 무기가 장착되면 위젯을 숨깁니다.
 	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision); 
 	WeaponMesh->SetSimulatePhysics(false); 
 	WeaponMesh->SetEnableGravity(false); 
 	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	EnableCustomDepth(true); // 윤곽선을 활성화합니다.
+
 	// 보조 무기 윤곽선 설정
     WeaponMesh->SetCustomDepthStencilValue(CUSTOM_DEPTH_BROWN); // 무기 메쉬의 커스텀 깊이 스텐실 값을 설정합니다. 윤곽선 색상을 설정하기 위해 사용됩니다.
 	WeaponMesh->MarkRenderStateDirty(); // 렌더 상태를 업데이트하여 커스텀 깊이 스텐실 값이 적용되도록 합니다.
+
+	BaseOwnerCharacter = BaseOwnerCharacter == nullptr ? Cast<ABaseCharacter>(GetOwner()) : BaseOwnerCharacter;
+	// 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
+	if (BaseOwnerCharacter && bUseServerSideRewind)
+	{
+		BaseOwnerContoller = BaseOwnerContoller == nullptr ? Cast<ABasePC>(BaseOwnerCharacter->GetController()) : BaseOwnerContoller;
+		// 플레이어 컨트롤러가 nullptr인 경우 캐릭터의 컨트롤러를 캐스팅합니다.
+		if (BaseOwnerContoller && HasAuthority() && BaseOwnerContoller->HighPingDelegate.IsBound())
+		{
+			BaseOwnerContoller->HighPingDelegate.RemoveDynamic(this, &ABaseWeapon::OnPingToHigh); // 핑이 너무 높을 때 호출되는 델리게이트를 바인딩합니다.
+		}
+	}
 }
 
-void ABaseWeapon::Fire(const FVector& HitTarget) // 발사 함수, 타겟 위치를 인자로 받음
+// 발사 함수, 타겟 위치를 인자로 받음 제대로된 구현은 자식에서 하고 베이스에서는 탄피랑 총구 이펙트만
+void ABaseWeapon::Fire(const FVector& HitTarget) 
 {
 	//이거는 자식에서 제대로 구현함. 강의에서는 발사 애니메이션으로 머즐 포인트 생성
 
@@ -287,18 +335,20 @@ void ABaseWeapon::Fire(const FVector& HitTarget) // 발사 함수, 타겟 위치
 	SpendAmmo(); // 총알을 소모합니다.
 }
 
-void ABaseWeapon::Dropped() // 플레이어 죽음
+// 플레이어 죽었을때 무기를 떨어뜨리는 함수
+void ABaseWeapon::Dropped() 
 {
 	SetWeaponState(EWeaponState::EWS_Dropped); // 무기 상태를 떨어진 상태로 설정합니다.
 
 	FDetachmentTransformRules DetachmentRules(EDetachmentRule::KeepWorld, true);
 	WeaponMesh->DetachFromComponent(DetachmentRules); // 무기를 월드 트랜스폼을 유지하면서 분리합니다.
 	SetOwner(nullptr); // 무기의 소유자를 nullptr로 설정합니다. (플레이어가 죽었으므로)
-	Character = nullptr; // 캐릭터를 nullptr로 설정합니다. (플레이어가 죽었으므로)
-	PlayerController = nullptr; // 플레이어 컨트롤러를 nullptr로 설정합니다. (플레이어가 죽었으므로)
+	BaseOwnerCharacter = nullptr; // 캐릭터를 nullptr로 설정합니다. (플레이어가 죽었으므로)
+	BaseOwnerContoller = nullptr; // 플레이어 컨트롤러를 nullptr로 설정합니다. (플레이어가 죽었으므로)
 }
 
-void ABaseWeapon::EnableCustomDepth(bool bEnable) // 윤곽선을 활성화하거나 비활성화하는 함수
+// 윤곽선을 활성화하거나 비활성화하는 함수
+void ABaseWeapon::EnableCustomDepth(bool bEnable)
 {
 	if( WeaponMesh )
 	{
@@ -348,4 +398,10 @@ FVector ABaseWeapon::TraceEndWithScatter(const FVector& HitTarget)
 	*/
 
 	return FVector(Start + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size()); // 현재는 산탄을 사용하지 않으므로, 기본적으로 (0,0,0)을 반환합니다.
+}
+
+// 핑에 따라 bUseServerSideRewind를 설정하는 함수
+void ABaseWeapon::OnPingToHigh(bool bPingTooHigh)
+{
+	bUseServerSideRewind = !bPingTooHigh; // 핑이 너무 높으면 서버 측 리와인드를 비활성화합니다.
 }

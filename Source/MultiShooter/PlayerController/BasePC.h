@@ -4,6 +4,8 @@
 #include "GameFramework/PlayerController.h"
 #include "BasePC.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHighPingDelegate, bool, bPingTooHigh); // 매치 상태 변경 이벤트 델리게이트
+
 UCLASS()
 class MULTISHOOTER_API ABasePC : public APlayerController
 {
@@ -23,16 +25,46 @@ class MULTISHOOTER_API ABasePC : public APlayerController
 
 	// 핑 관련 == 이거 디폴트 엔진.ini 마지막에 [PacketSimulationSettings] PktLag = 100 설정 해놓아야 확인 가능해서 넣어놈!!!!!!
 	float HighPingRunningTime = 0.f; // 핑 경고 실행 시간
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float HighPingDuration = 5.f; // 핑 경고 지속 시간
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float CheckPingFrequency = 20.f; // 핑 체크 빈도 (초 단위)
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float HighPingThreshold = 50.f; // 핑 경고 임계값 (ms 단위)
 	float PingAnimationRunningTime = 0.f; // 핑 애니메이션 실행 시간
-	
+
+	UFUNCTION(Server, Reliable)
+	void ServerReportPingStaus(bool bHighPing);
+
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
+	class UInputAction* IA_Quit; // 게임 종료 액션
+
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
+	class UInputAction* IA_EnterToChat; // 채팅 입력 액션
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	TSubclassOf<class UUserWidget> ReturnToMainMenuWidget; // 메인 메뉴로 돌아가는 위젯 클래스
+	UPROPERTY()
+	class UReturnToMainMenu* ReturnToMainMenu; // 메인 메뉴로 돌아가는 위젯 인스턴스
+
+	bool bReturnToMainMenuOpen = false; // 메인 메뉴로 돌아가는 위젯이 열려 있는지 여부
+
+	UPROPERTY()
+	class UChatBox* ChatBox;
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	TSubclassOf<UChatBox> ChatBoxClass;
+
+	UFUNCTION()
+	void OnChatCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+
+	bool bIsChatting = false; // 채팅 중인지 여부
+
+	void OnMouseClickAnywhere();
+
 protected:
 	virtual void BeginPlay() override; // 플레이 시작 시 호출되는 함수
+	virtual void SetupInputComponent() override; // 입력 컴포넌트를 설정하는 함수
 	
 	void SetHUDTime(); // HUD의 시간을 설정하는 함수
 	UFUNCTION( Server, Reliable )
@@ -44,12 +76,20 @@ protected:
 	void HighPingWarning(); // 핑 경고 함수
 	void StopHighPingWarning(); // 핑 경고 중지 함수
 
+	void ShowReturnToMainMenu(); // 메인 메뉴로 돌아가는 함수
+
+	UFUNCTION(Client, Reliable)
+	void CleintElimAnnouncement(class ACharacterState* Attacker, class ACharacterState* Victim); // 제거 알림을 클라이언트에 표시하는 함수
+
+	void StartChat();
+
 public:
 	virtual void OnPossess(APawn* InPawn) override; // 플레이어가 조종하는 폰이 변경될 때 호출되는 함수
 	virtual void Tick(float DeltaTime) override; // 매 프레임마다 호출되는 함수
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; // 뱐수 복제 위한 함수 복제는 변수가 변했을떄만!
 	virtual void ReceivedPlayer() override; // 플레이어가 컨트롤러를 받았을 때 호출되는 함수
-
+	virtual void PawnLeavingGame() override; // 플레이어가 게임을 떠날 때 호출되는 함수
+	
 	virtual float GetServerTime(); 
 	
 	void SetHUDHealth( float Health, float MaxHealth ); // HUD의 체력을 설정하는 함수
@@ -83,7 +123,7 @@ public:
 
 	float ClientServerDeltaTime = 0.f; // 클라이언트와 서버 간의 시간 차이
 
-	UPROPERTY(EditAnyWhere, Category = "Time")
+	UPROPERTY(EditAnyWhere, Category = "자체설정")
 	float TimeSyncFrequency = 2.f; // 시간 동기화 빈도 (초 단위)
 
 	float LastTimeSync = 0.f; // 마지막 시간 동기화 시간
@@ -92,4 +132,17 @@ public:
 
 	// 서버랑 클라이언트 시간 싱크!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+	float SingleTripTime = 0.f; // 단일 왕복 시간
+
+	FHighPingDelegate HighPingDelegate; // 핑 경고 이벤트 델리게이트
+
+	void BroadcastElim(class ACharacterState* Attacker, class ACharacterState* Victim);
+
+
+
+	UFUNCTION(Server, Reliable)
+	void ServerChatCommitted(const FText& Text, const FString& PlayerName);
+
+	UFUNCTION(Client, Reliable)
+	void ClientChatCommitted(const FText& Text, const FString& PlayerName);
 };

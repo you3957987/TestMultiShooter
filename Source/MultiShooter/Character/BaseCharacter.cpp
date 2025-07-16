@@ -21,9 +21,11 @@
 #include "Particles/ParticleSystemComponent.h" // 파티클 시스템 컴포넌트 사용을 위한 헤더 파일
 #include "MultiShooter/CharacterState/CharacterState.h" // ACharacterState 클래스 사용을 위한 헤더 파일
 #include "MultiShooter/Weapon/WeaponType.h" // EWeaponType 열거형 사용을 위한 헤더 파일
-#include "MultiShooter/GameMode/MainGameMode.h" // ABaseGameMode 클래스 사용을 위한 헤더 파일
 #include "Components/BoxComponent.h" // 박스 컴포넌트 사용을 위한 헤더 파일
 #include "MultiShooter/CharacterComponent/LagCompensationComponent.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "MultiShooter/GameState/BaseGameState.h" // ABaseGameState 클래스 사용을 위한 헤더 파일
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -82,68 +84,78 @@ ABaseCharacter::ABaseCharacter()
 	// 렉걸릴때 서버에서 리와인드 위한 박스 컴포넌트---------------------------------------
 	head = CreateDefaultSubobject<UBoxComponent>(TEXT("HeadBox"));
 	head->SetupAttachment(GetMesh(), FName("head")); // 헤드 소켓에 박스 컴포넌트 연결
-	head->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("head"), head); // 히트 박스 리스트에 헤드 박스 추가
+	
 	pelvis = CreateDefaultSubobject<UBoxComponent>(TEXT("PelvisBox"));
 	pelvis->SetupAttachment(GetMesh(), FName("pelvis")); // 펠비스 소켓에 박스 컴포넌트 연결
-	pelvis->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("pelvis"), pelvis); // 히트 박스 리스트에 펠비스 박스 추가
+	
 	spine_02 = CreateDefaultSubobject<UBoxComponent>(TEXT("Spine_02Box"));
 	spine_02->SetupAttachment(GetMesh(), FName("spine_02")); // 스파인_02 소켓에 박스 컴포넌트 연결
-	spine_02->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("spine_02"), spine_02); // 히트 박스 리스트에 스파인_02 박스 추가
+	
 	spine_03 = CreateDefaultSubobject<UBoxComponent>(TEXT("Spine_03Box"));
 	spine_03->SetupAttachment(GetMesh(), FName("spine_03")); // 스파인_03 소켓에 박스 컴포넌트 연결
-	spine_03->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("spine_03"), spine_03); // 히트 박스 리스트에 스파인_03 박스 추가
+	
 	upperarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Upperarm_LBox"));
 	upperarm_l->SetupAttachment(GetMesh(), FName("upperarm_l")); // 어퍼암_L 소켓에 박스 컴포넌트 연결
-	upperarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("upperarm_l"), upperarm_l); // 히트 박스 리스트에 어퍼암_L 박스 추가
+	
 	upperarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Upperarm_RBox"));
 	upperarm_r->SetupAttachment(GetMesh(), FName("upperarm_r")); // 어퍼암_R 소켓에 박스 컴포넌트 연결
-	upperarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("upperarm_r"), upperarm_r); // 히트 박스 리스트에 어퍼암_R 박스 추가
+	
 	lowerarm_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Lowerarm_LBox"));
 	lowerarm_l->SetupAttachment(GetMesh(), FName("lowerarm_l")); // 로워암_L 소켓에 박스 컴포넌트 연결
-	lowerarm_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("lowerarm_l"), lowerarm_l); // 히트 박스 리스트에 로워암_L 박스 추가
+	
 	lowerarm_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Lowerarm_RBox"));
 	lowerarm_r->SetupAttachment(GetMesh(), FName("lowerarm_r")); // 로워암_R 소켓에 박스 컴포넌트 연결
-	lowerarm_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("lowerarm_r"), lowerarm_r); // 히트 박스 리스트에 로워암_R 박스 추가
+	
 	hand_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Hand_LBox"));
 	hand_l->SetupAttachment(GetMesh(), FName("hand_l")); // 핸드_L 소켓에 박스 컴포넌트 연결
-	hand_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("hand_l"), hand_l); // 히트 박스 리스트에 핸드_L 박스 추가
+	
 	hand_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Hand_RBox"));
 	hand_r->SetupAttachment(GetMesh(), FName("hand_r")); // 핸드_R 소켓에 박스 컴포넌트 연결
-	hand_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("hand_r"), hand_r); // 히트 박스 리스트에 핸드_R 박스 추가
+	
 	thigh_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Thigh_LBox"));
 	thigh_l->SetupAttachment(GetMesh(), FName("thigh_l")); // 타이_L 소켓에 박스 컴포넌트 연결
-	thigh_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("thigh_l"), thigh_l); // 히트 박스 리스트에 타이_L 박스 추가
+	
 	thigh_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Thigh_RBox"));
 	thigh_r->SetupAttachment(GetMesh(), FName("thigh_r")); // 타이_R 소켓에 박스 컴포넌트 연결
-	thigh_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("thigh_r"), thigh_r); // 히트 박스 리스트에 타이_R 박스 추가
+	
 	calf_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Calf_LBox"));
 	calf_l->SetupAttachment(GetMesh(), FName("calf_l")); // 칼프_L 소켓에 박스 컴포넌트 연결
-	calf_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("calf_l"), calf_l); // 히트 박스 리스트에 칼프_L 박스 추가
+	
 	calf_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Calf_RBox"));
 	calf_r->SetupAttachment(GetMesh(), FName("calf_r")); // 칼프_R 소켓에 박스 컴포넌트 연결
-	calf_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("calf_r"), calf_r); // 히트 박스 리스트에 칼프_R 박스 추가
+	
 	foot_l = CreateDefaultSubobject<UBoxComponent>(TEXT("Foot_LBox"));
 	foot_l->SetupAttachment(GetMesh(), FName("foot_l")); // 풋_L 소켓에 박스 컴포넌트 연결
-	foot_l->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("foot_l"), foot_l); // 히트 박스 리스트에 풋_L 박스 추가
+	
 	foot_r = CreateDefaultSubobject<UBoxComponent>(TEXT("Foot_RBox"));
 	foot_r->SetupAttachment(GetMesh(), FName("foot_r")); // 풋_R 소켓에 박스 컴포넌트 연결
-	foot_r->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 박스 컴포넌트 충돌 비활성화
 	HitCollisionBoxes.Add(FName("foot_r"), foot_r); // 히트 박스 리스트에 풋_R 박스 추가
+
+	for (auto Box : HitCollisionBoxes)
+	{
+		if (Box.Value)
+		{
+			Box.Value->SetCollisionObjectType(ECC_HitBox); // 박스 컴포넌트의 충돌 오브젝트 타입을 ECC_HitBox로 설정
+			Box.Value->SetCollisionResponseToAllChannels(ECR_Ignore); // 모든 채널에 대해 충돌 응답을 무시합니다.
+			Box.Value->SetCollisionResponseToChannel(ECC_HitBox, ECR_Block); // 히트 박스 채널에 대해서는 충돌 응답을 차단합니다.
+			Box.Value->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 초기에는 충돌을 비활성화합니다.
+		}
+	}
 }
 
 void ABaseCharacter::BeginPlay()
@@ -319,28 +331,38 @@ void ABaseCharacter::Equip()
 {
 	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
 
-    if(  CombatComponent  ) // CombatComponent가 존재하고,
+    if(  CombatComponent  ) // CombatComponent가 존재
 	{
-		if( HasAuthority() )
-		{
-			if( OverlappingWeapon )
-			{
-				CombatComponent->EquipWeapon(OverlappingWeapon); // CombatComponent의 EquipWeapon 함수를 호출하여 무기를 장착합니다.
-			}
-			else if( CombatComponent->ShouldSwapWeapon() )
-			{
-				CombatComponent->SwapWeapon(); // CombatComponent의 SwapWeapon 함수를 호출하여 무기를 교체합니다.
-			}
-		}
-		else // 서버 권한이 없는 경우
-		{
-			ServerEquipWeapon(); // SetOverlappingWeapon 함수를 호출하여 서버에 무기 장착을 요청합니다.
-		}
+		if(CombatComponent->CombatState == ECombatState::ECS_Unoccupied ) ServerEquipWeapon();
 
+		if (CombatComponent->ShouldSwapWeapon() && HasAuthority() == false && 
+			CombatComponent->CombatState == ECombatState::ECS_Unoccupied
+			&& OverlappingWeapon == nullptr) // 권한이 없고, CombatState가 Unoccupied 상태인 경우
+		{
+			PlaySwapMontage();
+			CombatComponent->CombatState = ECombatState::ECS_SwappingWeapons; // 무기 교체 상태로 설정
+		}
+		/*
 		if (IsLocallyControlled())
-        {
-            StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f); // 무기 먹었을떄 이상한 곳으로 회전하는거 고치는 코드
-        }
+		{
+			StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f); // 무기 먹었을떄 이상한 곳으로 회전하는거 고치는 코드
+		}
+		*/
+	}
+}
+
+void ABaseCharacter::ServerEquipWeapon_Implementation() // 서버에서 지시하는 클라이언트가 무기 장착하는 함수
+{
+	if (CombatComponent) // CombatComponent가 존재하고, 서버 권한이 있는 경우
+	{
+		if (OverlappingWeapon)
+		{
+			CombatComponent->EquipWeapon(OverlappingWeapon); // CombatComponent의 EquipWeapon 함수를 호출하여 무기를 장착합니다.
+		}
+		else if (CombatComponent->ShouldSwapWeapon())
+		{
+			CombatComponent->SwapWeapon(); // CombatComponent의 SwapWeapon 함수를 호출하여 무기를 교체합니다.
+		}
 	}
 }
 
@@ -447,21 +469,6 @@ void ABaseCharacter::SetOverlappingWeapon(ABaseWeapon* Weapon) // 겹치면 무�
 		if (OverlappingWeapon)
 		{
 			OverlappingWeapon->ShowPickUpWidget(true); // 위젯을 보이게 합니다.
-		}
-	}
-}
-
-void ABaseCharacter::ServerEquipWeapon_Implementation() // 서버에서 지시하는 클라이언트가 무기 장착하는 함수
-{
-	if( CombatComponent ) // CombatComponent가 존재하고, 서버 권한이 있는 경우
-	{
-		if( OverlappingWeapon )
-		{
-			CombatComponent->EquipWeapon(OverlappingWeapon); // CombatComponent의 EquipWeapon 함수를 호출하여 무기를 장착합니다.
-		}
-		else if( CombatComponent->ShouldSwapWeapon() )
-		{
-			CombatComponent->SwapWeapon(); // CombatComponent의 SwapWeapon 함수를 호출하여 무기를 교체합니다.
 		}
 	}
 }
@@ -649,12 +656,12 @@ void ABaseCharacter::PlayHitReactMontage()
 		FName SectionName = "HitFront"; // 애니메이션 몽타주의 섹션 이름을 "HitReact"로 설정합니다.
 		AnimInstance->Montage_JumpToSection(SectionName); // 해당 섹션으로 점프합니다.
 	}
+
+	CombatComponent->FinshedReload();
 }
 
 void ABaseCharacter::PlayDieMontage()
 {
-	if( CombatComponent == nullptr || DieMontage == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
-
 	//UE_LOG(LogTemp, Warning, TEXT("PlayHitReactMontage called")); // 디버깅용 로그 출력
 
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -739,6 +746,15 @@ void ABaseCharacter::PlayThrowGrenadeMontage()
 	}
 }
 
+void ABaseCharacter::PlaySwapMontage()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && SwapMontage)
+	{
+		AnimInstance->Montage_Play(SwapMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
+	}
+}
+
 void ABaseCharacter::HideCameraIfCharacterClose()
 {
 	if( !IsLocallyControlled() ) return; // 로컬 플레이어가 아닌 경우 함수 종료
@@ -782,7 +798,7 @@ void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDa
 
 	if( Shield > 0.f )
 	{
-		if( Shield >= DamageToHealth ) // 방어구가 피해보다 크거나 같으면
+		if( Shield >= Damage) // 방어구가 피해보다 크거나 같으면
 		{
 			Shield = FMath::Clamp(Shield - DamageToHealth, 0.f, MAXShield); // 방어구에서 피해를 제거하고, 0과 MAXShield 사이로 제한합니다.
 			DamageToHealth = 0.f; // Health에 적용할 피해를 0으로 설정합니다.
@@ -853,8 +869,11 @@ void ABaseCharacter::UpdateHUDAmmo()
 	}
 }
 
-void ABaseCharacter::MulticastEliminate_Implementation()
+// bLeftGame 값을 bPlayerLeftGame 따라 결정 후 타이머 피니쉬에서 따로 실행
+void ABaseCharacter::MulticastEliminate_Implementation(bool bPlayerLeftGame)
 {
+	bLeftGame = bPlayerLeftGame;
+
 	if( PlayerController )
 	{
 		PlayerController->SetHUDAmmo(0); // 플레이어 컨트롤러의 HUD 탄약을 0으로 설정합니다.
@@ -894,10 +913,20 @@ void ABaseCharacter::MulticastEliminate_Implementation()
 	{
 		ShowScopeSniperWidget(false); // 스나이퍼 조준 위젯을 숨깁니다.
 	}
-
+	if (CrownComponent)
+	{
+		CrownComponent->DestroyComponent(); // 크라운 컴포넌트를 파괴합니다.
+	}
+	GetWorldTimerManager().SetTimer(
+		EliminateTimer, // 타이머 핸들을 설정합니다.
+		this, // 현재 객체를 타겟으로 설정
+		&ABaseCharacter::EliminateTimerFinished, // 타이머가 끝났을 때 호출할 함수
+		EliminateDelay
+	); // 타이머 설정
 }
 
-void ABaseCharacter::Eliminate()
+// 플레이어 제거인데, bPlayerLeftGame 값이 트루면 플레이어가 게임을 떠난 경우고 fasle면 그냥 죽은거
+void ABaseCharacter::Eliminate(bool bPlayerLeftGame)
 {
 	//if( CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 EquippedWeapon이 없으면 함수 종료
 	// CombatComponent->EquippedWeapon->Dropped(); // 무기를 떨어뜨립니다.
@@ -915,25 +944,24 @@ void ABaseCharacter::Eliminate()
 		}
     }
 	
-	MulticastEliminate(); // 멀티캐스트로 함수 실행
-
-	// 이 아래로는 서버에서만 실행
-	GetWorldTimerManager().SetTimer(
-		EliminateTimer, // 타이머 핸들을 설정합니다.
-		this, // 현재 객체를 타겟으로 설정
-		&ABaseCharacter::EliminateTimerFinished, // 타이머가 끝났을 때 호출할 함수
-		EliminateDelay); // 타이머 설정
+	MulticastEliminate(bPlayerLeftGame); // 멀티캐스트로 함수 실행
 }
 
+//bLeftGame 따라 리스폰 아니면 OnLeftGame.Broadcast() 실행
 void ABaseCharacter::EliminateTimerFinished()
 {
 	AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
-	if( MainGameMode )
+	if( MainGameMode && bLeftGame == false ) // 게임 모드가 존재하고 플레이어가 게임을 떠나지 않은 경우
 	{
 		MainGameMode->RequestRespawn( this, Controller ); // 플레이어 제거 함수 호출
 	}
+	if (bLeftGame == true && IsLocallyControlled()) // 로컬 플레이어가 게임을 떠난 경우
+	{
+		OnLeftGame.Broadcast(); // 플레이어가 게임을 떠난 경우 OnLeftGame 이벤트를 브로드캐스트합니다.
+	}
 }
 
+// 죽고 나서 일정 시간 후 에 제거 봇 효과와 사운드를 재생하는 함수
 void ABaseCharacter::EliminateBotTimerFinished()
 {
 	if( EliminateBotEffect )
@@ -991,7 +1019,13 @@ void ABaseCharacter::PollInit()
 			if (BasePC)
 			{
 				BasePC->HideHUDKilledBy(); // 누구에게 죽었는지 보여주는 위젯을 숨깁니다.
-			}	
+			}
+
+			ABaseGameState* BaseGameState = Cast<ABaseGameState>(UGameplayStatics::GetGameState(this));
+			if (BaseGameState && BaseGameState->TopScoreingPlayers.Contains(CharacterState))
+			{
+				MulticastGainedTheLead(); // 멀티캐스트로 우위를 점한 플레이어를 알립니다.
+			}
 		}
 	}
 }
@@ -1103,5 +1137,49 @@ ABaseWeapon* ABaseCharacter::GetEquippedWeapon() const
 	if (CombatComponent == nullptr) return nullptr; // CombatComponent가 없으면 nullptr 반환
 
 	return CombatComponent->EquippedWeapon; // CombatComponent의 EquippedWeapon을 반환합니다.
+}
+
+// 리턴 투 메인메뉴 에서 버튼 클릭시 호출
+void ABaseCharacter::ServerLeaveGame_Implementation()
+{
+	AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+	CharacterState = CharacterState == nullptr ? GetPlayerState<ACharacterState>() : CharacterState; // 플레이어 상태를 ACharacterState로 캐스팅합니다.
+
+	if (MainGameMode && CharacterState)
+	{
+		MainGameMode->PlayerLeftGame(CharacterState); // 플레이어가 게임을 떠났음을 알립니다.
+	}
+}
+
+// 선두 차지하거나 아니면 왕관 나이아가라 생성 및 삭제 함수
+void ABaseCharacter::MulticastGainedTheLead_Implementation()
+{
+	if (CrownSystem == nullptr) return; // CrownSystem이 없으면 함수 종료
+	
+	if (IsValid(CrownComponent) == false) // 크라운 컴포넌트가 없으면 새로 생성
+	{
+		CrownComponent = UNiagaraFunctionLibrary::SpawnSystemAttached(
+			CrownSystem, // 크라운 시스템
+			GetCapsuleComponent(), // 메쉬에 부착
+			FName(), // 소켓 이름
+			GetActorLocation() + FVector(0.f, 0.f, 110.f), // 위치 오프셋
+			GetActorRotation(), // 회전 오프셋
+			EAttachLocation::KeepWorldPosition, // 위치 고정
+			false // 월드 공간에서 스폰
+		);
+	}
+	if (CrownComponent) // 크라운 컴포넌트가 존재하는 경우
+	{
+		CrownComponent->Activate(); // 크라운 컴포넌트를 활성화합니다.
+	}
+}
+
+void ABaseCharacter::MulticastLostTheLead_Implementation()
+{
+	if (CrownComponent) // 크라운 컴포넌트가 존재하는 경우
+	{
+		CrownComponent->DestroyComponent(); // 크라운 컴포넌트를 제거합니다.
+		CrownComponent = nullptr; // 크라운 컴포넌트를 nullptr로 설정합니다.
+	}
 }
 

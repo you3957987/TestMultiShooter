@@ -1,8 +1,10 @@
 #include "ShotGun.h"
 #include "MultiShooter/Character/BaseCharacter.h" // 캐릭터 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/PlayerController/BasePC.h" // 플레이어 컨트롤러 클래스 사용을 위한 헤더 파일
 #include "Kismet/GameplayStatics.h" // 게임 관련 유틸리티 함수들을 사용하기 위한 헤더 파일
 #include "Particles/ParticleSystemComponent.h" // 파티클 시스템을 사용하기 위한 헤더 파일
 #include "Sound/SoundCue.h" // 사운드 큐를 사용하기 위한 헤더 파일
+#include "MultiShooter/CharacterComponent/LagCompensationComponent.h" // 지연 보상 컴포넌트 헤더 파일
 
 void AShotGun::FireShotgun(const TArray<FVector_NetQuantize>& HitTargets)
 {
@@ -17,6 +19,7 @@ void AShotGun::FireShotgun(const TArray<FVector_NetQuantize>& HitTargets)
         const FVector Start = MuzzlePoint->GetComponentLocation(); // 총구 위치를 가져옵니다.
 
         TMap< ABaseCharacter*, uint32 > HitMap; // 히트된 캐릭터와 히트 횟수를 저장할 맵
+		TMap<ABaseCharacter*, uint32> HeadShotHitMap; // 헤드샷 캐릭터와 히트 횟수를 저장할 맵
 
         for (auto HitTarget : HitTargets)
         {
@@ -26,14 +29,19 @@ void AShotGun::FireShotgun(const TArray<FVector_NetQuantize>& HitTargets)
             ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(FireHit.GetActor()); // 충돌한 액터가 ABaseCharacter인지 확인
             if (BaseCharacter )
             {
-                if (HitMap.Contains(BaseCharacter)) // 이미 히트된 캐릭터인 경우
+				const bool bHeadShot = FireHit.BoneName.ToString() == FString("head"); // 헤드샷 여부를 확인합니다.
+
+                if (bHeadShot)
                 {
-                    HitMap[BaseCharacter]++; // 히트 횟수를 증가시킵니다.
+                    if (HeadShotHitMap.Contains(BaseCharacter)) HeadShotHitMap[BaseCharacter]++; // 히트 횟수를 증가시킵니다.
+                    else HeadShotHitMap.Emplace(BaseCharacter, 1); // 캐릭터와 히트 횟수를 추가합니다.
                 }
-                else // 처음 히트된 캐릭터인 경우
+                else
                 {
-                    HitMap.Emplace(BaseCharacter, 1); // 캐릭터와 히트 횟수를 추가합니다.
+                    if (HitMap.Contains(BaseCharacter)) HitMap[BaseCharacter]++; // 히트 횟수를 증가시킵니다.
+                    else HitMap.Emplace(BaseCharacter, 1); // 캐릭터와 히트 횟수를 추가합니다.
                 }
+
                 if (ImpactParticle) // 충돌 이펙트 파티클이 설정되어 있는 경우
                 {
                     UGameplayStatics::SpawnEmitterAtLocation(
@@ -55,16 +63,60 @@ void AShotGun::FireShotgun(const TArray<FVector_NetQuantize>& HitTargets)
                 }
             }
         }
-        for (auto HitPair : HitMap) // 히트된 캐릭터와 히트 횟수를 순회합니다.
+		TArray<ABaseCharacter*> HitCharacters; // 히트된 캐릭터들을 저장할 배열
+
+        TMap< ABaseCharacter*, float > DamageMap;// 캐릭터당 최종 대미지 저장
+		for (auto HitPair : HitMap) // 몸샷 대미지를 적용합니다.
         {
-            if (HitPair.Key && HasAuthority() && OwnerController) // 대미지 주는거는 서버에서만 실행
+            if (HitPair.Key ) // 대미지 주는거는 서버에서만 실행
             {
-                UGameplayStatics::ApplyDamage(
-                    HitPair.Key, // 피해를 입힐 대상
-					Damage * HitPair.Value, // 피해량 * 히트 횟수
-                    OwnerController, // 피해를 입히는 인스티게이터의 컨트롤러
-                    this, // 피해를 입히는 액터 (현재 무기)
-                    UDamageType::StaticClass() // 피해 유형
+                DamageMap.Emplace(HitPair.Key, Damage * HitPair.Value); // 캐릭터와 대미지를 맵에 추가합니다.
+
+				HitCharacters.AddUnique(HitPair.Key); // 히트된 캐릭터를 배열에 추가합니다.
+            }
+        }
+		for (auto HeadShotHitPair : HeadShotHitMap) // 헤드샷 대미지를 적용합니다.
+        {
+            if (HeadShotHitPair.Key) 
+            {
+                if (DamageMap.Contains(HeadShotHitPair.Key)) DamageMap[HeadShotHitPair.Key] += HeadShotHitPair.Value * HeadShotDamage;
+                else DamageMap.Emplace(HeadShotHitPair.Key, HeadShotHitPair.Value * HeadShotDamage); // 캐릭터와 히트 횟수를 추가합니다.
+
+                HitCharacters.AddUnique(HeadShotHitPair.Key); // 히트된 캐릭터를 배열에 추가합니다.
+            }
+        }
+
+        for (auto DamagePair : DamageMap)
+        {
+            if (DamagePair.Key && OwnerController)
+            {
+                bool bCauseAuthDamage = !bUseServerSideRewind || OwnerPawn->IsLocallyControlled();
+
+                if (HasAuthority() && bCauseAuthDamage)
+                {
+                    UGameplayStatics::ApplyDamage(
+                        DamagePair.Key, // 피해를 입힐 대상
+                        DamagePair.Value, // 피해량 
+                        OwnerController, // 피해를 입히는 인스티게이터의 컨트롤러
+                        this, // 피해를 입히는 액터 (현재 무기)
+                        UDamageType::StaticClass() // 피해 유형
+                    );
+                }
+            }
+        }
+
+        if (HasAuthority() == false && bUseServerSideRewind == true)
+        {
+            BaseOwnerCharacter = BaseOwnerCharacter == nullptr ? Cast<ABaseCharacter>(OwnerPawn) : BaseOwnerCharacter;
+            BaseOwnerContoller = BaseOwnerContoller == nullptr ? Cast<ABasePC>(OwnerController) : BaseOwnerContoller;
+            // 플레이어 컨트롤러가 nullptr이면 캐스팅합니다.
+            if (BaseOwnerCharacter && BaseOwnerContoller && BaseOwnerCharacter->GetLagCompensationComponent() && BaseOwnerCharacter->IsLocallyControlled() )
+            {
+                BaseOwnerCharacter->GetLagCompensationComponent()->ShotgunServerScoreRequest(
+                    HitCharacters,
+					Start, // 트레이스 시작 위치
+                    HitTargets, // 히트된 타겟 위치들
+					BaseOwnerContoller->GetServerTime() - BaseOwnerContoller->SingleTripTime // 현재 시간. 서버 시간에 요청을 보낸 시간만 뺴줌( 왕복 시간 아님 )
                 );
             }
         }

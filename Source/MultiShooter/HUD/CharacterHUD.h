@@ -37,10 +37,24 @@ class MULTISHOOTER_API ACharacterHUD : public AHUD
 
 	FHUDPackage HUDPackage; // 십자선 HUD 패키지
 
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	float CrosshairSpreadMax = 16.f; // 십자선 최대 확산 정도
 
 	void DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, FVector2D Spread, FLinearColor CrosshairColor);
+
+	UPROPERTY(EditAnyWhere, Category = "자체설정")
+	TSubclassOf<class UElimAnnouncement> ElimAnnouncementClass; // 제거 알림 위젯 클래스
+
+	UPROPERTY(EditAnyWhere, Category = "자체설정")
+	float ElimAnnouncementTime = 1.5f; // 제거 알림 실행 시간
+
+	class APlayerController* OwningPlayerController; // 플레이어 컨트롤러
+
+	UFUNCTION()
+	void ElimAnouncementTimerFinished(UElimAnnouncement* MessageToRemove); // 제거 알림 타이머가 끝났을 때 호출되는 함수
+
+	UPROPERTY()
+	TArray<UElimAnnouncement*> ElimMessages; // 제거 알림 위젯 배열
 
 protected:
 	virtual void BeginPlay() override;
@@ -53,7 +67,7 @@ public:
 	UPROPERTY()
 	class UCharacterUI* CharacterUI; // 캐릭터 UI 위젯
 
-	UPROPERTY(EditAnywhere, Category = "PlayerStat")
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	TSubclassOf<class UUserWidget> CharacterUIClass; // 캐릭터 UI 클래스
 
 	void AddCharacterUI(); // 캐릭터 UI 위젯을 추가하는 함수
@@ -61,9 +75,11 @@ public:
  	UPROPERTY()
 	class UAnnouncement* Announcement; // 캐릭터 UI 위젯
 
-	UPROPERTY(EditAnywhere, Category = "PlayerStat")
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	TSubclassOf<class UUserWidget> AnnouncementClass; // 시작전 안내 클래스
 
 	void AddAnnouncement(); // 시작전 안내 위젯을 추가하는 함수
+
+	void AddElimAnnouncement(FString Attacker, FString Victim); // 제거 알림 위젯을 추가하는 함수
 	
 };

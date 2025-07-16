@@ -4,7 +4,6 @@
 #include "Net/UnrealNetwork.h" // 네트워크 관련 헤더 파일
 
 
-
 void ACharacterState::BeginPlay()
 {
     Super::BeginPlay();
@@ -82,7 +81,15 @@ void ACharacterState::AddToDefeat(int32 DefeatAmount)
 
 void ACharacterState::UpdateDeathMessage(FString KillerName)
 {
-    KilledBy = KillerName; // 죽은 메시지를 업데이트합니다.
+    if (KilledBy == KillerName)
+    {
+        // 값이 같으면 강제로 다르게 만들어서 Replication 유도
+        KilledBy = KillerName + TEXT(" ");
+    }
+    else
+    {
+        KilledBy = KillerName; // 죽은 메시지를 업데이트합니다.
+    }
 
     BaseCharacter = BaseCharacter == nullptr ? Cast<ABaseCharacter>(GetPawn()) : BaseCharacter; // 캐릭터 상태를 관리하는 캐릭터 클래스 포인터를 가져옵니다.
     if( BaseCharacter == nullptr ) return;

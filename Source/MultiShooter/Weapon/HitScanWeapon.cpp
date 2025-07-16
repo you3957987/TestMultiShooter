@@ -1,10 +1,11 @@
 #include "HitScanWeapon.h"
 #include "MultiShooter/Character/BaseCharacter.h" // 캐릭터 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/PlayerController/BasePC.h" // 플레이어 컨트롤러 클래스 사용을 위한 헤더 파일
 #include "Particles/ParticleSystemComponent.h" // 파티클 시스템을 사용하기 위한 헤더 파일
 #include "Sound/SoundCue.h" // 사운드 큐를 사용하기 위한 헤더 파일
-#include "DrawDebugHelpers.h" // 디버그용 선을 그리기 위한 헤더 파일
 #include "Kismet/GameplayStatics.h" // 게임 관련 유틸리티 함수들을 사용하기 위한 헤더 파일
 #include "WeaponType.h" // 무기 타입 정의를 위한 헤더 파일
+#include "MultiShooter/CharacterComponent/LagCompensationComponent.h" // 지연 보상 컴포넌트 헤더 파일
 
 void AHitScanWeapon::Fire(const FVector& HitTarget)
 {
@@ -23,15 +24,36 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
         WeaponTraceHit(Start, HitTarget, FireHit); // 무기 트레이스 히트 함수를 호출하여 충돌 결과를 얻습니다.
 
         ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(FireHit.GetActor()); // 충돌한 액터가 ABaseCharacter인지 확인
-        if (BaseCharacter && HasAuthority() && OwnerController )
+        if (BaseCharacter && OwnerController )
         {
-            UGameplayStatics::ApplyDamage(
-                BaseCharacter, // 피해를 입힐 대상
-                Damage, // 피해량
-                OwnerController, // 피해를 입히는 인스티게이터의 컨트롤러
-                this, // 피해를 입히는 액터 (현재 무기)
-                UDamageType::StaticClass() // 피해 유형
-            );
+            bool bCauseAuthDamage = !bUseServerSideRewind || OwnerPawn->IsLocallyControlled();
+
+            if (HasAuthority() && bCauseAuthDamage) // 서버는 시간 되감기가 필요 없음
+            {
+				const float TotalDamage = FireHit.BoneName.ToString() == FString("head") ? HeadShotDamage : Damage; // 헤드샷 여부에 따라 대미지를 결정합니다.
+    
+                UGameplayStatics::ApplyDamage(
+                    BaseCharacter, // 피해를 입힐 대상
+                    TotalDamage, // 피해량
+                    OwnerController, // 피해를 입히는 인스티게이터의 컨트롤러
+                    this, // 피해를 입히는 액터 (현재 무기)
+                    UDamageType::StaticClass() // 피해 유형
+                );
+            }
+            if(HasAuthority() == false && bUseServerSideRewind == true ) // 클라쪽은 시간 되감기가 필요
+            {
+				BaseOwnerCharacter = BaseOwnerCharacter == nullptr ? Cast<ABaseCharacter>(OwnerPawn) : BaseOwnerCharacter; 
+				BaseOwnerContoller = BaseOwnerContoller == nullptr ? Cast<ABasePC>(OwnerController) : BaseOwnerContoller; // 플레이어 컨트롤러가 nullptr이면 캐스팅합니다.
+                if (BaseOwnerCharacter && BaseOwnerContoller && BaseOwnerCharacter->GetLagCompensationComponent() && BaseOwnerCharacter->IsLocallyControlled())
+                {
+                    BaseOwnerCharacter->GetLagCompensationComponent()->ServerScoreRequest(
+                        BaseCharacter, // 피해를 입힐 대상
+                        Start, // 트레이스 시작 위치
+                        HitTarget, // 충돌 지점
+                        BaseOwnerContoller->GetServerTime() - BaseOwnerContoller->SingleTripTime // 현재 시간. 서버 시간에 요청을 보낸 시간만 뺴줌( 왕복 시간 아님 )
+					);
+                }
+            }
         }
         if(ImpactParticle) // 충돌 이펙트 파티클이 설정되어 있는 경우
         {
@@ -71,14 +93,10 @@ void AHitScanWeapon::WeaponTraceHit( const FVector& TraceStart, const FVector& H
         {
             BeamEnd = OutHit.ImpactPoint; // 빔의 끝 위치를 충돌 지점으로 설정
         }
-        DrawDebugSphere(
-            World, // 현재 월드
-            BeamEnd, // 빔의 끝 위치
-            4.f, // 구의 반지름
-            12, // 구의 세그먼트 수
-            FColor::Orange, // 구의 색상
-            true // 지속적으로 그리기
-        );
+        else
+        {
+			OutHit.ImpactPoint = End; // 충돌이 없으면 끝 위치를 임팩트 포인트로 설정
+        }
         if( BeamParticle ) // 빔 파티클이 설정되어 있는 경우
         {
             UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(

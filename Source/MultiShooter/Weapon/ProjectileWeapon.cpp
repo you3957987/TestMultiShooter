@@ -6,11 +6,6 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 {
     Super::Fire(HitTarget); // 부모 클래스의 Fire 함수 호출
 
-    if( !HasAuthority() ) // 서버 권한이 없는 경우
-    {
-        return; // 서버가 아닌 경우 발사하지 않음
-    }
-
     APawn* InstigatorPawn = Cast<APawn>(GetOwner());
 
     FTransform FirePosition = MuzzlePoint->GetComponentTransform();
@@ -18,16 +13,54 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
     FVector ToTarget = HitTarget - FirePosition.GetLocation();
     FRotator TargetRotation = ToTarget.Rotation();
 
-    if(  ProjectileClass && InstigatorPawn )
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = GetOwner(); // 발사체의 소유자를 현재 무기로 설정
+    SpawnParams.Instigator = InstigatorPawn; // 발사체의 인스티게이터를 현재 무기의 인스티게이터로 설정
+
+    UWorld* World = GetWorld();
+	AProjectile* SpawnedProjectile = nullptr;
+
+	if (bUseServerSideRewind == true) // 서버 사이드 리와인드를 사용할 때
     {
-        FActorSpawnParameters SpawnParams;
-        SpawnParams.Owner = GetOwner(); // 발사체의 소유자를 현재 무기로 설정
-        SpawnParams.Instigator = InstigatorPawn; // 발사체의 인스티게이터를 현재 무기의 인스티게이터로 설정
-        UWorld* World = GetWorld();
-        if (World)
+        if (InstigatorPawn->HasAuthority()) // 서버
         {
-            AProjectile* Projectile = World->SpawnActor<AProjectile>(ProjectileClass, FirePosition.GetLocation(), TargetRotation, SpawnParams);
+            if (InstigatorPawn->IsLocallyControlled()) // 서버이면서 호스트 는 그냥 복제된거 사용
+            {
+                SpawnedProjectile = World->SpawnActor<AProjectile>(ProjectileClass, FirePosition.GetLocation(), TargetRotation, SpawnParams );
+				SpawnedProjectile->bUseServerSideRewind = false; // 로컬에서만 사용
+				SpawnedProjectile->Damage = Damage; // 발사체의 피해량 설정
+				SpawnedProjectile->HeadShotDamage = HeadShotDamage; // 발사체의 헤드샷 피해량 설정
+            }
+            else // 서버이지만 로컬 컨트롤러가 아님 즉 서버에서 클라이언트를 처리하는 경우
+            {
+                SpawnedProjectile = World->SpawnActor<AProjectile>(ServerSideRewindProjectileClass, FirePosition.GetLocation(), TargetRotation, SpawnParams);
+                SpawnedProjectile->bUseServerSideRewind = true;
+            }
+        }
+        else if(InstigatorPawn->HasAuthority() == false) // 클라이언트
+        {
+            if (InstigatorPawn->IsLocallyControlled()) // 클라이언트이면서 자기가 직접 조종중
+            {
+                SpawnedProjectile = World->SpawnActor<AProjectile>(ServerSideRewindProjectileClass, FirePosition.GetLocation(), TargetRotation, SpawnParams);
+                SpawnedProjectile->bUseServerSideRewind = true;
+				SpawnedProjectile->TraceStart = FirePosition.GetLocation(); // 발사 위치를 설정
+				SpawnedProjectile->InitialVelocity =  SpawnedProjectile->GetActorForwardVector() * SpawnedProjectile->InitialSpeed; // 초기 속도를 설정
+            }
+            else // 클라이언트이지만 로컬 컨트롤러가 아님 즉 서버에서 클라이언트를 처리하는 경우
+            {
+                SpawnedProjectile = World->SpawnActor<AProjectile>(ServerSideRewindProjectileClass, FirePosition.GetLocation(), TargetRotation, SpawnParams);
+                SpawnedProjectile->bUseServerSideRewind = false;
+            }
         }
     }
-
+	else if (bUseServerSideRewind == false) // 서버 사이드 리와인드를 사용하지 않을 때
+    {
+        if (InstigatorPawn->HasAuthority()) // 서버에만 
+        {
+            SpawnedProjectile = World->SpawnActor<AProjectile>(ProjectileClass, FirePosition.GetLocation(), TargetRotation, SpawnParams);
+            SpawnedProjectile->bUseServerSideRewind = false; // 로컬에서만 사용
+            SpawnedProjectile->Damage = Damage; // 발사체의 피해량 설정
+            SpawnedProjectile->HeadShotDamage = HeadShotDamage; // 발사체의 헤드샷 피해량 설정
+        }
+    }
 }

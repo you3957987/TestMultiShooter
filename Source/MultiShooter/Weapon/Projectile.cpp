@@ -69,7 +69,8 @@ void AProjectile::OnHit( UPrimitiveComponent* HitComp,  AActor* OtherActor, UPri
 	Destroy(); // 충돌 후 발사체를 파괴합니다.
 }
 
-void AProjectile::Destroyed() // 이 함수는 언리얼 자체적으로 서버에서 호출 시 자동으로 클라이언트에 복제됨 그레서 아래 임팩트 파티클이랑 사운드를 복제할 필요 없음
+// 이 함수는 언리얼 자체적으로 서버에서 호출 시 자동으로 클라이언트에 복제됨 그레서 아래 임팩트 파티클이랑 사운드를 복제할 필요 없음
+void AProjectile::Destroyed() 
 {
 	Super::Destroyed();
 
@@ -91,6 +92,7 @@ void AProjectile::Destroyed() // 이 함수는 언리얼 자체적으로 서버�
 	}
 }
 
+// 발사체가 생성될 때 나이아가라 트레일 시스템을 생성합니다.
 void AProjectile::SpawnTrailSystem()
 {
 	if (TrailSystem)

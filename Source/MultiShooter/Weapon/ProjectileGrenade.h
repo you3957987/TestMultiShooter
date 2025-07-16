@@ -9,7 +9,7 @@ class MULTISHOOTER_API AProjectileGrenade : public AProjectile
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	USoundCue* BounceSound; // 충돌 시 재생될 소리
 
 protected:
