@@ -6,18 +6,19 @@
 #include "MultiShooter/Character/BaseCharacter.h"
 #include "Components/Image.h"
 #include "Net/UnrealNetwork.h" // 네트워크 관련 헤더 파일
-#include "MultiShooter/GameMode/MainGameMode.h"
-#include "MultiShooter/HUD/Announcement.h" // 시작전 안내 위젯 헤더 파일
 #include "Kismet/GameplayStatics.h" // 게임 관련 유틸리티 함수 헤더 파일
-#include "MultiShooter/CharacterComponent/CombatComponent.h" // 전투 컴포넌트 헤더 파일
-#include "MultiShooter/GameState/BaseGameState.h" // 게임 상태 헤더 파일
-#include "MultiShooter/CharacterState/CharacterState.h" // 플레이어 상태 헤더 파일
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputAction.h"
+#include "Components/EditableTextBox.h"
+
+#include "MultiShooter/GameMode/MainGameMode.h"
+#include "MultiShooter/HUD/Announcement.h" // 시작전 안내 위젯 헤더 파일
+#include "MultiShooter/CharacterComponent/CombatComponent.h" // 전투 컴포넌트 헤더 파일
+#include "MultiShooter/GameState/BaseGameState.h" // 게임 상태 헤더 파일
+#include "MultiShooter/CharacterState/CharacterState.h" // 플레이어 상태 헤더 파일
 #include "MultiShooter/HUD/ReturnToMainMenu.h" // 메인 메뉴로 돌아가는 위젯 헤더 파일
 #include "MultiShooter/HUD/ChatBox.h" // 채팅 박스 위젯 헤더 파일
-#include "Components/EditableTextBox.h"
 
 void ABasePC::BeginPlay()
 {
@@ -26,19 +27,6 @@ void ABasePC::BeginPlay()
     CharacterHUD = Cast<ACharacterHUD>(GetHUD()); // 현재 플레이어의 HUD를 캐릭터 HUD로 캐스팅합니다.
     ServerCheckMatchState(); // 서버에서 매치 상태를 확인합니다.
 
-    // 로컬 컨트롤러에서만 채팅 박스 생성
-    if (IsLocalController() && ChatBoxClass)
-    {
-        ChatBox = CreateWidget<UChatBox>(this, ChatBoxClass);
-        if (ChatBox && ChatBox->ChatInputBox)
-        {
-            ChatBox->AddToViewport(100);
-			ChatBox->ChatInputBox->SetHintText(FText::FromString("Text.....")); // 채팅 입력 박스에 힌트 텍스트 설정
-            ChatBox->SetVisibility(ESlateVisibility::Collapsed);
-			ChatBox->ChatInputBox->RevertTextOnEscape = true; // 채팅 입력 박스에서 Escape 키를 누르면 텍스트가 되돌려지도록 설정합니다.
-            ChatBox->ChatInputBox->OnTextCommitted.AddDynamic(this, &ABasePC::OnChatCommitted);
-        }
-    }
     if (InputComponent)
     {
         InputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &ABasePC::OnMouseClickAnywhere);
@@ -105,7 +93,7 @@ void ABasePC::ReceivedPlayer()
     }
 }
 
-// 허드 세팅 관련 함수들--------------------------------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------------------------------------------허드 세팅 관련 함수들ㅜ
 
 // 시간을 관리하면서 허드를 총괄 관리하는 함수. 여기서 서버랑 클라랑 시간 동기화도 일어남
 void ABasePC::SetHUDTime()
@@ -402,6 +390,7 @@ void ABasePC::HideHUDKilledBy()
     }
 }
 
+// 아나운스 먼트에서 시간 보여주고, 쿨다운 상테에서 0초일때 위젯 초기화 함!!!
 void ABasePC::SetHUDAnnouncementCountDown(float CountDownTime)
 {
     CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
@@ -417,6 +406,11 @@ void ABasePC::SetHUDAnnouncementCountDown(float CountDownTime)
                 CharacterHUD->Announcement->InfoText->SetText(FText());
                 CharacterHUD->Announcement->RemoveFromParent();
                 CharacterHUD->Announcement = nullptr;
+                if (ChatBox)
+                {
+                    ChatBox->RemoveFromParent(); // 채팅 박스를 제거합니다.
+					ChatBox = nullptr; // 채팅 박스 포인터를 nullptr로 설정합니다.
+                }
             }
             return; // 함수 종료
         }
@@ -426,7 +420,10 @@ void ABasePC::SetHUDAnnouncementCountDown(float CountDownTime)
         CharacterHUD->Announcement->WarmUpTimeText->SetText(FText::FromString(CountDownText)); // 카운트다운 텍스트를 설정합니다.
     }
 }
-// 허드 세팅 관련 함수들--------------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------------------------허드 세팅 관련 함수들ㅗ
+
+// ------------------------------------------------------------------------------------------------------------------시간 동기화 관련 함수들ㅜ
 
 // 틱마다 실해되면서 일정 시간마다 ServerRequestServerTime()를 호출하는 함수
 void ABasePC::CheckTimeSync(float DeltaTime)
@@ -469,6 +466,10 @@ float ABasePC::GetServerTime()
     }
 }
 
+// ------------------------------------------------------------------------------------------------------------------시간 동기화 관련 함수들ㅗ
+
+//--------------------------------------------------------------------------------------------------------------- 매치 상태 관련 함수들ㅜ
+
 // 매치 상태를 변경하는 함수.
 void ABasePC::OnMatchStateSet(FName State)
 {
@@ -493,6 +494,7 @@ void ABasePC::OnMatchStateSet(FName State)
                 CharacterHUD->Announcement->SetVisibility(ESlateVisibility::Visible); // 시작전 안내 위젯을 보이도록 설정합니다
             }
         }
+        AddChatBox(); // 채팅 박스를 추가합니다.
     }
 }
 
@@ -523,6 +525,7 @@ void ABasePC::OnRep_MatchState()
                 //UE_LOG(LogTemp, Warning, TEXT("OnRep_MatchState: MatchState is WaitingToStart.")); // 디버그용 로그 출력
             }
         }
+        AddChatBox(); // 채팅 박스를 추가합니다.
     }
 }
 
@@ -565,8 +568,7 @@ void ABasePC::HandleCoolDown()
         {
             CharacterHUD->CharacterUI->RemoveFromParent(); // 캐릭터 UI를 제거합니다.
         }
-		if (ChatBox) ChatBox->RemoveFromParent(); // 채팅 박스를 제거합니다.
-
+		
         if(  CharacterHUD->Announcement && CharacterHUD->Announcement->AnnouncementText && CharacterHUD->Announcement->InfoText ) // 시작전 안내 위젯이 있는 경우
         {
             CharacterHUD->Announcement->SetVisibility(ESlateVisibility::Visible); // 시작전 안내 위젯을 보이도록 설정합니다.
@@ -620,7 +622,13 @@ void ABasePC::HandleCoolDown()
     }
 }
 
-//서버가 게임모드한테 워밍업 시간, 매치 시간, 레벨 시작 시간, 쿨다운 시간, 매치 상태를 받아와서 저장후 ClientJoinMidGame()로 클라한테 전달
+// --------------------------------------------------------------------------------------------------------------- 매치 상태 관련 함수들ㅗ
+
+
+// ---------------------------------------------------------------------------------------------------------------게임 모드에서 게임 상태 받아오기 함수들ㅜ
+
+//서버가 게임모드한테 워밍업 시간, 매치 시간, 레벨 시작 시간, 쿨다운 시간 
+//매치 상태를 받아와서 저장후 ClientJoinMidGame()로 클라한테 전달
 void ABasePC::ServerCheckMatchState_Implementation()
 {
     AMainGameMode* MainGameMode = Cast<AMainGameMode>( UGameplayStatics::GetGameMode(this) ); // 현재 게임 모드를 AMainGameMode로 캐스팅합니다.
@@ -635,8 +643,10 @@ void ABasePC::ServerCheckMatchState_Implementation()
     }
 }
 
-// 클라이언트가 중간에 게임에 참여할 때 호출되는 함수 워밍업 시간, 매치 시간, 레벨 시작 시간, 쿨다운 시간, 매치 상태를 서버한테 받아서 설정
-void ABasePC::ClientJoinMidGame_Implementation( FName StateOfMatch, float WarmUp, float Match, float LevelStarting, float CoolTime ) // 클라이언트가 중간에 게임에 참여할 때 호출되는 함수
+// 클라이언트가 중간에 게임에 참여할 때 호출되는 함수 워밍업 시간, 매치 시간, 
+// 레벨 시작 시간, 쿨다운 시간, 매치 상태를 서버한테 받아서 설정
+void ABasePC::ClientJoinMidGame_Implementation( FName StateOfMatch, float WarmUp, float Match, 
+    float LevelStarting, float CoolTime ) // 클라이언트가 중간에 게임에 참여할 때 호출되는 함수
 {
     WarmUpTime = WarmUp; // 워밍업 시간 설정
     MatchTime = Match; // 매치 시간 설정
@@ -650,6 +660,10 @@ void ABasePC::ClientJoinMidGame_Implementation( FName StateOfMatch, float WarmUp
         CharacterHUD->AddAnnouncement(); // 시작전 안내 위젯을 추가합니다.
     }
 }
+
+// --------------------------------------------------------------------------------------------------------------게임 모드에서 게임 상태 받아오기 함수들ㅗ
+
+// ----------------------------------------------------------------------------------------------------------------- 핑 관련 함수들 ㅜ
 
 // 틱마다 핑을 확인해서 경고할지 중지할지 결정하는 함수
 void ABasePC::CheckPing(float DeltaTime)
@@ -745,40 +759,9 @@ void ABasePC::StopHighPingWarning() // 핑 경고 중지 함수
     }
 }
 
-// 메인 메뉴 버튼 누르면 실행되는 함수
-void ABasePC::ShowReturnToMainMenu()
-{
-    if (ReturnToMainMenuWidget == nullptr) return;
-    if (ReturnToMainMenu == nullptr)
-    {
-		ReturnToMainMenu = CreateWidget<UReturnToMainMenu>(this, ReturnToMainMenuWidget); // ReturnToMainMenu 위젯을 생성합니다.
-    }
-    if (ReturnToMainMenu)
-    {
-		bReturnToMainMenuOpen = !bReturnToMainMenuOpen; // ReturnToMainMenu 열림 상태를 토글합니다.
-        if (bReturnToMainMenuOpen == true)
-        {
-			ReturnToMainMenu->MenuSetUp(); // ReturnToMainMenu 위젯을 설정합니다.
-        }
-        else
-        {
-			ReturnToMainMenu->MenuTeardown(); // ReturnToMainMenu 위젯을 제거합니다.
-        }
-    }
-}
+// ---------------------------------------------------------------------------------------------------------------------- 핑 관련 함수들 ㅗ
 
-// 게임을 떠날 때 호출되는 함수
-void ABasePC::PawnLeavingGame()
-{
-    ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(GetPawn());
-    if (BaseCharacter && !BaseCharacter->bLeftGame)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("PawnLeavingGame"));
-        BaseCharacter->Eliminate(true);
-    }
-
-    Super::PawnLeavingGame();
-}
+//-------------------------------------------------------------------------------------------------------------------------- 킬로그 관련 ㅜ
 
 void ABasePC::CleintElimAnnouncement_Implementation(ACharacterState* Attacker, ACharacterState* Victim)
 {
@@ -819,6 +802,66 @@ void ABasePC::BroadcastElim(ACharacterState* Attacker, ACharacterState* Victim)
 	CleintElimAnnouncement(Attacker, Victim); // 클라이언트에게 제거 알림을 보냅니다.
 }
 
+//------------------------------------------------------------------------------------------------------------------------킬로그 관련 ㅗ
+
+//--------------------------------------------------------------------------------------------------------------------------- 임 종료 관련 함수들ㅜ
+
+// 메인 메뉴 버튼 누르면 실행되는 함수
+void ABasePC::ShowReturnToMainMenu()
+{
+    if (ReturnToMainMenuWidget == nullptr) return;
+    if (ReturnToMainMenu == nullptr)
+    {
+        ReturnToMainMenu = CreateWidget<UReturnToMainMenu>(this, ReturnToMainMenuWidget); // ReturnToMainMenu 위젯을 생성합니다.
+    }
+    if (ReturnToMainMenu)
+    {
+        bReturnToMainMenuOpen = !bReturnToMainMenuOpen; // ReturnToMainMenu 열림 상태를 토글합니다.
+        if (bReturnToMainMenuOpen == true)
+        {
+            ReturnToMainMenu->MenuSetUp(); // ReturnToMainMenu 위젯을 설정합니다.
+        }
+        else
+        {
+            ReturnToMainMenu->MenuTeardown(); // ReturnToMainMenu 위젯을 제거합니다.
+        }
+    }
+}
+
+// 게임을 떠날 때 호출되는 함수
+void ABasePC::PawnLeavingGame()
+{
+    ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(GetPawn());
+    if (BaseCharacter && !BaseCharacter->bLeftGame)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("PawnLeavingGame"));
+        BaseCharacter->Eliminate(true);
+    }
+
+    Super::PawnLeavingGame();
+}
+
+// --------------------------------------------------------------------------------------------------------------------------- 게임 종료 관련 함수들 ㅗ
+
+//--------------------------------------------------------------------------------------------------------------------------- 채팅 관련 ㅜ
+
+void ABasePC::AddChatBox()
+{
+    // 로컬 컨트롤러에서만 채팅 박스 생성
+    if (IsLocalController() && ChatBoxClass )
+    {
+        ChatBox = CreateWidget<UChatBox>(this, ChatBoxClass);
+		if (ChatBox && ChatBox->ChatInputBox ) // 채팅 박스가 유효하고 아직 뷰포트에 추가되지 않은 경우
+        {
+            ChatBox->AddToViewport(100);
+            ChatBox->ChatInputBox->SetHintText(FText::FromString("Text.....")); // 채팅 입력 박스에 힌트 텍스트 설정
+            ChatBox->SetVisibility(ESlateVisibility::Visible); // 기다리는 동안은 채팅 숨기기
+            ChatBox->ChatInputBox->RevertTextOnEscape = true; // 채팅 입력 박스에서 Escape 키를 누르면 텍스트가 되돌려지도록 설정합니다.
+            ChatBox->ChatInputBox->OnTextCommitted.AddDynamic(this, &ABasePC::OnChatCommitted);
+        }
+    }
+}
+
 void ABasePC::StartChat()
 {
 	bIsChatting = !bIsChatting; // 채팅 상태를 토글합니다.
@@ -838,23 +881,6 @@ void ABasePC::StartChat()
         SetInputMode(InputModeGameOnly);
         SetShowMouseCursor(false); // 마우스 커서 숨기기
     }
-    /*
-    if (ChatBox->GetVisibility() == ESlateVisibility::Collapsed)
-    {
-        ChatBox->SetVisibility(ESlateVisibility::Visible);
-        FInputModeGameAndUI InputModeGameAndUI;
-        InputModeGameAndUI.SetWidgetToFocus(ChatBox->ChatInputBox->TakeWidget());
-        SetInputMode(InputModeGameAndUI);
-        SetShowMouseCursor(true);
-    }
-    else if (ChatBox->GetVisibility() == ESlateVisibility::Visible)
-    {
-        ChatBox->SetVisibility(ESlateVisibility::Collapsed);
-        FInputModeGameOnly InputModeGameOnly;
-        SetInputMode(InputModeGameOnly);
-        SetShowMouseCursor(false);
-    }
-    */
 }
 
 void ABasePC::OnChatCommitted(const FText& Text, ETextCommit::Type CommitMethod)
@@ -898,6 +924,7 @@ void ABasePC::ClientChatCommitted_Implementation(const FText& Text, const FStrin
     }
 }
 
+// 마우스 클릭 시 채팅 박스 외부를 클릭했을 때 채팅 종료
 void ABasePC::OnMouseClickAnywhere()
 {
     if (bIsChatting)
@@ -909,5 +936,7 @@ void ABasePC::OnMouseClickAnywhere()
         SetShowMouseCursor(false);
     }
 }
+
+//--------------------------------------------------------------------------------------------------------------------------- 채팅 관련 ㅗ
 
 

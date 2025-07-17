@@ -19,7 +19,7 @@ class MULTISHOOTER_API AProjectile : public AActor
 	FTimerHandle DestroyTimer; // 파괴 타이머 핸들
 
 	UPROPERTY( EditAnywhere, Category = "자체설정")
-	float DestroyTime = 3.f; // 파괴 시간, 발사된 후 5초 후에 파괴됩니다.
+	float DestroyTime = 3.f; // 파괴 시간. 이거 로켓 삭제시 파티클 바로 안지워 지게 설정하는 거임. 로켓이 터지면 파티클이 사라지기 전에 파괴되게 하는거임 중요 X
 
 protected:
 	virtual void BeginPlay() override;
@@ -49,17 +49,18 @@ protected:
 	UPROPERTY()
 	class UNiagaraComponent* TrailComponent; // 나이아가라 트레일 컴포넌트
 
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	float DamageInnerRadius = 200.f; // 폭발 피해 반경
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	float DamageOuterRadius = 400.f; // 폭발 피해 외부 반경
+
 	void SpawnTrailSystem(); // 나이아가라 트레일 시스템을 생성하는 함수
 
 	void StartDestroyTimer(); // 파괴 타이머를 시작하는 함수
 	void DestroyTimerFinished(); // 파괴 타이머가 끝났을 때 호출되는 함수
 
 	void ExplodeDamage(); // 폭발 피해를 입히는 함수
-
-	UPROPERTY( EditAnywhere, Category = "자체설정")
-	float DamageInnerRadius = 200.f; // 폭발 피해 반경
-	UPROPERTY( EditAnywhere, Category = "자체설정")
-	float DamageOuterRadius = 400.f; // 폭발 피해 외부 반경
 
 public:
 	AProjectile();	
@@ -83,6 +84,6 @@ public:
 	FVector_NetQuantize100 InitialVelocity; // 초기 속도
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
-	float InitialSpeed = 15000.f; // 초기 속도 값
+	float InitialSpeed = 15000.f; // 초기 속도 값 == 이거 바꾸면 자동으로 발사체 무브먼트 속도 바뀜(프로젝타일 불렛 헤더에서 설정함)
 
 };

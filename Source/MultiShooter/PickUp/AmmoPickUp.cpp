@@ -7,6 +7,7 @@ AAmmoPickUp::AAmmoPickUp()
     bReplicates = true; // 이 픽업 아이템은 네트워크에서 복제됩니다.
 }
 
+// 다른 키 조작 없이 그냥 겹치면 컴뱃 컴포넌트의 PickUpAmmo 함수를 호출하여 총알을 획득합니다.
 void AAmmoPickUp::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
     Super::OnSphereOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);

@@ -7,6 +7,7 @@
 #include "ChatTextBlock.h"
 #include "MultiShooter/CharacterState/CharacterState.h"
 
+// 위젯이 생성될 때 호출되는 함수.
 void UChatBox::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -16,11 +17,12 @@ void UChatBox::NativeConstruct()
 
 	if (ChatInputBox)
 	{
-		ChatInputBox->SetHintText(FText::FromString(".........."));
+		ChatInputBox->SetHintText(FText::FromString("..........")); // 이거 의미 없음. 베이스 pc에서 자체적으로 설정함
 		ChatInputBox->SetText(FText::GetEmpty());
 	}
 }
 
+// 메인 게임 보드에서 ClientChatCommitted 호출하면 거기서 이거 호출
 void UChatBox::OnTextCommitted(const FText& Text, const FString& PlayerName)
 {
 	OwnerController = OwnerController ? OwnerController : GetOwningPlayer();

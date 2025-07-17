@@ -2,6 +2,7 @@
 #include "MultiShooter/Character/BaseCharacter.h" // 캐릭터 클래스 헤더 파일
 #include "MultiShooter/CharacterComponent/CombatComponent.h" // 전투 컴포넌트 헤더 파일
 
+// 다른 키조작 없이 겹치면 바로 컴뱃의 PickUpGrenade 호출
 void AGrenadePickUp::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
     Super::OnSphereOverlap(OverlappedComponent, OtherActor, OtherComp, OtherBodyIndex, bFromSweep, SweepResult);

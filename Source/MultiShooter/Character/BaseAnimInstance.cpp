@@ -2,6 +2,7 @@
 #include "BaseCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+
 #include "MultiShooter/TypeHeader/CombatState.h" 
 #include "MultiShooter/Weapon/WeaponType.h"
 #include "MultiShooter/CharacterComponent/CombatComponent.h"
@@ -25,6 +26,8 @@ void UBaseAnimInstance::NativeUpdateAnimation(float DeltaTime)
     if (BaseCharacter == nullptr) BaseCharacter = Cast<ABaseCharacter>(TryGetPawnOwner()); // 캐릭터가 아직 초기화되지 않았다면 다시 시도합니다.
     if (BaseCharacter == nullptr) return; // 캐릭터가 여전히 nullptr이면 함수 종료
 
+    // 캐릭터의 기본적인 이동 관련--------------------------------------------------------------------------------------
+    //
     FVector Velocity = BaseCharacter->GetVelocity();
     Velocity.Z = 0; // Z축 속도는 무시합니다.
     Speed = Velocity.Size(); // 캐릭터의 속도를 계산합니다.
@@ -38,12 +41,15 @@ void UBaseAnimInstance::NativeUpdateAnimation(float DeltaTime)
     bIsAiming = BaseCharacter->IsAiming(); // 캐릭터가 조준 중인지 확인합니다.
 
     TurningInPlace = BaseCharacter->GetTurningInPlace(); // 캐릭터의 조준 상태를 가져옵니다.
+    //
+    // 캐릭터의 기본적인 이동 관련--------------------------------------------------------------------------------------
 
     // 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
     bRotateRootBone = BaseCharacter->ShouldRotateRootBone(); // 루트 본을 회전할지 여부를 가져옵니다.
     // 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 
     // 에임 오프셋 ------------------------------------------------------------------------------------
+    //
     FRotator AimRotation = BaseCharacter->GetBaseAimRotation();
     FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(BaseCharacter->GetVelocity()); // 캐릭터의 이동 방향을 기반으로 회전값을 계산합니다.
     //UE_LOG(LogTemp, Warning, TEXT("AimRotation Yaw: %f"), AimRotation.Yaw);
@@ -61,12 +67,14 @@ void UBaseAnimInstance::NativeUpdateAnimation(float DeltaTime)
     
     AO_Yaw = BaseCharacter->GetAO_Yaw(); // 캐릭터의 AO_Yaw 값을 가져옵니다.
     AO_Pitch = BaseCharacter->GetAO_Pitch(); // 캐릭터의 AO_Pitch 값을 가져옵니다.
+    //
     // 에임 오프셋 ------------------------------------------------------------------------------------
+
 
     bDead = BaseCharacter->IsDead(); // 캐릭터가 죽었는지 여부를 가져옵니다.
     bReloading = BaseCharacter->GetCombatState() != ECombatState::ECS_Reloading; // 캐릭터가 재장전 중인지 여부를 가져옵니다. 이거 안쓰긴 함.
 
-    auto CombatComp = BaseCharacter->GetCombatComponent();
+    auto CombatComp = BaseCharacter->GetCombatComponent(); // 무기 형태 마다 다르게 애니메이션을 적용함
     if (CombatComp && CombatComp->GetEquippedWeapon())
     {
         WeaponType = CombatComp->GetEquippedWeapon()->GetWeaponType();

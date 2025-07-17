@@ -28,14 +28,21 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 	UPROPERTY( ReplicatedUsing = OnRep_Aiming )
 	bool bIsAiming = false; // Aim 상태를 나타내는 변수 이거는 캐릭터한테 받아옴
 
-	bool bAimButtonPressed = false; // Aim 버튼이 눌렸는지 여부
-
 	UFUNCTION()
 	void OnRep_Aiming(); // Aim 상태가 변경되었을 때 호출되는 함수
 
+	UPROPERTY(ReplicatedUsing = OnRep_CombatState)
+	ECombatState CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 나타내는 변수
+
+	UFUNCTION()
+	void OnRep_CombatState(); // 전투 상태가 변경되었을 때 호출되는 함수
+
+	bool bAimButtonPressed = false; // Aim 버튼이 눌렸는지 여부
+
 	bool bFireButtonPressed; // 발사 버튼이 눌렸는지 여부
 
-	// 십자선-----------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------십자선ㅜ
+	//
 	FHUDPackage HUDPackage; // HUD 패키지, 십자선 관련 정보
 	FVector HitTarget;
 
@@ -55,9 +62,11 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 	float ZoomInterpSpeed = 20.f; // 줌 인터폴레이션 속도
 
 	void InterpFOV(float DeltaTime); // FOV를 인터폴레이션하는 함수
-	// 십자선-----------------------------------------------------------------------------
+	//
+	// -----------------------------------------------------------------------------십자선ㅗ
 
-	// 자동 발사-----------------------------------------------------------------------------
+	// -----------------------------------------------------------------------------자동 발사ㅜ
+	//
 	FTimerHandle FireTimer; // 발사 타이머 핸들
 
 	bool bCanFire = true; // 발사 가능 여부
@@ -66,11 +75,11 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 	void StartFireTimer(); // 발사 타이머를 시작하는 함수
 
 	bool CanFire();
+	//
+	// -----------------------------------------------------------------------------자동 발사ㅗ
 
-	// 자동 발사-----------------------------------------------------------------------------
-
-	// 총알-----------------------------------------------------------------------------
-
+	// -----------------------------------------------------------------------------총알ㅜ
+	//
 	UPROPERTY(  ReplicatedUsing = OnRep_CarriedAmmo )
 	int32 CarriedAmmo; // 보유 총알 개수
 
@@ -97,7 +106,7 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 	void OnRep_Grenade(); // 수류탄 개수가 변경되었을 때 호출되는 함수
 
 	void UpdateGrenade(); // HUD에 수류탄 개수를 업데이트하는 함수
-
+	// //----------------------------------------------------------------------무기 추가시 총알도 추가!!!
 	UPROPERTY(  EditAnywhere, Category = "자체설정")
 	int32 StartingARAmmo = 30; // 소총 시작 총알 개수
 
@@ -121,14 +130,8 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 
 	UPROPERTY(  EditAnywhere, Category = "자체설정")
 	int32 StartingMinigunAmmo = 0; // 유탄 발사기 시작 총
-
-	// 총알-----------------------------------------------------------------------------
-
-	UPROPERTY( ReplicatedUsing = OnRep_CombatState )
-	ECombatState CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 나타내는 변수
-
-	UFUNCTION(  )
-	void OnRep_CombatState(); // 전투 상태가 변경되었을 때 호출되는 함수
+	//
+	//-----------------------------------------------------------------------------총알ㅗ
 
 protected:
 	virtual void BeginPlay() override;
@@ -143,6 +146,8 @@ protected:
 	UFUNCTION()
 	void OnRep_SecondaryWeapon(); // 무기가 변경되었을 때 호출되는 함수
 
+	//------------------------------------------------------------------------------------------------------------발사ㅜ
+	//
     void Fire(); // 발사 버튼이 눌렸을 때 호출되는 함수
 	void FireProjectileWeapon();
 	void FireHitscanWeapon(); // 히트스캔 무기를 발사하는 함수
@@ -159,33 +164,48 @@ protected:
 	void ServerShotgunFire(const TArray<FVector_NetQuantize>& TraceHitTarget, float FireDelay);
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastShotgunFire(const TArray<FVector_NetQuantize>& TraceHitTarget);
+	//
+	//------------------------------------------------------------------------------------------------------------발사ㅗ
 
-	void TraceUnderCrosshair(FHitResult& TraceHitResult); // 십자선 아래의 물체를 추적하는 함수
-
-	void SetHUDCrosshair(float Deltatime); // 십자선 HUD를 설정하는 함수
-
-	UFUNCTION( Server, Reliable )
+	// ------------------------------------------------------------------------------------------------------------리로드ㅜ
+	//
+	UFUNCTION(Server, Reliable)
 	void ServerReload(); // 서버에서 리로드를 수행하는 함수
-
 	void HandleReload(); // 리로드를 처리하는 함수
-
 	int32 AmountToReload(); // 리로드할 총알 개수
+	void UpdateCarriedAmmo();
+	void ReloadEmptyWeapon(); // 빈 무기를 리로드하는 함수
+	//
+	// ------------------------------------------------------------------------------------------------------------리로드ㅗ
 
-	void ThrowGrenade(); // 수류탄을 던지는 함수
+	// ------------------------------------------------------------------------------------------------------------십자선 유틸ㅜ
+	//
+	void TraceUnderCrosshair(FHitResult& TraceHitResult); // 십자선 아래의 물체를 추적하는 함수
+	void SetHUDCrosshair(float Deltatime); // 십자선 HUD를 설정하는 함수
+	//
+	// ------------------------------------------------------------------------------------------------------------십자선 유틸ㅗ
 
-	UFUNCTION( Server, Reliable )
-	void ServerThrowGrenade(); // 서버에서 수류탄을 던지는 함수
-	void DropEquippedWeapon(); // 현재 장착된 무기를 드롭하는 함수
+	// ------------------------------------------------------------------------------------------------------------무기 유틸	ㅜ
+	//
 	void AttachWeaponToSocket(ABaseWeapon* WeaponToAttach); // 무기를 소켓에 부착하는 함수
 	void PlayEquipSound(ABaseWeapon* WeaponToEquip);
-	void ReloadEmptyWeapon(); // 빈 무기를 리로드하는 함수
-	void SetWeaponMesh( bool bShow ); // 수류탄 던질 떄 무기 메쉬를 숨기는 함수
-	void SetGrenadeMesh( bool bShow ); // 수류탄 메쉬를 보이거나 숨기는 함수
-	void UpdateCarriedAmmo();
 	void UpdateWeaponIcon(); // HUD에 무기 아이콘을 업데이트하는 함수
 	void EquipFirstWeapon(ABaseWeapon* WeaponToEquip); // 기본 무기를 장착하는 함수
 	void EquipSecondaryWeapon(ABaseWeapon* WeaponToEquip); // 보조 무기를 장착하는 함수
 	void AttachWeaponToBackpack(ABaseWeapon* WeaponToAttach); // 무기를 백팩에 부착하는 함수
+	void DropEquippedWeapon(); // 현재 장착된 무기를 드롭하는 함수
+	//
+	// ------------------------------------------------------------------------------------------------------------무기 유틸	ㅗ
+
+	//------------------------------------------------------------------------------------------------------------수류탄ㅜ
+	//
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	TSubclassOf<class AProjectile> GrenadeClass; // 수류탄 클래스
+
+	UFUNCTION(Server, Reliable)
+	void ServerThrowGrenade(); // 서버에서 수류탄을 던지는 함수
+
+	void ThrowGrenade(); // 수류탄을 던지는 함수
 
 	UFUNCTION( BlueprintCallable ) // 수류탄 몽타주 노티파이로 연결
 	void FireGrenade(); // 수류탄을 발사하는 함수
@@ -193,8 +213,10 @@ protected:
 	UFUNCTION( Server, Reliable )
 	void Server_FireGrenade( const FVector_NetQuantize& Target ); // 서버에서 수류탄을 발사하는 함수
 
-	UPROPERTY( EditAnywhere )
-	TSubclassOf<class AProjectile> GrenadeClass; // 수류탄 클래스
+	void SetWeaponMesh(bool bShow); // 수류탄 던질 떄 무기 메쉬를 숨기는 함수
+	void SetGrenadeMesh(bool bShow); // 수류탄 메쉬를 보이거나 숨기는 함수
+	//
+	//------------------------------------------------------------------------------------------------------------수류탄ㅗ
 
 public:	
 	UCombatComponent();
@@ -204,8 +226,15 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override; // 뱐수 복제 위한 함수 복제는 변수가 변했을떄만!
 
+	bool bLocallyReloading = false; // 로컬 플레이어가 리로드 중인지 여부 -- 이거 안쓰는거 같음
+
+	//------------------------------------------------------------------------------------------------------------겟터ㅜ
+	//
 	FORCEINLINE class ABaseWeapon* GetEquippedWeapon() const { return EquippedWeapon; } // 현재 장착된 무기를 반환하는 함수
 	FORCEINLINE int32 GetGrenade() const { return Grenade; } // 현재 보유한 수류탄 개수를 반환하는 함수
+	bool ShouldSwapWeapon();
+	//
+	//------------------------------------------------------------------------------------------------------------겟터ㅗ
 
 	void EquipWeapon(class ABaseWeapon* WeaponToEquip); // 무기를 장착하는 함수
 	void SwapWeapon(); // 무기를 교체하는 함수
@@ -231,8 +260,4 @@ public:
 	void PickUpAmmo( EWeaponType WeaponType, int32 AmmoAmount ); // 무기 타입에 따라 총알을 획득하는 함수
 
 	void PickUpGrenade(int32 Amount); // 수류탄을 획득하는 함수
-
-	bool ShouldSwapWeapon();
-
-	bool bLocallyReloading = false; // 로컬 플레이어가 리로드 중인지 여부
 };

@@ -11,10 +11,10 @@ class MULTISHOOTER_API AHealthPickUp : public APickUp
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float HealthAmount = 100.f; // 회복할 체력 양
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float HealingTime = 5.f; // 체력 회복 시간
 
 protected:

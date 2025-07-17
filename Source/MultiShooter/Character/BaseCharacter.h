@@ -22,6 +22,43 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY(EditAnywhere, Category = "자체설정", BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* OverHeadWidget;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UCombatComponent* CombatComponent; // 전투 컴포넌트
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UBuffComponent* BuffComponent; // 버프 컴포넌트
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class ULagCompensationComponent* LagCompensationComponent; // 지연 보상 컴포넌트
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UNiagaraSystem* CrownSystem; // 최고 점수 플레이어에게 생성되는 크라운 이펙트
+
+	UPROPERTY()
+	class UNiagaraComponent* CrownComponent; // 크라운 이펙트를 생성하기 위한 Niagara 컴포넌트
+
+	// --------------------------------------------------------------------------------------------------------무기 관련 ㅜ
+	//
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	TSubclassOf<ABaseWeapon> DefaultWeaponClass; // 기본 무기 클래스
+
+	FTimerHandle StartWeaponTimer; // 기본 무기를 장착하기 위한 타이머 핸들
+	UPROPERTY(VisibleAnywhere)
+	UStaticMeshComponent* GrenadeMesh; // 수류탄 메쉬 컴포넌트
+
+	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
+	class ABaseWeapon* OverlappingWeapon;
+
+	UFUNCTION()
+	void OnRep_OverlappingWeapon(ABaseWeapon* LastWeapon);
+
+	UFUNCTION(Server, Reliable) //OverlappingWeapon이 변경되었을 때 호출되는 함 이 함수는 서버에서는 실행 안하고 클라이언트에서만 실행
+	void ServerEquipWeapon(); // 클라이언트에게 무기 장착하라고 지시하는 함수
+	//
+	// --------------------------------------------------------------------------------------------------------무기 관련 ㅗ
+
+	// --------------------------------------------------------------------------------------------------------IA 입력 매핑 ㅜ
+	//
 	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputMappingContext* DefaultMappingContext;
 	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
@@ -40,24 +77,11 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	class UInputAction* IA_Reload;
 	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Grenade; // 수류탄 던지는 액션
+	//
+	// --------------------------------------------------------------------------------------------------------IA 입력 매핑 ㅗ
 
-	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
-	class ABaseWeapon* OverlappingWeapon;
-	UFUNCTION()
-	void OnRep_OverlappingWeapon( ABaseWeapon* LastWeapon ); 
-	// OverlappingWeapon이 변경되었을 때 호출되는 함 이 함수는 서버에서는 실행 안하고 클라이언트에서만 실행
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	class UCombatComponent* CombatComponent; // 전투 컴포넌트
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	class UBuffComponent* BuffComponent; // 버프 컴포넌트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	class ULagCompensationComponent* LagCompensationComponent; // 지연 보상 컴포넌트
-
-	UFUNCTION( Server, Reliable )
-	void ServerEquipWeapon(); // 클라이언트에게 무기 장착하라고 지시하는 함수
-
+	// -------------------------------------------------------------------------------캐릭터 에임 오프셋 관련(조준시 몸 틀어지는거) ㅜ
+	//
 	float AO_Pitch; // 캐릭터의 AO 피치를 저장합니다. 조준 시에 사용됩니다.
 	float AO_Yaw; // 캐릭터의 AO 요 를 저장합니다. 조준 시에 사용됩니다.
 	float InterpAO_Yaw; // AO_Yaw를 보간하기 위한 변수입니다. 조준 시에 사용됩니다.
@@ -65,22 +89,20 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	ETurningInPlace TurningInPlace; // 캐릭터가 조준 중일 때 좌우로 회전하는 상태를 제한하기 위한 열거형 변수!
 	void TurnInPlace(float DeltaTime); // 조준 중일 때 좌우로 회전하는 상태를 처리하는 함수
+	//
+	// -------------------------------------------------------------------------------캐릭터 에임 오프셋 관련(조준시 몸 틀어지는거) ㅗ
 
-	void HideCameraIfCharacterClose(); // 캐릭터가 가까이 있을 때 카메라를 숨기는 함수
+	// -------------------------------------------------------------------------------카메라 관련 유틸(캐릭터 너무 가까우면 카메라 숨기기) ㅜ
+	//
+	void HideCameraIfCharacterClose(float DeltaTime); // 캐릭터가 가까이 있을 때 카메라를 숨기는 함수
 	UPROPERTY(EditAnywhere)
 	float CameraThreshold = 200.f; // 카메라가 캐릭터와 얼마나 가까이 있을 때 숨길지 설정하는 변수
 	bool bCloseWall = false; // 벽에 가까이 있을 때 true로 설정되는 변수
+	//
+	// --------------------------------------------------------------------------------카메라 관련 유틸(캐릭터 너무 가까우면 카메라 숨기기) ㅗ
 
-	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
-	bool bRotateRootBone; // 루트 본을 회전할지 여부를 저장하는 변수
-	float TurnThreshold = 0.5f; // 조준 중일 때 회전할 최소 각도
-	FRotator ProxyRotationLastFrame; // 로컬 플레이어가 아닌 경우 회전값을 저장하는 변수
-	FRotator ProxyRotation; // 로컬 플레이어가 아닌 경우 현재 회전값을 저장하는 변수
-	float ProxyYaw; // 로컬 플레이어가 아닌 경우 현재 Yaw 값을 저장하는 변수
-	float TimeSinceLastMovementReplicattion; // 마지막으로 이동이 복제된 시간
-	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
-
-	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
+	//-------------------------------------------------------------------------------------------------------애니메이션 몽타주ㅜ
+	//
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FireAssultMontage; // 무기를 발사할 때 사용할 애니메이션 몽타주 
 
@@ -142,10 +164,14 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* SwapMontage; // 무기를 교체할 때 사용할 애니메이션 몽타주
+	//
+	//-------------------------------------------------------------------------------------------------------애니메이션 몽타주ㅗ
 
-	//애니메이션 몽타주-------------------------------------------------------------------------------------------------------
+	//-------------------------------------------------------------------------------------------------------플레이어 상태ㅜ
+	//
+	UPROPERTY()
+	class ACharacterState* CharacterState; // 플레이어의 상태를 저장하는 CharacterState 클래스의 인스턴스
 
-	//플레이어 상태-------------------------------------------------------------------------------------------------------
 	UPROPERTY(EditAnywhere, Category = "자체설정", meta = (AllowPrivateAccess = "true"))
 	float MAxHealth = 100.f; // 최대 체력
 	
@@ -174,11 +200,11 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	float EliminateDelay = 5.f; // 플레이어가 제거되었을 때 타이머 딜레이
 
 	void EliminateTimerFinished(); // 플레이어가 제거되었을 때 타이머가 끝났을 때 호출되는 함수
+	//
+	//-------------------------------------------------------------------------------------------------------플레이어 상태ㅗ
 
-	//플레이어 상태-------------------------------------------------------------------------------------------------------
-
-	//디졸브 및 죽으면 나오는 봇 -------------------------------------------------------------------------------------------------------
-
+	//-------------------------------------------------------------------------------------------------------죽었을떄 관련(디졸브 이펙트)ㅜ 
+	//
 	UPROPERTY( VisibleAnyWhere )
 	class UTimelineComponent* DissolveTimeline; // 디졸브 타임라인 컴포넌트
 
@@ -214,29 +240,23 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY( EditAnywhere, Category = "자체설정" )
 	class USoundCue* EliminateSound; // 플레이어가 제거되었을 때 재생되는 사운드 큐
+	//
+	//-------------------------------------------------------------------------------------------------------죽었을떄 관련(디졸브 이펙트)ㅗ 
 
-	//디졸브 및 죽으면 나오는 봇 -------------------------------------------------------------------------------------------------------
-
-	UPROPERTY()
-	class ACharacterState* CharacterState; // 플레이어의 상태를 저장하는 CharacterState 클래스의 인스턴스
-
-	UPROPERTY( VisibleAnywhere )
-	UStaticMeshComponent* GrenadeMesh; // 수류탄 메쉬 컴포넌트
-
-	UPROPERTY( EditAnywhere, Category = "자체설정")
-	TSubclassOf<ABaseWeapon> DefaultWeaponClass; // 기본 무기 클래스
-
-	FTimerHandle StartWeaponTimer; // 기본 무기를 장착하기 위한 타이머 핸들
-
-	UPROPERTY(EditAnywhere, Category = "자체설정")
-	class UNiagaraSystem* CrownSystem; // 최고 점수 플레이어에게 생성되는 크라운 이펙트
-
-	UPROPERTY()
-	class UNiagaraComponent* CrownComponent; // 크라운 이펙트를 생성하기 위한 Niagara 컴포넌트
+	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
+	bool bRotateRootBone; // 루트 본을 회전할지 여부를 저장하는 변수
+	float TurnThreshold = 0.5f; // 조준 중일 때 회전할 최소 각도
+	FRotator ProxyRotationLastFrame; // 로컬 플레이어가 아닌 경우 회전값을 저장하는 변수
+	FRotator ProxyRotation; // 로컬 플레이어가 아닌 경우 현재 회전값을 저장하는 변수
+	float ProxyYaw; // 로컬 플레이어가 아닌 경우 현재 Yaw 값을 저장하는 변수
+	float TimeSinceLastMovementReplicattion; // 마지막으로 이동이 복제된 시간
+	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 
 protected:
     virtual void BeginPlay() override;
 
+	// ----------------------------------------------------------------------------------------------입력 매핑 바인딩 함수들ㅜ 
+	//
     UFUNCTION()
 	void Move(const FInputActionValue& Value);
 	UFUNCTION()
@@ -256,18 +276,21 @@ protected:
 	void Reload();
 	UFUNCTION()
 	void Grenade(); // 수류탄 던지기 입력을 처리하는 함수
+	//
+	// ----------------------------------------------------------------------------------------------입력 매핑 바인딩 함수들ㅗ
 
-
+	// ---------------------------------------------------------------------------------------------조준 오프셋 관련 함수들ㅜ 
+	//
     void AimOffset(float DeltaTime); // 조준 오프셋을 계산하는 함수
     void Calculate_AO_Pitch();
     void SimProxyTurn(); // 조준중 회전값 전달을 매끄럽게 하는 함수
+	//
+	// ---------------------------------------------------------------------------------------------조준 오프셋 관련 함수들ㅗ 
 
 	UFUNCTION()
 	void ReceiveDamage( AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser ); 
 
-	void UpdateHUDGrenade(); // HUD에 수류탄 개수를 업데이트하는 함수 
-
-	void PollInit(); // 관련 클래스를 확인해서 HUD를 세팅
+	void PollInit(float DeltaTime); // 관련 클래스를 확인해서 HUD를 세팅
 
 public:	
 	ABaseCharacter();	
@@ -279,13 +302,12 @@ public:
 	virtual void Destroyed() override; // 액터가 파괴될 때 호출되는 함수
     virtual void Restart() override; // 매치 스타트 할 시 서버에서 입력이 안되는거 해결 위한 함수 
 
+	// --------------------------------------------------------------------------------------------------------겟터 함수들ㅜ 
+	//
 	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; } // AO_Yaw를 반환하는 함수
 	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; } // AO_Pitch를 반환하는 함수
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; } // TurningInPlace를 반환하는 함수
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; } // FollowCamera를 반환하는 함수
-	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
-	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; } // bRotateRootBone을 반환하는 함수
-	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 	FORCEINLINE bool GetCloseWall() const { return bCloseWall; } // bCloseWall을 반환하는 함수
 	FORCEINLINE bool IsDead() const { return bDead; } // bDie를 반환하는 함수
 	FORCEINLINE float GetHealth() const { return Health; } // Health를 반환하는 함수
@@ -303,39 +325,50 @@ public:
 	bool IsLocallyReloading(); // 로컬 플레이어가 리로드 중인지 확인하는 함수
 	ECombatState GetCombatState() const; // CombatComponent가 존재할 때만 CombatState를 반환
 	ABaseWeapon* GetEquippedWeapon() const; // CombatComponent가 존재할 때만 EquippedWeapon을 반환
+	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; } // bRotateRootBone을 반환하는 함수
+	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
+	//
+	// --------------------------------------------------------------------------------------------------------겟터 함수들ㅗ 
 
+	// --------------------------------------------------------------------------------------------------------무기 관련 함수들ㅜ 
+	//
 	void SetOverlappingWeapon(ABaseWeapon* Weapon);
+	void SpawnDefaultWeapon(); // 기본 무기를 스폰하는 함수
+	void InitWeaponAndHUD(); // 기본 무기를 장착하고 HUD를 초기화하는 함수
+	//
+	// --------------------------------------------------------------------------------------------------------무기 관련 함수들ㅗ 
 
+	// ---------------------------------------------------------------------------------------------애니메이션 몽타주 재생 함수들ㅜ 
+	//
 	void PlayFireMontage(); // 무기 발사 애니메이션 몽타주를 재생하는 함수. 
 	void PlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 재생하는 함수
 	void PlayDieMontage(); // 플레이어가 죽었을 때 애니메이션 몽타주를 재생하는 함수
 	void PlayReloadMontage(); // 무기를 재장전할 때 애니메이션 몽타주를 재생하는 함수
 	void PlayThrowGrenadeMontage(); // 유탄 발사기를 던질 때 애니메이션 몽타주를 재생하는 함수
 	void PlaySwapMontage(); // 무기를 교체할 때 애니메이션 몽타주를 재생하는 함수
+	//
+	// ---------------------------------------------------------------------------------------------애니메이션 몽타주 재생 함수들ㅗ
 
-	UFUNCTION( NetMulticast, Reliable )
+	// ---------------------------------------------------------------------------------------------HUD 업데이트 함수들ㅜ
+	//
+	void UpdateHUDHealth(); // HUD에 체력을 업데이트하는 함수  버프 컴포넌트에서 사용할 예정이므로 퍼블릭
+	void UpdateHUDShield(); // HUD에 방어력을 업데이트하는 함수  버프 컴포넌트에서 사용할 예정이므로 퍼블릭
+	void UpdateHUDAmmo(); // HUD에 탄약을 업데이트하는 함수
+	void UpdateHUDGrenade(); // HUD에 수류탄 개수를 업데이트하는 함수 
+	UFUNCTION(BlueprintImplementableEvent) // 이 함수는 블루프린트에서 구현됩니다. 그러니깐 cpp에 없음,,
+	void ShowScopeSniperWidget(bool bShow); // 스코프 위젯을 보이게 하는 함수
+	//
+	//-------------------------------------------------------------------------------------------- HUD 업데이트 함수들ㅗ
+
+	// -------------------------------------------------------------------------------------게임 전체적인 게임모드 관련 함수들ㅜ
+	//
+	UFUNCTION(NetMulticast, Reliable)
 	void MulticastEliminate(bool bPlayerLeftGame); // 플레이어가 제거되었을 때 호출되는 멀티캐스트 함수
 
 	void Eliminate(bool bPlayerLeftGame); // 플레이어가 제거되었을 때 호출되는 서버에서만 실행하는 함수
 
-	UPROPERTY( Replicated )
+	UPROPERTY(Replicated)
 	bool bDisableGamePlay = false; // 게임 플레이를 비활성화하는 변수
-
-	//UFUNCTION( NetMulticast, Unreliable ) // 이거는 전달 안되도 상관 없음
-	//void MulticastPlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 멀티캐스트로 재생하는 함수
-	//void ABaseCharacter::MulticastPlayHitReactMontage_Implementation() { PlayHitReactMontage();} // 멀티캐스트로 애니메이션 몽타주를 재생합니다. 
-
-	UFUNCTION( BlueprintImplementableEvent) // 이 함수는 블루프린트에서 구현됩니다. 그러니깐 cpp에 없음,,
-	void ShowScopeSniperWidget( bool bShow ); // 스코프 위젯을 보이게 하는 함수
-
-	void UpdateHUDHealth(); // HUD에 체력을 업데이트하는 함수  버프 컴포넌트에서 사용할 예정이므로 퍼블릭
-
-	void UpdateHUDShield(); // HUD에 방어력을 업데이트하는 함수  버프 컴포넌트에서 사용할 예정이므로 퍼블릭
-
-	void UpdateHUDAmmo();
-
-	void SpawnDefaultWeapon(); // 기본 무기를 스폰하는 함수
-	void InitWeaponAndHUD(); // 기본 무기를 장착하고 HUD를 초기화하는 함수
 
 	UFUNCTION(Server, Reliable)
 	void ServerLeaveGame(); // 서버에서 게임을 떠나는 함수
@@ -347,8 +380,11 @@ public:
 	void MulticastGainedTheLead(); // 최고 점수 플레이어에게 크라운 이펙트를 생성하는 멀티캐스트 함수
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastLostTheLead();
+	//
+	// -------------------------------------------------------------------------------------게임 전체적인 게임모드 관련 함수들ㅗ
 
-	// 서버에서 렉걸릴떄 히트 박스 조정하기 위한 박스----------------------------------------------------------------
+	// ------------------------------------------------------------------------------서버에서 렉걸릴떄 히트 박스 조정하기 위한 박스ㅜ
+	//
 	UPROPERTY(EditAnywhere)
 	class UBoxComponent* head;
 	UPROPERTY(EditAnywhere)
@@ -384,4 +420,6 @@ public:
 
 	UPROPERTY()
 	TMap<FName, UBoxComponent* > HitCollisionBoxes; // 히트 박스 맵. 이름과 박스 컴포넌트를 매핑합니다.
+	//
+	// ---------------------------------------------------------------------------------서버에서 렉걸릴떄 히트 박스 조정하기 위한 박스ㅗ
 };

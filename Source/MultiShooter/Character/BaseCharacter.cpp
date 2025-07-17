@@ -6,25 +6,26 @@
 #include "Components/CapsuleComponent.h" // UCapsuleComponent 사용을 위한 include
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "Net/UnrealNetwork.h" // 네트워크 복제를 위한 헤더 파일
-#include "MultiShooter/Weapon/BaseWeapon.h" // ABaseWeapon 클래스 사용을 위한 헤더 파일
-#include "MultiShooter/CharacterComponent/CombatComponent.h" // UCombatComponent 클래스 사용을 위한 헤더 파일
-#include "MultiShooter/CharacterComponent/BuffComponent.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "BaseAnimInstance.h" // ABaseAnimInstance 클래스 사용을 위한 헤더 파일
-#include "MultiSHooter/MultiShooter.h" // MultiShooter 헤더 파일을 포함합니다. -> 스켈레탈 콜리전 정의 가져오기
-#include "MultiShooter/PlayerController/BasePC.h" // ABasePC 클래스 사용을 위한 헤더 파일
-#include "MultiShooter/GameMode/MainGameMode.h" // AMainGameMode 클래스 사용을 위한 헤더 파일
+#include "Net/UnrealNetwork.h" // 네트워크 복제를 위한 헤더 파일
 #include "TimerManager.h" // 타이머 매니저 사용을 위한 헤더 파일
 #include "Kismet/GameplayStatics.h" // 게임플레이 스태틱스 사용을 위한 헤더 파일
 #include "Sound/SoundCue.h" // 사운드 큐 사용을 위한 헤더 파일
 #include "Particles/ParticleSystemComponent.h" // 파티클 시스템 컴포넌트 사용을 위한 헤더 파일
-#include "MultiShooter/CharacterState/CharacterState.h" // ACharacterState 클래스 사용을 위한 헤더 파일
-#include "MultiShooter/Weapon/WeaponType.h" // EWeaponType 열거형 사용을 위한 헤더 파일
-#include "Components/BoxComponent.h" // 박스 컴포넌트 사용을 위한 헤더 파일
-#include "MultiShooter/CharacterComponent/LagCompensationComponent.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Components/BoxComponent.h" // 박스 컴포넌트 사용을 위한 헤더 파일
+
+#include "MultiShooter/Weapon/BaseWeapon.h" // ABaseWeapon 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/CharacterComponent/CombatComponent.h" // UCombatComponent 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/CharacterComponent/BuffComponent.h"
+#include "BaseAnimInstance.h" // ABaseAnimInstance 클래스 사용을 위한 헤더 파일
+#include "MultiSHooter/MultiShooter.h" // MultiShooter 헤더 파일을 포함합니다. -> 스켈레탈 콜리전 정의 가져오기
+#include "MultiShooter/PlayerController/BasePC.h" // ABasePC 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/GameMode/MainGameMode.h" // AMainGameMode 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/CharacterState/CharacterState.h" // ACharacterState 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/Weapon/WeaponType.h" // EWeaponType 열거형 사용을 위한 헤더 파일
+#include "MultiShooter/CharacterComponent/LagCompensationComponent.h"
 #include "MultiShooter/GameState/BaseGameState.h" // ABaseGameState 클래스 사용을 위한 헤더 파일
 
 ABaseCharacter::ABaseCharacter()
@@ -228,8 +229,8 @@ void ABaseCharacter::Tick(float DeltaTime)
 		AimOffset(DeltaTime); // AimOffset 함수 호출
 	}
 
-	HideCameraIfCharacterClose(); // 캐릭터가 카메라에 너무 가까이 있으면 카메라 숨기기
-	PollInit(); // 리스폰 될 시 허드 세팅
+	HideCameraIfCharacterClose(DeltaTime); // 캐릭터가 카메라에 너무 가까이 있으면 카메라 숨기기
+	PollInit(DeltaTime); // 리스폰 될 시 허드 세팅
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -242,7 +243,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseCharacter, Shield); // MaxHealth 변수를 네트워크에서 복제합니다.
 	DOREPLIFETIME(ABaseCharacter, bDisableGamePlay); // 게임 플레이 비활성화 변수 복제
 }
-// 컴포넌트 초기화시 실행. 컴뱃 컴포넌트 및 버프 컴포넌트 초기화
+// 컴포넌트 초기화시 실행. 컴뱃 컴포넌트 및 버프 컴포넌트, 렉 컴포넌트 초기화
 void ABaseCharacter::PostInitializeComponents() 
 {
 	Super::PostInitializeComponents();
@@ -267,7 +268,7 @@ void ABaseCharacter::PostInitializeComponents()
 		}
 	}
 }
-// 입력 바인딩 함수
+
 void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -288,6 +289,172 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
     }
 }
 
+//캐릭터 리스폰 되면 캐릭터 스테이트가 널 포인트가 될 수 있으므로 틱에서 캐릭터 스테이트 바로 만들어주기!
+void ABaseCharacter::PollInit(float DeltaTime)
+{
+	if (CharacterState == nullptr)
+	{
+		CharacterState = GetPlayerState<ACharacterState>(); // 플레이어 상태를 ACharacterState로 캐스팅합니다.
+		if (CharacterState)
+		{
+			CharacterState->AddToScore(0.f); // 플레이어 상태에 점수 0 추가해서 업데이트 시키기!
+			CharacterState->AddToDefeat(0); // 플레이어 상태에 처치 수 0 추가해서 업데이트 시키기!
+
+			ABasePC* BasePC = Cast<ABasePC>(Controller);
+			if (BasePC)
+			{
+				BasePC->HideHUDKilledBy(); // 누구에게 죽었는지 보여주는 위젯을 숨깁니다.
+			}
+
+			ABaseGameState* BaseGameState = Cast<ABaseGameState>(UGameplayStatics::GetGameState(this));
+			if (BaseGameState && BaseGameState->TopScoreingPlayers.Contains(CharacterState))
+			{
+				MulticastGainedTheLead(); // 멀티캐스트로 우위를 점한 플레이어를 알립니다.
+			}
+		}
+	}
+}
+
+void ABaseCharacter::HideCameraIfCharacterClose(float DeltaTime)
+{
+	if (!IsLocallyControlled()) return; // 로컬 플레이어가 아닌 경우 함수 종료
+
+	if ((FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraThreshold)
+	{
+		bCloseWall = true; // 카메라가 캐릭터에 너무 가까이 있으면 bCloseWall을 true로 설정합니다.
+		GetMesh()->SetVisibility(false); // 카메라가 캐릭터에 너무 가까우면 메쉬를 숨깁니다.
+		if (CombatComponent && CombatComponent->EquippedWeapon && CombatComponent->EquippedWeapon->GetWeaponMesh())
+		{
+			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = true; // 무기 메쉬도 숨깁니다.
+		}
+	}
+	else
+	{
+		bCloseWall = false; // 카메라가 캐릭터에 너무 가까이 있지 않으면 bCloseWall을 false로 설정합니다.
+		GetMesh()->SetVisibility(true); // 카메라가 캐릭터에 너무 가까우지 않으면 메쉬를 보이게 합니다.
+		if (CombatComponent && CombatComponent->EquippedWeapon && CombatComponent->EquippedWeapon->GetWeaponMesh())
+		{
+			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = false;
+		}
+	}
+}
+
+// ------------------------------------------------------------------------------------------------조준 관련ㅜ 
+// 
+// AimOffset 함수는 캐릭터의 조준 오프셋을 계산합니다. 여기서 TurnInPlace로 델타 타임 전달
+void ABaseCharacter::AimOffset(float DeltaTime)
+{
+	if (CombatComponent && CombatComponent->EquippedWeapon == nullptr) return; // AimOffset을 계산하지 않습니다.
+
+	FVector Velocity = GetVelocity();
+	Velocity.Z = 0; // Z축 속도는 무시합니다.
+	float Speed = Velocity.Size(); // 캐릭터의 속도를 계산합니다.
+	bool bIsAir = GetCharacterMovement()->IsFalling(); // 캐릭터가 공중에 있는지 확인합니다.
+
+	if (Speed == 0.f && !bIsAir) // 속도가 0이고 공중에 있지 않다면
+	{
+		bRotateRootBone = true; // 루트 본을 회전하도록 설정합니다.
+
+		FRotator CurrentRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentRotation, StartingAimRotation); // 현재 회전과 시작 회전의 차이를 계산합니다.
+		AO_Yaw = DeltaAimRotation.Yaw; // Yaw 회전값을 저장합니다.
+
+		if (TurningInPlace == ETurningInPlace::ETIP_NotTurning) // 좌우 회전 상태가 아닌 경우
+		{
+			InterpAO_Yaw = AO_Yaw;
+		}
+
+		bUseControllerRotationYaw = true; // 컨트롤러 회전 사용
+		TurnInPlace(DeltaTime); // TurnInPlace 함수를 호출하여 회전 처리
+	}
+	if (Speed > 0.0f || bIsAir) // 
+	{
+		bRotateRootBone = false; // 루트 본을 회전하지 않도록 설정합니다.
+
+		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f); // 조준 회전을 시작합니다.
+		AO_Yaw = 0.f; // Yaw 회전값을 0으로. 움직일떄는 좌우로 못 보게
+		bUseControllerRotationYaw = true; // 컨트롤러 회전 사용
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
+	}
+
+	Calculate_AO_Pitch();
+}
+
+// 회전 방향에 따라 TurningInPlace 변수 설정
+void ABaseCharacter::TurnInPlace(float DeltaTime)
+{
+	if (AO_Yaw > 90.f)
+	{
+		TurningInPlace = ETurningInPlace::ETIP_Right; // 오른쪽으로 회전 중
+	}
+	else if (AO_Yaw < -90.f)
+	{
+		TurningInPlace = ETurningInPlace::ETIP_Left; // 왼쪽으로 회전 중
+	}
+
+	if (TurningInPlace != ETurningInPlace::ETIP_NotTurning)
+	{
+		InterpAO_Yaw = FMath::FInterpTo(InterpAO_Yaw, 0.f, DeltaTime, 4.f); // AO_Yaw를 보간합니다.
+		AO_Yaw = InterpAO_Yaw; // 보간된 값을 AO_Yaw에 저장합니다.
+		if (FMath::Abs(AO_Yaw) < 15.f) // 보간된 값이 15보다 작으면
+		{
+			TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
+			StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f); // 조준 회전을 시작합니다.
+		}
+	}
+
+}
+
+void ABaseCharacter::Calculate_AO_Pitch()
+{
+	AO_Pitch = GetBaseAimRotation().Pitch; // AO 피치를 현재 조준 회전의 Pitch로 설정합니다. -90 ~ 90도 사이로 제한됩니다.
+	if (AO_Pitch > 90.f && !IsLocallyControlled()) // 로컬 플레이어가 아닌 경우
+	{
+		FVector2D InRange(270.f, 360.f); // 270도에서 360도 사이로 제한합니다.
+		FVector2D OutRange(-90.f, 0.f); // -90도에서 0도 사이로 변환합니다.
+		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch); // 범위 변환
+		/*
+		언리얼 엔진에서 Pitch 값이 네트워크로 복제될 때 0~360도로 변환되어
+		-90<del>0도(아래로 조준) 값이 270</del>360도로 올 수 있습니다.
+		이걸 다시 -90~0도로 변환해서
+		다른 플레이어가 보는 캐릭터의 조준 방향이 올바르게 보이도록 하는 코드입니다.
+		*/
+	}
+}
+
+void ABaseCharacter::SimProxyTurn()
+{
+	if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr) return; // CombatComponent나 EquippedWeapon이 없으면 함수 종료
+
+	bRotateRootBone = false;
+
+	ProxyRotationLastFrame = ProxyRotation; // 이전 프레임의 회전값을 저장합니다.
+	ProxyRotation = GetActorRotation(); // 현재 회전값을 저장합니다.
+	ProxyYaw = UKismetMathLibrary::NormalizedDeltaRotator(ProxyRotation, ProxyRotationLastFrame).Yaw; // 현재 회전값과 이전 프레임의 회전값의 차이를 계산합니다.
+
+	if (FMath::Abs(ProxyYaw) > TurnThreshold) // 회전값의 Yaw가 TurnThreshold보다 크면
+	{
+		if (ProxyYaw > TurnThreshold)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Right;
+		}
+		else if (ProxyYaw < TurnThreshold)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Left;
+		}
+		else
+		{
+			TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
+		}
+		return;
+	}
+	TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
+}
+//
+// ------------------------------------------------------------------------------------------------조준 관련ㅗ 
+
+// ------------------------------------------------------------------------------------------------입력 바인딩 관련 함수들ㅜ 
+//
 void ABaseCharacter::Move(const FInputActionValue& Value)
 {
 	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
@@ -423,7 +590,10 @@ void ABaseCharacter::Grenade()
 		CombatComponent->ThrowGrenade(); // CombatComponent의 ThrowGrenade 함수를 호출하여 수류탄을 던집니다.
 	}
 }
+//
+// ------------------------------------------------------------------------------------------------입력 바인딩 관련 함수들ㅗ 
 
+// ------------------------------------------------------------------------------------------------기타 함수들ㅜ
 void ABaseCharacter::OnRep_OverlappingWeapon( ABaseWeapon* LastWeapon ) // 이 함수는 클라이언트에서만 실행 되므로 서버용도 필요
 {
 	if (OverlappingWeapon)
@@ -473,115 +643,66 @@ void ABaseCharacter::SetOverlappingWeapon(ABaseWeapon* Weapon) // 겹치면 무�
 	}
 }
 
-void ABaseCharacter::AimOffset( float DeltaTime )
+void ABaseCharacter::OnRep_ReplicatedMovement()
 {
-	if( CombatComponent && CombatComponent->EquippedWeapon == nullptr ) return; // AimOffset을 계산하지 않습니다.
+	Super::OnRep_ReplicatedMovement(); // 부모 클래스의 OnRep_ReplicatedMovement를 호출합니다.
 
-	FVector Velocity = GetVelocity();
-    Velocity.Z = 0; // Z축 속도는 무시합니다.
-    float Speed = Velocity.Size(); // 캐릭터의 속도를 계산합니다.
-	bool bIsAir = GetCharacterMovement()->IsFalling(); // 캐릭터가 공중에 있는지 확인합니다.
-
-	if( Speed == 0.f && !bIsAir ) // 속도가 0이고 공중에 있지 않다면
+	if (GetLocalRole() == ENetRole::ROLE_SimulatedProxy) // 로컬 플레이어가 아닌 경우
 	{
-		bRotateRootBone = true; // 루트 본을 회전하도록 설정합니다.
-
-		FRotator CurrentRotation = FRotator( 0.f, GetBaseAimRotation().Yaw, 0.f );
-		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator( CurrentRotation, StartingAimRotation ); // 현재 회전과 시작 회전의 차이를 계산합니다.
-		AO_Yaw = DeltaAimRotation.Yaw; // Yaw 회전값을 저장합니다.
-		
-		if( TurningInPlace == ETurningInPlace::ETIP_NotTurning ) // 좌우 회전 상태가 아닌 경우
-		{
-			InterpAO_Yaw = AO_Yaw;
-		}
-		
-		bUseControllerRotationYaw = true; // 컨트롤러 회전 사용
-		TurnInPlace(DeltaTime); // TurnInPlace 함수를 호출하여 회전 처리
+		//SimProxyTurn(); // SimProxyTurn 함수를 호출하여 회전 처리
 	}
-	if( Speed > 0.0f || bIsAir ) // 
-	{
-		bRotateRootBone = false; // 루트 본을 회전하지 않도록 설정합니다.
-
-		StartingAimRotation = FRotator( 0.f, GetBaseAimRotation().Yaw, 0.f ); // 조준 회전을 시작합니다.
-		AO_Yaw = 0.f; // Yaw 회전값을 0으로. 움직일떄는 좌우로 못 보게
-		bUseControllerRotationYaw = true; // 컨트롤러 회전 사용
-		TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
-	}
-
-	Calculate_AO_Pitch();
+	TimeSinceLastMovementReplicattion = 0.f; // 마지막 이동 복제 시간 초기화
 }
 
-void ABaseCharacter::Calculate_AO_Pitch()
+void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, 
+	AController* InstigatorController, AActor* DamageCauser)
 {
-	AO_Pitch = GetBaseAimRotation().Pitch; // AO 피치를 현재 조준 회전의 Pitch로 설정합니다. -90 ~ 90도 사이로 제한됩니다.
-	if (AO_Pitch > 90.f && !IsLocallyControlled()) // 로컬 플레이어가 아닌 경우
+	if (bDead) return;
+
+	float DamageToHealth = Damage; // 피해를 Health에 적용할 값으로 설정합니다.
+
+	if (Shield > 0.f)
 	{
-		FVector2D InRange(270.f, 360.f); // 270도에서 360도 사이로 제한합니다.
-		FVector2D OutRange(-90.f, 0.f); // -90도에서 0도 사이로 변환합니다.
-		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch); // 범위 변환
-		/*
-		언리얼 엔진에서 Pitch 값이 네트워크로 복제될 때 0~360도로 변환되어
-		-90<del>0도(아래로 조준) 값이 270</del>360도로 올 수 있습니다.
-		이걸 다시 -90~0도로 변환해서
-		다른 플레이어가 보는 캐릭터의 조준 방향이 올바르게 보이도록 하는 코드입니다.
-		*/
+		if (Shield >= Damage) // 방어구가 피해보다 크거나 같으면
+		{
+			Shield = FMath::Clamp(Shield - DamageToHealth, 0.f, MAXShield); // 방어구에서 피해를 제거하고, 0과 MAXShield 사이로 제한합니다.
+			DamageToHealth = 0.f; // Health에 적용할 피해를 0으로 설정합니다.
+		}
+		else // 방어구가 피해보다 작으면
+		{
+			DamageToHealth = FMath::Clamp(DamageToHealth - Shield, 0.f, Damage); // Health에 적용할 피해를 방어구를 제외한 나머지 피해로 설정합니다.
+			Shield = 0.f; // 방어구를 0으로 설정합니다.
+		}
 	}
+
+	Health = FMath::Clamp(Health - DamageToHealth, 0.f, MAxHealth); // 피해를 받아 Health를 감소시키고, 0과 MAxHealth 사이로 제한합니다.
+	// 이떄 OnRep_Health가 호출 클라이언트에서 플레이 힛 몽타주 실행
+	// 이떄 캐릭터 체력이 0 이면 변수 변경 없고 복제도 안 일어남. 그레서 0 이하로 내려가면 힛 몽타주가 한쪽에서 안보임!
+	PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
+	UpdateHUDHealth();
+	UpdateHUDShield(); // HUD에 체력과 방어구 업데이트
+
+	if (Health == 0.f) // Health가 0 이하로 떨어지면
+	{
+		AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+		if (MainGameMode)
+		{
+			PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
+
+			ABasePC* AttackerController = Cast<ABasePC>(InstigatorController); // 공격자를 ABasePC로 캐스팅합니다.
+
+			MainGameMode->PlayerEliminated(this, PlayerController, AttackerController); // 플레이어 제거 함수 호출
+		}
+	}
+
 }
 
-void ABaseCharacter::TurnInPlace(float DeltaTime)
-{
-	if( AO_Yaw > 90.f )
-	{
-		TurningInPlace = ETurningInPlace::ETIP_Right; // 오른쪽으로 회전 중
-	}	
-	else if( AO_Yaw < -90.f )
-	{
-		TurningInPlace = ETurningInPlace::ETIP_Left; // 왼쪽으로 회전 중
-	}
-	
-	if( TurningInPlace != ETurningInPlace::ETIP_NotTurning )
-	{
-		InterpAO_Yaw = FMath::FInterpTo( InterpAO_Yaw, 0.f, DeltaTime, 4.f ); // AO_Yaw를 보간합니다.
-		AO_Yaw = InterpAO_Yaw; // 보간된 값을 AO_Yaw에 저장합니다.
-		if( FMath::Abs( AO_Yaw ) < 15.f ) // 보간된 값이 15보다 작으면
-		{
-			TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
-			StartingAimRotation = FRotator( 0.f, GetBaseAimRotation().Yaw, 0.f ); // 조준 회전을 시작합니다.
-		}
-	}
-	
-}
+// ------------------------------------------------------------------------------------------------기타 함수들ㅗ
 
-void ABaseCharacter::SimProxyTurn()
-{
-	if( CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 EquippedWeapon이 없으면 함수 종료
-
-	bRotateRootBone = false;
-
-	ProxyRotationLastFrame = ProxyRotation; // 이전 프레임의 회전값을 저장합니다.
-	ProxyRotation = GetActorRotation(); // 현재 회전값을 저장합니다.
-	ProxyYaw = UKismetMathLibrary::NormalizedDeltaRotator( ProxyRotation, ProxyRotationLastFrame ).Yaw; // 현재 회전값과 이전 프레임의 회전값의 차이를 계산합니다.
-
-	if( FMath::Abs( ProxyYaw ) > TurnThreshold ) // 회전값의 Yaw가 TurnThreshold보다 크면
-	{
-		if( ProxyYaw > TurnThreshold )
-		{
-			TurningInPlace = ETurningInPlace::ETIP_Right;
-		}
-		else if( ProxyYaw < TurnThreshold )
-		{
-			TurningInPlace = ETurningInPlace::ETIP_Left;
-		}
-		else
-		{
-			TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
-		}
-		return;
-	}
-	TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
-}
-
-void ABaseCharacter::PlayFireMontage() // 무기 추가시 몽타주 추가
+// ------------------------------------------------------------------------------------------------몽타주 실행 함수들ㅜ
+//
+// 무기 추가시 몽타주 추가
+void ABaseCharacter::PlayFireMontage() 
 {
     if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr) return;
 
@@ -643,6 +764,69 @@ void ABaseCharacter::PlayFireMontage() // 무기 추가시 몽타주 추가
     }
 }
 
+// 무기 추가시 장전 몽타주 추가
+void ABaseCharacter::PlayReloadMontage()
+{
+	if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr) return;
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!AnimInstance) return;
+
+	switch (CombatComponent->EquippedWeapon->GetWeaponType())
+	{
+	case EWeaponType::EWT_AssaultRifle:
+		if (ReloadAssultMontage)
+		{
+			AnimInstance->Montage_Play(ReloadAssultMontage);
+		}
+		break;
+	case EWeaponType::EWT_RocketLauncher:
+		if (ReloadRocketMontage)
+		{
+			AnimInstance->Montage_Play(ReloadRocketMontage);
+		}
+		break;
+	case EWeaponType::EWT_Pistol:
+		if (ReloadPistolMontage)
+		{
+			AnimInstance->Montage_Play(ReloadPistolMontage);
+		}
+		break;
+	case EWeaponType::EWT_SMG:
+		if (ReloadSMGMontage)
+		{
+			AnimInstance->Montage_Play(ReloadSMGMontage);
+		}
+		break;
+	case EWeaponType::EWT_Shotgun:
+		if (ReloadShotgunMontage)
+		{
+			AnimInstance->Montage_Play(ReloadShotgunMontage);
+		}
+		break;
+	case EWeaponType::EWT_Sniper:
+		if (ReloadSniperMontage)
+		{
+			AnimInstance->Montage_Play(ReloadSniperMontage);
+		}
+		break;
+	case EWeaponType::EWT_GrenadeLauncher:
+		if (ReloadGrenadeLauncherMontage)
+		{
+			AnimInstance->Montage_Play(ReloadGrenadeLauncherMontage);
+		}
+		break;
+	case EWeaponType::EWT_MiniGun:
+		if (ReloadMinigunMontage)
+		{
+			AnimInstance->Montage_Play(ReloadMinigunMontage);
+		}
+		break;
+	default:
+		break;
+	}
+}
+
 void ABaseCharacter::PlayHitReactMontage()
 {
 	if( CombatComponent == nullptr || HitReactMontage == nullptr  ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
@@ -671,68 +855,6 @@ void ABaseCharacter::PlayDieMontage()
 	}
 }
 
-void ABaseCharacter::PlayReloadMontage() // 무기 추가시 장전 몽타주 추가
-{
-    if (CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr) return;
-
-    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-    if (!AnimInstance) return;
-
-    switch (CombatComponent->EquippedWeapon->GetWeaponType())
-    {
-        case EWeaponType::EWT_AssaultRifle:
-            if (ReloadAssultMontage)
-            {
-                AnimInstance->Montage_Play(ReloadAssultMontage);
-            }
-            break;
-        case EWeaponType::EWT_RocketLauncher:
-            if (ReloadRocketMontage)
-            {
-                AnimInstance->Montage_Play(ReloadRocketMontage);
-            }
-            break;
-        case EWeaponType::EWT_Pistol:
-            if (ReloadPistolMontage)
-            {
-                AnimInstance->Montage_Play(ReloadPistolMontage);
-            }
-            break;
-		case EWeaponType::EWT_SMG:
-			if (ReloadSMGMontage)
-			{
-				AnimInstance->Montage_Play(ReloadSMGMontage);
-			}
-			break;
-		case EWeaponType::EWT_Shotgun:
-			if (ReloadShotgunMontage)
-			{
-				AnimInstance->Montage_Play(ReloadShotgunMontage);
-			}
-			break;
-		case EWeaponType::EWT_Sniper:
-			if (ReloadSniperMontage)
-			{
-				AnimInstance->Montage_Play(ReloadSniperMontage);
-			}
-			break;
-		case EWeaponType::EWT_GrenadeLauncher:
-			if (ReloadGrenadeLauncherMontage)
-			{
-				AnimInstance->Montage_Play(ReloadGrenadeLauncherMontage);
-			}
-			break;
-		case EWeaponType::EWT_MiniGun:
-			if (ReloadMinigunMontage)
-			{
-				AnimInstance->Montage_Play(ReloadMinigunMontage);
-			}
-			break;
-        default:
-            break;
-    }
-}
-
 void ABaseCharacter::PlayThrowGrenadeMontage()
 {
 	if( CombatComponent == nullptr || ThrowGrenadeMontage == nullptr ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
@@ -754,84 +876,11 @@ void ABaseCharacter::PlaySwapMontage()
 		AnimInstance->Montage_Play(SwapMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
 	}
 }
+//
+// ------------------------------------------------------------------------------------------------몽타주 실행 함수들ㅗ
 
-void ABaseCharacter::HideCameraIfCharacterClose()
-{
-	if( !IsLocallyControlled() ) return; // 로컬 플레이어가 아닌 경우 함수 종료
-
-	if( ( FollowCamera->GetComponentLocation() - GetActorLocation() ).Size() < CameraThreshold )
-	{
-		bCloseWall = true; // 카메라가 캐릭터에 너무 가까이 있으면 bCloseWall을 true로 설정합니다.
-		GetMesh()->SetVisibility(false); // 카메라가 캐릭터에 너무 가까우면 메쉬를 숨깁니다.
-		if( CombatComponent &&  CombatComponent->EquippedWeapon && CombatComponent->EquippedWeapon->GetWeaponMesh() ) 
-		{
-			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = true; // 무기 메쉬도 숨깁니다.
-		}
-	}
-	else
-	{
-		bCloseWall = false; // 카메라가 캐릭터에 너무 가까이 있지 않으면 bCloseWall을 false로 설정합니다.
-		GetMesh()->SetVisibility(true); // 카메라가 캐릭터에 너무 가까우지 않으면 메쉬를 보이게 합니다.
-		if( CombatComponent &&  CombatComponent->EquippedWeapon && CombatComponent->EquippedWeapon->GetWeaponMesh() ) 
-		{
-			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = false; 
-		}
-	} 
-}
-
-void ABaseCharacter::OnRep_ReplicatedMovement()
-{
-	Super::OnRep_ReplicatedMovement(); // 부모 클래스의 OnRep_ReplicatedMovement를 호출합니다.
-
-	if( GetLocalRole() == ENetRole::ROLE_SimulatedProxy ) // 로컬 플레이어가 아닌 경우
-	{
-		//SimProxyTurn(); // SimProxyTurn 함수를 호출하여 회전 처리
-	}
-	TimeSinceLastMovementReplicattion = 0.f; // 마지막 이동 복제 시간 초기화
-}
-
-void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser)
-{
-	if( bDead ) return;
-
-	float DamageToHealth = Damage; // 피해를 Health에 적용할 값으로 설정합니다.
-
-	if( Shield > 0.f )
-	{
-		if( Shield >= Damage) // 방어구가 피해보다 크거나 같으면
-		{
-			Shield = FMath::Clamp(Shield - DamageToHealth, 0.f, MAXShield); // 방어구에서 피해를 제거하고, 0과 MAXShield 사이로 제한합니다.
-			DamageToHealth = 0.f; // Health에 적용할 피해를 0으로 설정합니다.
-		}
-		else // 방어구가 피해보다 작으면
-		{
-			DamageToHealth = FMath::Clamp(DamageToHealth - Shield, 0.f, Damage); // Health에 적용할 피해를 방어구를 제외한 나머지 피해로 설정합니다.
-			Shield = 0.f; // 방어구를 0으로 설정합니다.
-		}
-	}
-
-	Health = FMath::Clamp(Health - DamageToHealth, 0.f, MAxHealth); // 피해를 받아 Health를 감소시키고, 0과 MAxHealth 사이로 제한합니다.
-	// 이떄 OnRep_Health가 호출 클라이언트에서 플레이 힛 몽타주 실행
-	// 이떄 캐릭터 체력이 0 이면 변수 변경 없고 복제도 안 일어남. 그레서 0 이하로 내려가면 힛 몽타주가 한쪽에서 안보임!
-	PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
-	UpdateHUDHealth();
-	UpdateHUDShield(); // HUD에 체력과 방어구 업데이트
-
-	if(  Health == 0.f ) // Health가 0 이하로 떨어지면
-	{
-		AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
-		if( MainGameMode )
-		{
-			PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
-
-			ABasePC* AttackerController = Cast<ABasePC>(InstigatorController); // 공격자를 ABasePC로 캐스팅합니다.
-
-			MainGameMode->PlayerEliminated(this, PlayerController, AttackerController ); // 플레이어 제거 함수 호출
-		}
-	}
-
-}
-
+// ------------------------------------------------------------------------------------------------허드 업데이트 함수들ㅜ
+//
 void ABaseCharacter::UpdateHUDHealth()
 {
 	PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
@@ -868,7 +917,10 @@ void ABaseCharacter::UpdateHUDAmmo()
 		PlayerController->SetHUDAmmo( CombatComponent->EquippedWeapon->GetAmmo() ); // 플레이어 컨트롤러의 HUD 무기 탄약을 설정합니다.
 	}
 }
+//
+// ------------------------------------------------------------------------------------------------허드 업데이트 함수들ㅗ
 
+// ------------------------------------------------------------------------------------------------플레이거 죽었을때 관련 함수들ㅜ 
 // bLeftGame 값을 bPlayerLeftGame 따라 결정 후 타이머 피니쉬에서 따로 실행
 void ABaseCharacter::MulticastEliminate_Implementation(bool bPlayerLeftGame)
 {
@@ -1005,31 +1057,6 @@ void ABaseCharacter::Destroyed()
 	}
 }
 
-void ABaseCharacter::PollInit()
-{
-	if( CharacterState == nullptr )
-	{
-		CharacterState = GetPlayerState<ACharacterState>(); // 플레이어 상태를 ACharacterState로 캐스팅합니다.
-		if( CharacterState )
-		{
-			CharacterState->AddToScore(0.f); // 플레이어 상태에 점수 0 추가해서 업데이트 시키기!
-			CharacterState->AddToDefeat(0); // 플레이어 상태에 처치 수 0 추가해서 업데이트 시키기!
-
-			ABasePC* BasePC = Cast<ABasePC>(Controller);
-			if (BasePC)
-			{
-				BasePC->HideHUDKilledBy(); // 누구에게 죽었는지 보여주는 위젯을 숨깁니다.
-			}
-
-			ABaseGameState* BaseGameState = Cast<ABaseGameState>(UGameplayStatics::GetGameState(this));
-			if (BaseGameState && BaseGameState->TopScoreingPlayers.Contains(CharacterState))
-			{
-				MulticastGainedTheLead(); // 멀티캐스트로 우위를 점한 플레이어를 알립니다.
-			}
-		}
-	}
-}
-
 void ABaseCharacter::UpdateDissolve(float DissolveValue)
 {
 	//UE_LOG(LogTemp, Warning, TEXT("DissolveValue: %f"), DissolveValue); // 디졸브 값 출력
@@ -1083,7 +1110,11 @@ void ABaseCharacter::Restart() // Restart는 리스폰/매치 시작 시 호출�
 		}
 	}
 }
+//
+// ------------------------------------------------------------------------------------------------플레이거 죽었을때 관련 함수들ㅗ 
 
+// ------------------------------------------------------------------------------------------------- 캐릭터 기본 무기 주는 함수ㅜ
+//
 void ABaseCharacter::SpawnDefaultWeapon() // 기본 무기를 스폰하는 함수
 {
 	AMainGameMode* BaseGameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(this)); // 현재 게임 모드를 ABaseGameMode로 캐스팅합니다.
@@ -1108,8 +1139,11 @@ void ABaseCharacter::InitWeaponAndHUD()
     SpawnDefaultWeapon();
     UpdateHUDAmmo();
 }
+//
+// -------------------------------------------------------------------------------------------------캐릭터 기본 무기 주는 함수ㅗ
 
-// 게터 함수들 모음-------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------게터 함수들 모음ㅜ
+//
 bool ABaseCharacter::IsWeaponEquipped()
 {
 	return (CombatComponent && CombatComponent->EquippedWeapon); // CombatComponent가 존재하고, 장착된 무기가 있는지 확인
@@ -1138,7 +1172,11 @@ ABaseWeapon* ABaseCharacter::GetEquippedWeapon() const
 
 	return CombatComponent->EquippedWeapon; // CombatComponent의 EquippedWeapon을 반환합니다.
 }
+//
+// --------------------------------------------------------------------------------------------------게터 함수들 모음ㅗ
 
+// ------------------------------------------------------------------------------------------------게임 모드 관련 및 유틸ㅜ 
+// 
 // 리턴 투 메인메뉴 에서 버튼 클릭시 호출
 void ABaseCharacter::ServerLeaveGame_Implementation()
 {
@@ -1182,4 +1220,6 @@ void ABaseCharacter::MulticastLostTheLead_Implementation()
 		CrownComponent = nullptr; // 크라운 컴포넌트를 nullptr로 설정합니다.
 	}
 }
+//
+// ------------------------------------------------------------------------------------------------게임 모드 관련 및 유틸ㅗ
 

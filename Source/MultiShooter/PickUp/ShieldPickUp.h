@@ -9,10 +9,10 @@ class MULTISHOOTER_API AShieldPickUp : public APickUp
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float ShieldAmmount = 100.f; // 회복할 체력 양
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float ShieldTime = 5.f; // 체력 회복 시간
 	
 protected:

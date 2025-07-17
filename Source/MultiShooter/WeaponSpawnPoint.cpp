@@ -38,9 +38,11 @@ void AWeaponSpawnPoint::SpawnWeapon()
     if (SpawnedWeapon)
     {
         SpawnedWeapon->OnEquippedDelegate.AddDynamic(this, &AWeaponSpawnPoint::OnWeaponEquipped);
+        // 스폰된 무기가 장착되면 타이머 설정후 재스폰
     }
 }
-
+// SpawnedWeapon->OnEquippedDelegate.AddDynamic(this, &AWeaponSpawnPoint::OnWeaponEquipped);
+// 이렇게 바인딩 되어 있음
 void AWeaponSpawnPoint::OnWeaponEquipped()
 {
     GetWorld()->GetTimerManager().SetTimer(

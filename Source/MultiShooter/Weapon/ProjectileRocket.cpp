@@ -3,7 +3,6 @@
 #include "Sound/SoundCue.h" // 사운드 큐 사용을 위한 헤더 파일
 #include "Components/BoxComponent.h" // 박스 컴포넌트 사용을 위한 헤더 파일
 #include "NiagaraComponent.h" // 나이아가라 컴포넌트 사용을 위한 헤더 파일
-#include "Sound/SoundCue.h" // 사운드 큐 사용을 위한 헤더 파일
 #include "Components/AudioComponent.h" // 오디오 컴포넌트 사용을 위한 헤더 파일
 #include "RocketMovementComponent.h" // 로켓 이동 컴포넌트 헤더 파일
 
@@ -53,10 +52,10 @@ void AProjectileRocket::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
 {
     if( OtherActor == GetOwner() ) return; // 발사체의 소유자와 충돌한 경우 무시합니다.
     
-    ExplodeDamage(); // 폭발 피해를 입히는 함수 호출
+	ExplodeDamage(); // 폭발 피해를 입히는 함수 호출 -> 프로젝타일.h에서 선언됨. 즉 부모 클래스의 함수입니다.
     //Super::OnHit(HitComp, OtherActor, OtherComp, NormalImpulse, Hit); // 부모 클래스의 OnHit 호출 == 발사체 파괴 !!!!
 
-    StartDestroyTimer(); // 파괴 타이머를 시작합니다.
+    StartDestroyTimer(); // 파괴 타이머를 시작합니다. -> 프로젝타일.h 즉 부모에서 선언됨
 
     if( ImpactParticle )
 	{

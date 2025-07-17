@@ -13,13 +13,13 @@ bool UReturnToMainMenu::Initialize()
 
 	return true; // 초기화가 성공하면 true를 반환합니다.
 }
-
+// 리턴 버튼 클릭시 호출
 void UReturnToMainMenu::MenuSetUp()
 {
 	AddToViewport(); // 뷰포트에 위젯을 추가합니다.
 	SetVisibility(ESlateVisibility::Visible); // 위젯의 가시성을 설정합니다.
 	bIsFocusable = true; // 위젯이 포커스를 받을 수 있도록 설정합니다.
-	UE_LOG(LogTemp, Error, TEXT("create"));
+	//UE_LOG(LogTemp, Error, TEXT("create"));
 	UWorld* World = GetWorld(); // 현재 월드를 가져옵니다.
 	if (World)
 	{
@@ -49,6 +49,7 @@ void UReturnToMainMenu::MenuSetUp()
 	}
 }
 
+// 리턴 다시 눌러서 다시 게임 시작
 void UReturnToMainMenu::MenuTeardown()
 {
 	RemoveFromParent(); // 위젯을 부모로부터 제거합니다.
@@ -102,6 +103,9 @@ void UReturnToMainMenu::ReturnButtonClicked()
 
 }
 
+// MultiplayerSessionsSubsystem->MultiplayerOnDestroySessionComplete.AddDynamic(this, &UReturnToMainMenu::OnDestroySession);
+// 이렇게 바인딩 되어 있음. 그냥 세션 파괴 되면 == 나가면 자동 호출	
+//MenuSetUp 에서 바인딩 하고 MenuTeardown 하면서 바인딩 해제함 
 void UReturnToMainMenu::OnDestroySession(bool bWasSuccessful) // 세션 파괴 후 호출되는 함수
 {
 	if (bWasSuccessful == false)

@@ -6,6 +6,7 @@
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/HorizontalBox.h"
 #include "Components/CanvasPanelSlot.h"
+#include "ChatBox.h"
 
 void ACharacterHUD::BeginPlay()
 {
@@ -130,6 +131,7 @@ void ACharacterHUD::AddAnnouncement()
     }
 }
 
+// 킬로그 알림 추가하는 함수
 void ACharacterHUD::AddElimAnnouncement(FString Attacker, FString Victim)
 {
 	OwningPlayerController = OwningPlayerController == nullptr ? GetOwningPlayerController() : OwningPlayerController; // 플레이어 컨트롤러를 가져옵니다.
@@ -143,7 +145,7 @@ void ACharacterHUD::AddElimAnnouncement(FString Attacker, FString Victim)
 			ElimAnnouncement->SetElimAnnouncementText(Attacker, Victim); // 제거 알림 텍스트 설정
 			ElimAnnouncement->AddToViewport(); // 뷰포트에 추가
 
-            for (UElimAnnouncement* Msg : ElimMessages)
+			for (UElimAnnouncement* Msg : ElimMessages) // 이전에 존재하던 킬로그 메시지 위치를 아래로 이동시키기
             {
                 if (Msg && Msg->AnnouncementBox)
                 {

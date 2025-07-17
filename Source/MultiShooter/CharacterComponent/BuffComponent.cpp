@@ -24,6 +24,8 @@ void UBuffComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
 	ShieldRampUp(DeltaTime); // 매 프레임마다 쉴드 회복 램프업 함수 호출
 }
 
+// ------------------------------------------------------------------------------체력ㅜ
+//
 void UBuffComponent::Heal(float HealAmount, float HealingTime)
 {
 	bHealing = true; // 체력 회복 시작
@@ -47,7 +49,10 @@ void UBuffComponent::HealRampUp(float DeltaTime)
 		AmountToHeal = 0.0f; // 회복할 체력 양 초기화
 	}
 }
+//
+// ------------------------------------------------------------------------------체력ㅗ
 
+// ------------------------------------------------------------------------------쉴드ㅜ
 void UBuffComponent::Shield(float ShieldAmount, float ShieldTime)
 {
 	bShielding = true; // 쉴드 회복 시작
@@ -71,7 +76,10 @@ void UBuffComponent::ShieldRampUp(float DeltaTime)
 		AmountToShield = 0.0f; // 회복할 쉴드 양 초기화
 	}
 }
+//
+//------------------------------------------------------------------------------쉴드ㅗ
 
+// ------------------------------------------------------------------------------속도ㅜ
 void UBuffComponent::SetInitialSpeed( float BaseSpeed )
 {
 	InitialSpeed = BaseSpeed; // 초기 속도를 설정합니다.
@@ -106,7 +114,10 @@ void UBuffComponent::ResetSpeed()
 	}
 	MulticastSpeedBuff(InitialSpeed); // 모든 클라이언트에 초기 속도로 되돌립니다.
 }
+//
+//------------------------------------------------------------------------------속도ㅗ
 
+// ------------------------------------------------------------------------------점프ㅜ
 void UBuffComponent::SetInitialJumpZVelocity( float BaseJumpZVelocity )
 {
 	InitialJumpZVelocity = BaseJumpZVelocity; // 초기 점프 속도를 설정합니다.
@@ -139,6 +150,7 @@ void UBuffComponent::ResetJump()
 	}
 	MulticastJumpBuff(InitialJumpZVelocity); // 모든 클라이언트에 초기 점프 속도로 되돌립니다.
 }
-
+//
+// ------------------------------------------------------------------------------점프ㅗ
 
 

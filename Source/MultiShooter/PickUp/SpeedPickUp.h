@@ -9,10 +9,10 @@ class MULTISHOOTER_API ASpeedPickUp : public APickUp
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float BaseSpeedBuff = 1600.f;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float SpeedBuffTime = 10.f; // 속도 버프 지속 시간
 	
 protected:

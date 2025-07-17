@@ -15,7 +15,7 @@ class MULTISHOOTER_API ACharacterState : public APlayerState
 	class ABasePC* Controller; // 플레이어 컨트롤러 포인터
 
 	UPROPERTY(ReplicatedUsing = OnRep_Defeats)
-	int32 Defeats;
+	int32 Defeats; // 죽은 횟수
 
 	UPROPERTY(ReplicatedUsing = OnRep_KilledBy)
 	FString KilledBy; // 죽은 메시지

@@ -77,26 +77,8 @@ void ABaseWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	DOREPLIFETIME_CONDITION(ABaseWeapon, bUseServerSideRewind, COND_OwnerOnly);
 }
 
-// 무기의 소유자가 변경될 때 호출되는 함수
-void ABaseWeapon::OnRep_Owner() 
-{
-	Super::OnRep_Owner(); // 부모 클래스의 OnRep_Owner 함수를 호출합니다.
-
-	if( Owner == nullptr ) // 만약 소유자가 nullptr인 경우, 즉 플레이어가 죽은 경우
-	{
-		BaseOwnerCharacter = nullptr; // 캐릭터를 nullptr로 설정합니다. (플레이어가 죽었으므로)
-		BaseOwnerContoller = nullptr; // 플레이어 컨트롤러를 nullptr로 설정합니다. (플레이어가 죽었으므로)
-	}
-	else
-	{
-		BaseOwnerCharacter = BaseOwnerCharacter == nullptr ? Cast<ABaseCharacter>(GetOwner()) : BaseOwnerCharacter; // 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
-		if( BaseOwnerCharacter && BaseOwnerCharacter->GetEquippedWeapon() && BaseOwnerCharacter->GetEquippedWeapon() == this) // 캐릭터가 존재하고, 현재 무기가 캐릭터의 장착된 무기인 경우
-		{
-			SetHUDAmmo();
-		}
-	}
-}
-
+//-----------------------------------------------------------------------------------------------------------탄약 관련 ㅜ
+//
 void ABaseWeapon::SpendAmmo() 
 {
 	Ammo = FMath::Clamp( Ammo - 1 , 0, MaxAmmo ); // 총알 개수를 감소시킵니다.
@@ -159,7 +141,10 @@ void ABaseWeapon::SetHUDAmmo()
         }
     }
 }
+//
+// //-----------------------------------------------------------------------------------------------------------탄약 관련 ㅗ
 
+//---------------------------------------------------------------------------------------------------------------------------- 무기 픽업 관련 ㅜ
 // 캐릭터가 스피어에 오버랩 처리 해서 픽업 할 수 있게
 void ABaseWeapon::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, 
     int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -172,7 +157,8 @@ void ABaseWeapon::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent,
     }
 }
 
-void ABaseWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,  UPrimitiveComponent* OtherComp,  int32 OtherBodyIndex)
+void ABaseWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,  
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
     ABaseCharacter* OverlappingCharacter = Cast<ABaseCharacter>(OtherActor);
     if( OverlappingCharacter )
@@ -190,8 +176,31 @@ void ABaseWeapon::ShowPickUpWidget(bool bShow)
 		PickUpWidget->SetVisibility(bShow); // 위젯의 가시성을 설정합니다.
 	}
 }
+//
+//---------------------------------------------------------------------------------------------------------------------------- 무기 픽업 관련 ㅗ
 
-// 무기 상태를 설정하는 함수
+////----------------------------------------------------------------------------------------------------------------------------기타 무기 유틸 ㅜㅜ
+// 무기의 소유자가 변경될 때 호출되는 함수
+void ABaseWeapon::OnRep_Owner()
+{
+	Super::OnRep_Owner(); // 부모 클래스의 OnRep_Owner 함수를 호출합니다.
+
+	if (Owner == nullptr) // 만약 소유자가 nullptr인 경우, 즉 플레이어가 죽은 경우
+	{
+		BaseOwnerCharacter = nullptr; // 캐릭터를 nullptr로 설정합니다. (플레이어가 죽었으므로)
+		BaseOwnerContoller = nullptr; // 플레이어 컨트롤러를 nullptr로 설정합니다. (플레이어가 죽었으므로)
+	}
+	else
+	{
+		BaseOwnerCharacter = BaseOwnerCharacter == nullptr ? Cast<ABaseCharacter>(GetOwner()) : BaseOwnerCharacter; // 캐릭터가 nullptr인 경우 현재 무기의 소유자를 캐스팅합니다.
+		if (BaseOwnerCharacter && BaseOwnerCharacter->GetEquippedWeapon() && BaseOwnerCharacter->GetEquippedWeapon() == this) // 캐릭터가 존재하고, 현재 무기가 캐릭터의 장착된 무기인 경우
+		{
+			SetHUDAmmo();
+		}
+	}
+}
+
+// 무기 상태를 설정하는 함수 == 컴뱃 컴포넌트에서 사용
 void ABaseWeapon::SetWeaponState(EWeaponState NewState) 
 {
 	EWeaponState LastState = WeaponState;

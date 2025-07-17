@@ -9,6 +9,7 @@ class MULTISHOOTER_API AGrenadePickUp : public APickUp
 {
 	GENERATED_BODY()
 
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	int32 GrenadeAmount = 1; // 획득할 수류탄 개수
 
 protected:

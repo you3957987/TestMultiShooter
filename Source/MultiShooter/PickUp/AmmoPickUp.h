@@ -10,10 +10,10 @@ class MULTISHOOTER_API AAmmoPickUp : public APickUp
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	int32 AmmoAmount = 30; // 획득할 총알 개수
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	EWeaponType WeaponType; // 무기 타입
 	
 protected:

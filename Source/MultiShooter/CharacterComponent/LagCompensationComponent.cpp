@@ -1,9 +1,9 @@
 #include "LagCompensationComponent.h"
+#include "Components/BoxComponent.h"
+#include "Kismet/GameplayStatics.h" // 게임 관련 유틸리티 함수들을 사용하기 위한 헤더 파일
+
 #include "MultiShooter/Character/BaseCharacter.h" // ABaseCharacter 클래스 사용을 위한 헤더 파일
 #include "MultiShooter/Weapon/BaseWeapon.h" // ABaseWeapon 클래스 사용을 위한 헤더 파일
-#include "Components/BoxComponent.h"
-//#include "DrawDebugHelpers.h" // 디버그 박스 그리기를 위한 헤더 파일
-#include "Kismet/GameplayStatics.h" // 게임 관련 유틸리티 함수들을 사용하기 위한 헤더 파일
 #include "MultiShooter/MultiShooter.h" // 멀티슈터 헤더 파일을 포함합니다. ->  콜리전 정의 = 히트박스 가져오기
 
 ULagCompensationComponent::ULagCompensationComponent()
@@ -72,6 +72,8 @@ void ULagCompensationComponent::SaveFramePackage(FFramePackage& Package)
 	}
 }
 
+//------------------------------------------------------------------------------------------------서버 사이드 리와인드 결과를 바탕으로 대미지를 적용하는 함수ㅜ
+//
 // 서버 사이드 리와인드 결과를 바탕으로 대미지를 적용하는 함수  서버는 그냥 어플라이 대미지로 하고 클라는 이걸로 대미지 입힘
 void ULagCompensationComponent::ServerScoreRequest_Implementation(ABaseCharacter* HitCharacter, const FVector_NetQuantize& TraceStart, 
 	const FVector_NetQuantize& HitLocation, float HitTime)
@@ -146,7 +148,10 @@ void ULagCompensationComponent::ShotgunServerScoreRequest_Implementation(const T
 		);
 	}
 }
+//
+//------------------------------------------------------------------------------------------------서버 사이드 리와인드 결과를 바탕으로 대미지를 적용하는 함수ㅗ
 
+//----------------------------------------------------------------------------------------------------------------------------------서버 사이드 리와인드ㅜ
 // 프레임 데이터를 이용한 시간 되감기 == 193 강의. 
 // 시간을 되돌려서 타격 시간을 보강할 수 있게 하는거
 // 만약 핑이 안좋아서 클라가 쏜 타격 정보를 서버가 받았을 떄 그 자리에 이미 캐릭터가 없다면 서버는 타격을 무시하므로
@@ -181,94 +186,10 @@ FShotgunServerSideRewindResult ULagCompensationComponent::ShotgunServerSideRewin
 
 	return ShotgunConfirmHit(FramesToCheck,TraceStart, HitLocations);
 }
+//
+//----------------------------------------------------------------------------------------------------------------------------------서버 사이드 리와인드ㅗ
 
-// FFramePackage를 반환함
-FFramePackage ULagCompensationComponent::GetFrameToCheck(ABaseCharacter* HitCharacter, float HitTime)
-{
-	bool bReturn =
-		HitCharacter == nullptr ||
-		HitCharacter->GetLagCompensationComponent() == nullptr ||
-		HitCharacter->GetLagCompensationComponent()->FrameHistory.GetHead() == nullptr ||
-		HitCharacter->GetLagCompensationComponent()->FrameHistory.GetTail() == nullptr;
-	if (bReturn) return FFramePackage();
-	// HitCharacter가 nullptr이거나, LagCompensationComponent가 nullptr이거나, 프레임 히스토리가 비어있으면 함수 종료
-
-	FFramePackage FrameToCheck; // 히트된 캐릭터의 프레임 패키지를 저장할 변수
-	bool bShouldInterpolate = true; // 히트된 캐릭터의 프레임 패키지를 보간할지 여부를 저장할 변수
-
-	const TDoubleLinkedList<FFramePackage>& History = HitCharacter->GetLagCompensationComponent()->FrameHistory; // 히트된 캐릭터의 프레임 히스토리를 가져옵니다.
-	const float OldesthistoryTime = History.GetTail()->GetValue().Time; // 가장 오래된 프레임의 시간을 가져옵니다.
-	const float NewestHistoryTime = History.GetHead()->GetValue().Time; // 가장 최근 프레임의 시간을 가져옵니다.
-	if (HitTime < OldesthistoryTime)
-	{
-		// HitTime이 가장 오래된 프레임의 시간보다 이전이면 함수 종료 즉 너무 오랴되서 시간 되감기를 허지 않음
-		return FFramePackage();
-	}
-	if (OldesthistoryTime == HitTime)
-	{
-		FrameToCheck = History.GetTail()->GetValue(); // HitTime이 가장 오래된 프레임의 시간과 같으면 가장 오래된 프레임 패키지를 가져옵니다.
-		bShouldInterpolate = false; // HitTime이 가장 오래된 프레임의 시간과 같으면 보간하지 않습니다.
-	}
-	if (NewestHistoryTime <= HitTime)
-	{
-		FrameToCheck = History.GetHead()->GetValue(); // HitTime이 가장 최근 프레임의 시간보다 크거나 같으면 가장 최근 프레임 패키지를 가져옵니다.
-		bShouldInterpolate = false; // HitTime이 가장 최근 프레임의 시간과 같으면 보간하지 않습니다.
-	}
-
-	TDoubleLinkedList<FFramePackage>::TDoubleLinkedListNode* Yonger = History.GetHead();
-	TDoubleLinkedList<FFramePackage>::TDoubleLinkedListNode* Older = Yonger;
-	while (Older->GetValue().Time > HitTime)
-	{
-		// 오래된 시간 Older < 히트 시간 < 더 최근 시간 Yonger 이 될 때까지 반복
-		if (Older->GetNextNode() == nullptr) break; // 다음 노드가 없으면 반복 종료
-		Older = Older->GetNextNode(); // HitTime보다 오래된 프레임 패키지를 찾습니다.
-		if (Older->GetValue().Time > HitTime)
-		{
-			Yonger = Older; // HitTime보다 오래된 프레임 패키지를 찾으면 Yonger를 업데이트합니다.
-		}
-	}
-	if (Older->GetValue().Time == HitTime) // 가능성은 매우 낮지만, 프레임 체크를 찾긴함
-	{
-		FrameToCheck = Older->GetValue();
-		bShouldInterpolate = false; // HitTime이 프레임 패키지의 시간과 같으면 보간하지 않습니다.
-	}
-
-	if (bShouldInterpolate == true) // 과거 프레임과 현재 프레임 사이를 보간하기
-	{
-		FrameToCheck = InterpBetweenFrames(Older->GetValue(), Yonger->GetValue(), HitTime);
-	}
-	FrameToCheck.Character = HitCharacter; // 히트된 캐릭터를 프레임 패키지에 저장합니다.
-	return FrameToCheck;
-}
-
-// 과거 프레임과 현재 프레임 사이를 보간하는 함수
-FFramePackage ULagCompensationComponent::InterpBetweenFrames(const FFramePackage& OlderFrame, const FFramePackage& YoungerFrame, float HitTime)
-{
-	const float Distance = YoungerFrame.Time - OlderFrame.Time; // 두 프레임 사이의 시간 차이를 계산합니다.
-	const float InterpFraction = FMath::Clamp((HitTime - OlderFrame.Time) / Distance, 0, 1); 
-	// HitTime과 두 프레임 사이의 시간 차이를 이용하여 보간 비율을 계산합니다.
-
-	FFramePackage InterpFramePackage;
-	InterpFramePackage.Time = HitTime;
-
-	for (auto& YoungerPair : YoungerFrame.HitBoxInfo)
-	{
-		const FName& BoxInfoName = YoungerPair.Key; // 현재 박스 이름을 가져옵니다.
-
-		const FBoxInformation& OlderBox = OlderFrame.HitBoxInfo[BoxInfoName]; // OlderFrame에서 현재 박스 정보를 찾습니다.
-		const FBoxInformation& YoungerBox = YoungerFrame.HitBoxInfo[BoxInfoName]; // YoungerFrame에서 현재 박스 정보를 찾습니다.
-
-		FBoxInformation InterpBoxInfo;
-		InterpBoxInfo.Location = FMath::VInterpTo(OlderBox.Location, YoungerBox.Location, 1.f, InterpFraction);
-		InterpBoxInfo.Rotation = FMath::RInterpTo(OlderBox.Rotation, YoungerBox.Rotation, 1.f, InterpFraction);
-		InterpBoxInfo.BoxExtent = YoungerBox.BoxExtent; // 박스 크기는 YoungerFrame의 크기를 그대로 사용합니다.
-
-		InterpFramePackage.HitBoxInfo.Add(BoxInfoName, InterpBoxInfo); // 보간된 박스 정보를 패키지에 추가합니다.
-	}
-
-	return InterpFramePackage;
-}
-
+//----------------------------------------------------------------------------------------------------------------------------------히트 확인 함수ㅜ
 // 히트 확인할 프레임 정보랑 캐릭터, 트레이스 시작 위치, 히트 위치를 받아서 히트 확인하는 함수
 FServerSideRewindResult ULagCompensationComponent::ConfirmHit(const FFramePackage& Package, ABaseCharacter* HitCharacter, 
 	const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation)
@@ -617,6 +538,95 @@ FShotgunServerSideRewindResult ULagCompensationComponent::ShotgunConfirmHit(cons
 	}
 
 	return ShotgunResult;
+}
+//
+//----------------------------------------------------------------------------------------------------------------------------------히트 확인 함수ㅗ
+
+// FFramePackage를 반환함
+FFramePackage ULagCompensationComponent::GetFrameToCheck(ABaseCharacter* HitCharacter, float HitTime)
+{
+	bool bReturn =
+		HitCharacter == nullptr ||
+		HitCharacter->GetLagCompensationComponent() == nullptr ||
+		HitCharacter->GetLagCompensationComponent()->FrameHistory.GetHead() == nullptr ||
+		HitCharacter->GetLagCompensationComponent()->FrameHistory.GetTail() == nullptr;
+	if (bReturn) return FFramePackage();
+	// HitCharacter가 nullptr이거나, LagCompensationComponent가 nullptr이거나, 프레임 히스토리가 비어있으면 함수 종료
+
+	FFramePackage FrameToCheck; // 히트된 캐릭터의 프레임 패키지를 저장할 변수
+	bool bShouldInterpolate = true; // 히트된 캐릭터의 프레임 패키지를 보간할지 여부를 저장할 변수
+
+	const TDoubleLinkedList<FFramePackage>& History = HitCharacter->GetLagCompensationComponent()->FrameHistory; // 히트된 캐릭터의 프레임 히스토리를 가져옵니다.
+	const float OldesthistoryTime = History.GetTail()->GetValue().Time; // 가장 오래된 프레임의 시간을 가져옵니다.
+	const float NewestHistoryTime = History.GetHead()->GetValue().Time; // 가장 최근 프레임의 시간을 가져옵니다.
+	if (HitTime < OldesthistoryTime)
+	{
+		// HitTime이 가장 오래된 프레임의 시간보다 이전이면 함수 종료 즉 너무 오랴되서 시간 되감기를 허지 않음
+		return FFramePackage();
+	}
+	if (OldesthistoryTime == HitTime)
+	{
+		FrameToCheck = History.GetTail()->GetValue(); // HitTime이 가장 오래된 프레임의 시간과 같으면 가장 오래된 프레임 패키지를 가져옵니다.
+		bShouldInterpolate = false; // HitTime이 가장 오래된 프레임의 시간과 같으면 보간하지 않습니다.
+	}
+	if (NewestHistoryTime <= HitTime)
+	{
+		FrameToCheck = History.GetHead()->GetValue(); // HitTime이 가장 최근 프레임의 시간보다 크거나 같으면 가장 최근 프레임 패키지를 가져옵니다.
+		bShouldInterpolate = false; // HitTime이 가장 최근 프레임의 시간과 같으면 보간하지 않습니다.
+	}
+
+	TDoubleLinkedList<FFramePackage>::TDoubleLinkedListNode* Yonger = History.GetHead();
+	TDoubleLinkedList<FFramePackage>::TDoubleLinkedListNode* Older = Yonger;
+	while (Older->GetValue().Time > HitTime)
+	{
+		// 오래된 시간 Older < 히트 시간 < 더 최근 시간 Yonger 이 될 때까지 반복
+		if (Older->GetNextNode() == nullptr) break; // 다음 노드가 없으면 반복 종료
+		Older = Older->GetNextNode(); // HitTime보다 오래된 프레임 패키지를 찾습니다.
+		if (Older->GetValue().Time > HitTime)
+		{
+			Yonger = Older; // HitTime보다 오래된 프레임 패키지를 찾으면 Yonger를 업데이트합니다.
+		}
+	}
+	if (Older->GetValue().Time == HitTime) // 가능성은 매우 낮지만, 프레임 체크를 찾긴함
+	{
+		FrameToCheck = Older->GetValue();
+		bShouldInterpolate = false; // HitTime이 프레임 패키지의 시간과 같으면 보간하지 않습니다.
+	}
+
+	if (bShouldInterpolate == true) // 과거 프레임과 현재 프레임 사이를 보간하기
+	{
+		FrameToCheck = InterpBetweenFrames(Older->GetValue(), Yonger->GetValue(), HitTime);
+	}
+	FrameToCheck.Character = HitCharacter; // 히트된 캐릭터를 프레임 패키지에 저장합니다.
+	return FrameToCheck;
+}
+
+// 과거 프레임과 현재 프레임 사이를 보간하는 함수
+FFramePackage ULagCompensationComponent::InterpBetweenFrames(const FFramePackage& OlderFrame, const FFramePackage& YoungerFrame, float HitTime)
+{
+	const float Distance = YoungerFrame.Time - OlderFrame.Time; // 두 프레임 사이의 시간 차이를 계산합니다.
+	const float InterpFraction = FMath::Clamp((HitTime - OlderFrame.Time) / Distance, 0, 1);
+	// HitTime과 두 프레임 사이의 시간 차이를 이용하여 보간 비율을 계산합니다.
+
+	FFramePackage InterpFramePackage;
+	InterpFramePackage.Time = HitTime;
+
+	for (auto& YoungerPair : YoungerFrame.HitBoxInfo)
+	{
+		const FName& BoxInfoName = YoungerPair.Key; // 현재 박스 이름을 가져옵니다.
+
+		const FBoxInformation& OlderBox = OlderFrame.HitBoxInfo[BoxInfoName]; // OlderFrame에서 현재 박스 정보를 찾습니다.
+		const FBoxInformation& YoungerBox = YoungerFrame.HitBoxInfo[BoxInfoName]; // YoungerFrame에서 현재 박스 정보를 찾습니다.
+
+		FBoxInformation InterpBoxInfo;
+		InterpBoxInfo.Location = FMath::VInterpTo(OlderBox.Location, YoungerBox.Location, 1.f, InterpFraction);
+		InterpBoxInfo.Rotation = FMath::RInterpTo(OlderBox.Rotation, YoungerBox.Rotation, 1.f, InterpFraction);
+		InterpBoxInfo.BoxExtent = YoungerBox.BoxExtent; // 박스 크기는 YoungerFrame의 크기를 그대로 사용합니다.
+
+		InterpFramePackage.HitBoxInfo.Add(BoxInfoName, InterpBoxInfo); // 보간된 박스 정보를 패키지에 추가합니다.
+	}
+
+	return InterpFramePackage;
 }
 
 // 현재 위치의 박스 정보를 저장

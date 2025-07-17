@@ -1,12 +1,12 @@
 #include "OverHeadWidget.h"
 #include "Components/TextBlock.h"
 
-void UOverHeadWidget::SetDisplayText(const FString& Text)
+
+void UOverHeadWidget::NativeDestruct()
 {
-    if (DisplayText)
-    {
-        DisplayText->SetText(FText::FromString(Text)); // 위젯의 텍스트를 설정합니다.
-    }
+    //RemoveFromParent(); // 위젯을 레벨에서 제거합니다.
+    Super::NativeDestruct();
+
 }
 
 void UOverHeadWidget::ShowPlayerNetRole(APawn* InPawn , FString PlayerName)
@@ -16,13 +16,13 @@ void UOverHeadWidget::ShowPlayerNetRole(APawn* InPawn , FString PlayerName)
     FString Role;
     switch (RemoteRole)
     {
-        case ENetRole::ROLE_Authority: // 권한이 있는 경우
+        case ENetRole::ROLE_Authority: // 권한이 있는 경우(서버는 모든 캐릭터에게 권한이 있음)
             Role = TEXT("Authority");
             break;
-        case ENetRole::ROLE_AutonomousProxy: // 자율 프록시인 경우
+        case ENetRole::ROLE_AutonomousProxy: // 자율 프록시인 경우( 클라가 조종중인 캐릭터)
             Role = TEXT("Autonomous Proxy");
             break;
-        case ENetRole::ROLE_SimulatedProxy: // 시뮬레이션된 프록시인 경우
+        case ENetRole::ROLE_SimulatedProxy: // 시뮬레이션된 프록시인 경우( 클라가 다른 캐릭터를 볼 때 )
             Role = TEXT("Simulated Proxy");
             break;
         case ENetRole::ROLE_None: // 역할이 없는 경우
@@ -36,10 +36,12 @@ void UOverHeadWidget::ShowPlayerNetRole(APawn* InPawn , FString PlayerName)
 
 }
 
-void UOverHeadWidget::NativeDestruct()
+void UOverHeadWidget::SetDisplayText(const FString& Text)
 {
-    //RemoveFromParent(); // 위젯을 레벨에서 제거합니다.
-    Super::NativeDestruct();
-
+    if (DisplayText)
+    {
+        DisplayText->SetText(FText::FromString(Text)); // 위젯의 텍스트를 설정합니다.
+    }
 }
+
 

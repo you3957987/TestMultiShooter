@@ -11,10 +11,10 @@ class MULTISHOOTER_API APickUpSpawnPoint : public AActor
 
 	FTimerHandle SpawnPickUpTimer; // 픽업 아이템 생성 타이머 핸들
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float SpawnPickUpTimeMin = 5.f; // 픽업 아이템 생성 주기 최소값
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float SpawnPickUpTimeMax = 10.f; // 픽업 아이템 생성 주기 최대값
 	
 protected:

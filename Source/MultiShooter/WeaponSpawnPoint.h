@@ -13,10 +13,10 @@ protected:
     virtual void BeginPlay() override;
 
     // 여러 무기 클래스 배열
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "자체설정")
     TArray<TSubclassOf<class ABaseWeapon>> WeaponClassesToSpawn;
 
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(EditAnywhere, Category = "자체설정")
     float RespawnTime = 10.f;
 
     UPROPERTY()

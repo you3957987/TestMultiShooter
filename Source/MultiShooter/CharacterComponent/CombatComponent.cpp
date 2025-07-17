@@ -6,13 +6,13 @@
 #include "GameFramework/CharacterMovementComponent.h" // 캐릭터 이동 컴포넌트 헤더 파일
 #include "Kismet/GameplayStatics.h" // 게임 관련 유틸리티 함수들을 사용하기 위한 헤더 파일
 #include "DrawDebugHelpers.h" // 디버그용 선 그리기 함수들을 사용하기 위한 헤더 파일
-#include "MultiShooter/PlayerController/BasePC.h" // 플레이어 컨트롤러 헤더 파일
-//#include "MultiShooter/HUD/CharacterHUD.h" // HUD 관련 헤더 파일
-#include "Camera/CameraComponent.h" // 카메라 컴포넌트 헤더 파일
+#include "Components/BoxComponent.h" // 박스 컴포넌트 헤더 파일
 #include "TimerManager.h" // 타이머 매니저 헤더 파일
 #include "Sound/SoundCue.h" // 사운드 큐 헤더 파일
+#include "Camera/CameraComponent.h" // 카메라 컴포넌트 헤더 파일
+
+#include "MultiShooter/PlayerController/BasePC.h" // 플레이어 컨트롤러 헤더 파일
 #include "MultiShooter/Weapon/Projectile.h" // 수류탄 클래스 헤더 파일
-#include "Components/BoxComponent.h" // 박스 컴포넌트 헤더 파일
 #include "MultiShooter/Weapon/ShotGun.h" // 산탄총 클래스 헤더 파일
 
 UCombatComponent::UCombatComponent()
@@ -68,6 +68,9 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
     DOREPLIFETIME(UCombatComponent, SecondaryWeapon); // SecondaryWeapon 변수를 네트워크에서 복제하도록 설정
 }
 
+
+// -------------------------------------------------------------------------------------------------변수 복제 관련 ㅜ
+//
 void UCombatComponent::OnRep_EquippedWeapon()
 {
     if (EquippedWeapon && Character )
@@ -158,8 +161,13 @@ void UCombatComponent::OnRep_Aiming() // 렉걸릴 시 클라 쪽에서 줌 광�
         bIsAiming = bAimButtonPressed; // Aim 버튼이 눌렸는지 여부를 설정합니다.
     }
 }
+//
+// -------------------------------------------------------------------------------------------------변수 복제 관련 ㅗ
 
-void UCombatComponent::InitCarriedAmmo() // 무기 추가시 탄약도 추가
+// --------------------------------------------------------------------------------------------------탄약 관련 ㅜ
+//
+// 무기 추가시 탄약도 추가
+void UCombatComponent::InitCarriedAmmo() 
 {
     // 무기 타입별로 초기 보유 총알 개수를 설정합니다.
     CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartingARAmmo);   // 소총 시작 총알 개수
@@ -191,6 +199,47 @@ void UCombatComponent::PickUpGrenade(int32 Amount)
     UpdateGrenade(); // HUD에 수류탄 개수를 업데이트합니다.
 }
 
+void UCombatComponent::UpdateCarriedAmmo()
+{
+    if (EquippedWeapon == nullptr) return;
+
+    if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+    {
+        CarriedAmmo = CarriedAmmoMap[EquippedWeapon->GetWeaponType()]; // 무기 타입에 해당하는 보유 총알 개수를 설정합니다.
+    }
+
+    ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
+    if (Controller)
+    {
+        Controller->SetHUDCarriedAmmo(CarriedAmmo);
+    }
+}
+
+void UCombatComponent::UpdateAmmoValues()
+{
+    if (Character == nullptr || EquippedWeapon == nullptr) return;
+
+    int32 ReloadAmount = AmountToReload(); // 리로드할 총알 개수를 계산합니다.
+    if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+    {
+        CarriedAmmoMap[EquippedWeapon->GetWeaponType()] -= ReloadAmount; // 보유 총알 개수를 감소시킵니다.
+        CarriedAmmo = CarriedAmmoMap[EquippedWeapon->GetWeaponType()]; // 현재 보유 총알 개수를 업데이트합니다.
+    }
+
+    ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
+    if (Controller)
+    {
+        Controller->SetHUDCarriedAmmo(CarriedAmmo);
+    }
+
+    EquippedWeapon->AddAmmo(ReloadAmount); // 무기에 리로드할 총알 개수를 추가합니다.
+}
+
+//
+// //----------------------------------------------------------------------------------------------------탄약 관련ㅗ
+
+// --------------------------------------------------------------------------------------------------무기 관련 유틸 ㅜ
+//
 void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 서버에서만 실행됨
 {
     if (Character == nullptr || WeaponToEquip == nullptr) return;
@@ -264,49 +313,39 @@ void UCombatComponent::SwapWeapon()
 	if (SecondaryWeapon) SecondaryWeapon->EnableCustomDepth(false); // 보조 무기의 윤곽선을 비활성화합니다.
 }
 
+void UCombatComponent::FinisheSwap()
+{
+    if (Character && Character->HasAuthority())
+    {
+        CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 비활성화 상태로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
+    }
+    if (SecondaryWeapon) SecondaryWeapon->EnableCustomDepth(true); // 보조 무기를 커스텀 깊이로 활성화합니다.
+}
+
+void UCombatComponent::FinishedSwapAttachWeapon()
+{
+    EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equiped); // 장착된 무기의 상태를 설정합니다.
+    AttachWeaponToSocket(EquippedWeapon); // 장착된 무기를 소켓에 부착합니다.
+    EquippedWeapon->SetHUDAmmo(); // 장착된 무기의 HUD에 총알 수를 설정합니다.
+    UpdateCarriedAmmo(); // 보유 총알 개수를 업데이트합니다.
+    UpdateWeaponIcon(); // HUD에 무기 아이콘을 업데이트합니다.
+    PlayEquipSound(EquippedWeapon); // 무기 장착 사운드를 재생합니다.
+    SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary); // 보조 무기의 상태를 장착됨으로 설정합니다.
+    AttachWeaponToBackpack(SecondaryWeapon); // 현재 장착된 무기를 백팩에 부착합니다.
+}
+
 bool UCombatComponent::ShouldSwapWeapon()
 {
     return( EquippedWeapon != nullptr && SecondaryWeapon != nullptr ); // 현재 장착된 무기와 보조 무기가 다를 때 true를 반환합니다.
 }
 
-void UCombatComponent::UpdateCarriedAmmo()
-{
-    if (EquippedWeapon == nullptr) return;
-
-    if( CarriedAmmoMap.Contains( EquippedWeapon->GetWeaponType() ) )
-    {
-        CarriedAmmo = CarriedAmmoMap[ EquippedWeapon->GetWeaponType() ]; // 무기 타입에 해당하는 보유 총알 개수를 설정합니다.
-    }
-
-    ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
-    if(Controller)
-    {
-        Controller->SetHUDCarriedAmmo( CarriedAmmo );
-    }
-}
-
-void UCombatComponent::UpdateWeaponIcon() // HUD에 무기 아이콘을 업데이트하는 함수
-{
-    ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
-    if( Controller )
-    {
-        if( EquippedWeapon->WeaponIcon)
-        {
-            Controller->SetHUDWeaponIcon( EquippedWeapon->WeaponIcon ); // HUD에 무기 아이콘을 설정합니다.
-        }
-        else
-        {
-            Controller->SetHUDWeponIconClear(); // 무기 아이콘이 없으면 HUD에서 무기 아이콘을 지웁니다.
-        }
-    }
-}
-
 void UCombatComponent::DropEquippedWeapon()
 {
-    if( EquippedWeapon ) EquippedWeapon->Dropped(); // 이미 장착된 무기가 있다면 드롭합니다.
+    if (EquippedWeapon) EquippedWeapon->Dropped(); // 이미 장착된 무기가 있다면 드롭합니다.
 }
 
-void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무기 추가시 각 무기마다 다르게 위치 지정해주어야 함!!!!!
+// 무기 추가시 각 무기마다 다르게 위치 지정해주어야 함!!!!!
+void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip) 
 {
     USkeletalMeshComponent* WeaponMesh = EquippedWeapon->GetWeaponMesh();
     if (WeaponMesh == nullptr) return;
@@ -320,7 +359,7 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무�
             FName("hand_rSocket") // 소켓 지정
         );
         WeaponMesh->SetRelativeLocation(FVector(-6.796413f, 4.446436f, 1.126907f));
-        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f) ); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
+        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f)); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
     }
     else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
         WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Bazooka_SK"))
@@ -331,7 +370,7 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무�
             FName("hand_rSocket") // 소켓 지정
         );
         WeaponMesh->SetRelativeLocation(FVector(-7.935278f, 2.721333f, 19.447058f));
-        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.00016f, 0.f) ); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
+        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.00016f, 0.f)); // (Pitch=0.000007,Yaw=90.000206,Roll=0.000000)
     }
     else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
         WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Pistol_SK"))
@@ -342,7 +381,7 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무�
             FName("hand_rSocket") // 소켓 지정
         );
         WeaponMesh->SetRelativeLocation(FVector(-5.796565f, 3.547575f, -0.468514f));
-        WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f) );
+        WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f));
     }
     else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
         WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("SMG_SK"))
@@ -353,7 +392,7 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무�
             FName("hand_rSocket") // 소켓 지정
         );
         WeaponMesh->SetRelativeLocation(FVector(-8.003382f, 3.45388f, -3.464114f));
-        WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f) );
+        WeaponMesh->SetRelativeRotation(FRotator(0.000046f, 90.000198f, 0.000034f));
     }
     else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
         WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Shotgun_SK"))
@@ -364,7 +403,7 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무�
             FName("hand_rSocket") // 소켓 지정
         );
         WeaponMesh->SetRelativeLocation(FVector(-6.928853f, 5.209436f, 10.59279f));
-        WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f) );
+        WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f));
     }
     else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
         WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("SniperRifle_SK"))
@@ -375,7 +414,7 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무�
             FName("hand_rSocket") // 소켓 지정
         );
         WeaponMesh->SetRelativeLocation(FVector(-3.726387, 2.377795, -0.399829));
-        WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f) );
+        WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f));
     }
     else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
         WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("GravityGun_SK"))
@@ -386,7 +425,7 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무�
             FName("hand_rSocket") // 소켓 지정
         );
         WeaponMesh->SetRelativeLocation(FVector(-8.923258f, 5.280822f, 2.778548f));
-        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f) );
+        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.000007f));
     }
     else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
         WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("MiniGun_SK"))
@@ -397,13 +436,13 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip ) // 무�
             FName("hand_rSocket") // 소켓 지정
         );
         WeaponMesh->SetRelativeLocation(FVector(-10.5811f, 25.454687, -9.787731f));
-        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.f) );
+        WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.f));
     }
 }
 
-void UCombatComponent::PlayEquipSound( ABaseWeapon* WeaponToEquip  )
+void UCombatComponent::PlayEquipSound(ABaseWeapon* WeaponToEquip)
 {
-    if( WeaponToEquip && Character && WeaponToEquip->EquipSound ) // 무기 장착 사운드가 있고 캐릭터가 존재하는 경우
+    if (WeaponToEquip && Character && WeaponToEquip->EquipSound) // 무기 장착 사운드가 있고 캐릭터가 존재하는 경우
     {
         UGameplayStatics::PlaySoundAtLocation(
             this,
@@ -413,6 +452,32 @@ void UCombatComponent::PlayEquipSound( ABaseWeapon* WeaponToEquip  )
     }
 }
 
+void UCombatComponent::UpdateWeaponIcon() // HUD에 무기 아이콘을 업데이트하는 함수
+{
+    ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
+    if (Controller)
+    {
+        if (EquippedWeapon->WeaponIcon)
+        {
+            Controller->SetHUDWeaponIcon(EquippedWeapon->WeaponIcon); // HUD에 무기 아이콘을 설정합니다.
+        }
+        else
+        {
+            Controller->SetHUDWeponIconClear(); // 무기 아이콘이 없으면 HUD에서 무기 아이콘을 지웁니다.
+        }
+    }
+}
+
+void UCombatComponent::ClearEquippedWeapon()
+{
+    EquippedWeapon = nullptr;
+}
+
+//
+// --------------------------------------------------------------------------------------------------무기 관련 유틸 ㅜ
+
+// --------------------------------------------------------------------------------------------------리로드 관련ㅜ
+//
 void UCombatComponent::ReloadEmptyWeapon()
 {
     if( EquippedWeapon && EquippedWeapon->IsEmptyAmmo() )
@@ -463,26 +528,26 @@ void UCombatComponent::HandleReload()
     }
 }
 
-void UCombatComponent::UpdateAmmoValues()
+void UCombatComponent::FinshedReload()
 {
-    if( Character == nullptr || EquippedWeapon == nullptr ) return;
+    if (Character == nullptr) return;
 
-    int32 ReloadAmount = AmountToReload(); // 리로드할 총알 개수를 계산합니다.
-    if( CarriedAmmoMap.Contains( EquippedWeapon->GetWeaponType() ) )
+    bLocallyReloading = false; // 로컬에서 리로드 중임을 표시합니다.
+    if (Character->HasAuthority())
     {
-        CarriedAmmoMap[ EquippedWeapon->GetWeaponType() ] -= ReloadAmount; // 보유 총알 개수를 감소시킵니다.
-        CarriedAmmo = CarriedAmmoMap[ EquippedWeapon->GetWeaponType() ]; // 현재 보유 총알 개수를 업데이트합니다.
+        CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 비활성화 상태로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
+        UpdateAmmoValues(); // HUD에 총알 개수를 업데이트합니다. -> 애님 노티파이로 실행
     }
-
-    ABasePC* Controller = Cast<ABasePC>(Character->GetController()); // 캐릭터의 플레이어 컨트롤러를 가져옵니다.
-    if(Controller)
+    if (bFireButtonPressed)
     {
-        Controller->SetHUDCarriedAmmo( CarriedAmmo );
+        Fire(); // 발사 버튼이 눌렸다면 발사 함수를 호출합니다.
     }
-
-    EquippedWeapon->AddAmmo( ReloadAmount ); // 무기에 리로드할 총알 개수를 추가합니다.
 }
+//
+// --------------------------------------------------------------------------------------------------리로드 관련ㅜ
 
+// -----------------------------------------------------------------------------------------------Aim 및 크로스헤어 관련ㅜ
+//
 void UCombatComponent::SetAiming(bool IsAiming)
 {
     if( Character == nullptr || EquippedWeapon == nullptr ) return; // 캐릭터가 없으면 함수 종료
@@ -501,6 +566,195 @@ void UCombatComponent::ServerSetAiming_Implementation(bool IsAiming)
     bIsAiming = IsAiming; // Aim 상태를 설정합니다.
 }
 
+void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
+{
+    FVector2D ViewportSize = FVector2D::ZeroVector;
+    if (GEngine && GEngine->GameViewport)
+    {
+        GEngine->GameViewport->GetViewportSize(ViewportSize); // 뷰포트 크기를 가져옵니다.
+    }
+
+    FVector2D CrosshairLocation(ViewportSize.X / 2.f, ViewportSize.Y / 2.f); // 십자선 위치를 뷰포트 중앙으로 설정
+    FVector CrosshairWorldLocation, CrosshairWorldDirection;
+
+    bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld( // 화면 좌표를 월드 좌표로 변환
+        UGameplayStatics::GetPlayerController(this, 0), // 캐릭터의 컨트롤러를 사용하여 화면 좌표를 월드 좌표로 변환
+        CrosshairLocation, // 십자선 위치
+        CrosshairWorldLocation, // 변환된 월드 위치
+        CrosshairWorldDirection // 변환된 월드 방향
+    );
+
+    if (bScreenToWorld)
+    {
+        FVector Start = CrosshairWorldLocation; // 시작 위치는 십자선 월드 위치
+
+        if (Character)
+        {
+            float DistanceToCharacter = (Character->GetActorLocation() - Start).Size(); // 캐릭터와 십자선 사이의 거리
+            Start += CrosshairWorldDirection * (DistanceToCharacter + 100.f); // 시작 위치를 캐릭터와 십자선 사이의 거리의 50 단위 만큼 앞으로 이동
+        }
+
+        FVector End = Start + (CrosshairWorldDirection * TRACE_LENGTH); // 끝 위치는 십자선 월드 방향으로 80000 단위 떨어진 위치
+
+        // 자기 자신 무시 파라미터 추가
+        FCollisionQueryParams TraceParams;
+        if (Character)
+        {
+            TraceParams.AddIgnoredActor(Character);
+        }
+
+        // 라인 트레이스를 수행하여 십자선 아래의 물체를 추적
+        bool bHit = GetWorld()->LineTraceSingleByChannel(
+            TraceHitResult,
+            Start,
+            End,
+            ECollisionChannel::ECC_Visibility
+        );
+        if (!bHit)
+        {
+            TraceHitResult.ImpactPoint = End; // 트레이스 실패 시 정면 먼 곳으로
+        }
+        if (TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UCrosshairInterface>()) // 히트된 액터가 있는 경우와 인터페이스가 구현된 경우
+        {
+            HUDPackage.CrosshairColor = FLinearColor::Red; // 십자선 색상을 빨간색으로 설정
+        }
+        else // 히트된 액터가 없거나 인터페이스가 구현되지 않은 경우
+        {
+            HUDPackage.CrosshairColor = FLinearColor::White; // 십자선 색상을 흰색으로 설정
+        }
+    }
+
+}
+
+void UCombatComponent::SetHUDCrosshair(float DeltaTime)
+{
+    if (Character == nullptr || Character->Controller == nullptr) return;
+
+    PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Character->Controller) : PlayerController; // 플레이어 컨트롤러를 가져옵니다.
+    if (PlayerController == nullptr) return;
+
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(PlayerController->GetHUD()) : CharacterHUD; // 캐릭터 HUD를 가져옵니다.
+    if (CharacterHUD == nullptr) return;
+
+    if (EquippedWeapon)
+    {
+        HUDPackage.CrosshairCenter = EquippedWeapon->CrosshairCenter; // 십자선 중앙 텍스처
+        HUDPackage.CrosshairLeft = EquippedWeapon->CrosshairLeft; // 십자선 왼쪽 텍스처
+        HUDPackage.CrosshairRight = EquippedWeapon->CrosshairRight; // 십자선 오른쪽 텍스처
+        HUDPackage.CrosshairTop = EquippedWeapon->CrosshairTop; // 십자선 위쪽 텍스처
+        HUDPackage.CrosshairBottom = EquippedWeapon->CrosshairBottom; // 십자선 아래쪽 텍스처
+
+    }
+    else
+    {
+        HUDPackage.CrosshairCenter = nullptr; // 십자선 중앙 텍스처
+        HUDPackage.CrosshairLeft = nullptr; // 십자선 왼쪽 텍스처
+        HUDPackage.CrosshairRight = nullptr; // 십자선 오른쪽 텍스처
+        HUDPackage.CrosshairTop = nullptr; // 십자선 위쪽 텍스처
+        HUDPackage.CrosshairBottom = nullptr; // 십자선 아래쪽 텍스처
+    }
+
+    // 십자선 확산 정도를 계산합니다.
+    // 최대 걷기 속도는 0~600 -> 0~1로 매핑됩니다.
+    float WalkSpeed = Character->GetVelocity().Size2D(); // XY 평면 속도(이동 속도)
+
+    CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(
+        FVector2D(0.f, Character->GetCharacterMovement()->MaxWalkSpeed),
+        FVector2D(0.f, 1.f),
+        WalkSpeed
+    );
+
+    if (Character->GetCharacterMovement()->IsFalling()) // 캐릭터가 낙하 중일 때
+    {
+        CrosshairInAirFactor = FMath::FInterpTo(
+            CrosshairInAirFactor, // 현재 십자선 공중 계수
+            2.25f, // 목표 값
+            DeltaTime, // 델타 시간
+            2.25f // 보간 속도
+        );
+    }
+    else // 캐릭터가 낙하 중이 아닐 때
+    {
+        CrosshairInAirFactor = FMath::FInterpTo(
+            CrosshairInAirFactor, // 현재 십자선 공중 계수
+            0.f, // 목표 값
+            DeltaTime, // 델타 시간
+            30.f // 보간 속도
+        );
+    }
+
+    if (bIsAiming) // Aim 상태일 때
+    {
+        CrosshairAimFactor = FMath::FInterpTo(
+            CrosshairAimFactor, // 현재 십자선 Aim 계수
+            0.5f, // 목표 값
+            DeltaTime, // 델타 시간
+            30.f // 보간 속도
+        );
+    }
+    else // Aim 상태가 아닐 때
+    {
+        CrosshairAimFactor = FMath::FInterpTo(
+            CrosshairAimFactor, // 현재 십자선 Aim 계수
+            0.f, // 목표 값
+            DeltaTime, // 델타 시간
+            30.f // 보간 속도
+        );
+    }
+
+    CrosshairShootingFactor = FMath::FInterpTo(
+        CrosshairShootingFactor, // 현재 십자선 사격 계수
+        0.f, // 목표 값
+        DeltaTime, // 델타 시간
+        40.f // 보간 속도
+    );
+
+    HUDPackage.CrosshairSpread =
+        0.5f  // 기본 십자선 확산 정도
+        + CrosshairVelocityFactor
+        + CrosshairInAirFactor
+        - CrosshairAimFactor
+        + CrosshairShootingFactor;  // firebuttompressed 함수해서 버튼 눌리면 증가
+    // 십자선 확산 정도를 계산합니다.
+
+
+    CharacterHUD->SetHUDPackage(HUDPackage); // 캐릭터 HUD에 십자선 패키지를 설정합니다.
+}
+
+void UCombatComponent::InterpFOV(float DeltaTime)
+{
+    if (Character == nullptr || PlayerController == nullptr || EquippedWeapon == nullptr) return;
+
+    if (bIsAiming)
+    {
+        CurrentFOV = FMath::FInterpTo(
+            CurrentFOV, // 현재 FOV
+            EquippedWeapon->GetZoomedFOV(), // 목표 FOV (기본 FOV에서 25 감소)
+            DeltaTime, // 델타 시간
+            EquippedWeapon->GetZoomInterpSpeed() // 보간 속도
+        );
+    }
+    else
+    {
+        CurrentFOV = FMath::FInterpTo(
+            CurrentFOV, // 현재 FOV
+            DefaultFOV, // 목표 FOV (기본 FOV)
+            DeltaTime, // 델타 시간
+            EquippedWeapon->GetZoomInterpSpeed() // 보간 속도
+        );
+    }
+
+    if (Character->GetFollowCamera())
+    {
+        Character->GetFollowCamera()->SetFieldOfView(CurrentFOV); // 카메라의 FOV를 현재 FOV로 설정합니다.
+    }
+
+}
+//
+//------------------------------------------------------------------------------------------------Aim 및 크로스헤어 관련ㅗ
+
+// -----------------------------------------------------------------------------------------------------------------------발사 관련ㅜ
+//
 void UCombatComponent::Server_Fire_Implementation( const FVector_NetQuantize& TraceHitTarget, float FireDelay)
 {
     Multicast_Fire( TraceHitTarget ); // 서버에서 발사 버튼이 눌렸을 때 멀티캐스트로 호출합니다.
@@ -675,231 +929,14 @@ void UCombatComponent::FireTimerFinished()
     }
     ReloadEmptyWeapon(); // 빈 무기를 리로드합니다.
 }
+//
+// -----------------------------------------------------------------------------------------------------------------------발사 관련ㅗ
 
-void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
+// -------------------------------------------------------------------------------------------------------------수류탄 ㅜ
+//
+void UCombatComponent::Server_FireGrenade_Implementation(const FVector_NetQuantize& Target)
 {
-    FVector2D ViewportSize = FVector2D::ZeroVector;
-    if(  GEngine && GEngine->GameViewport )
-    {
-        GEngine->GameViewport->GetViewportSize(ViewportSize); // 뷰포트 크기를 가져옵니다.
-    }
-
-    FVector2D CrosshairLocation(  ViewportSize.X / 2.f, ViewportSize.Y / 2.f); // 십자선 위치를 뷰포트 중앙으로 설정
-    FVector CrosshairWorldLocation, CrosshairWorldDirection;
-
-    bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld( // 화면 좌표를 월드 좌표로 변환
-        UGameplayStatics::GetPlayerController(this, 0), // 캐릭터의 컨트롤러를 사용하여 화면 좌표를 월드 좌표로 변환
-        CrosshairLocation, // 십자선 위치
-        CrosshairWorldLocation, // 변환된 월드 위치
-        CrosshairWorldDirection // 변환된 월드 방향
-    );
-
-    if( bScreenToWorld )
-    {
-        FVector Start = CrosshairWorldLocation; // 시작 위치는 십자선 월드 위치
-
-        if( Character )
-        {
-            float DistanceToCharacter = (Character->GetActorLocation() - Start).Size(); // 캐릭터와 십자선 사이의 거리
-            Start += CrosshairWorldDirection * (DistanceToCharacter + 100.f ); // 시작 위치를 캐릭터와 십자선 사이의 거리의 50 단위 만큼 앞으로 이동
-        }
-
-        FVector End = Start + (CrosshairWorldDirection * TRACE_LENGTH); // 끝 위치는 십자선 월드 방향으로 80000 단위 떨어진 위치
-
-        // 자기 자신 무시 파라미터 추가
-        FCollisionQueryParams TraceParams;
-        if (Character)
-        {
-            TraceParams.AddIgnoredActor(Character);
-        }
-        
-        // 라인 트레이스를 수행하여 십자선 아래의 물체를 추적
-        bool bHit = GetWorld()->LineTraceSingleByChannel(
-            TraceHitResult,
-            Start,
-            End,
-            ECollisionChannel::ECC_Visibility
-        );
-        if (!bHit)
-        {
-            TraceHitResult.ImpactPoint = End; // 트레이스 실패 시 정면 먼 곳으로
-        }
-        if( TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UCrosshairInterface>() ) // 히트된 액터가 있는 경우와 인터페이스가 구현된 경우
-        {
-            HUDPackage.CrosshairColor = FLinearColor::Red; // 십자선 색상을 빨간색으로 설정
-        }
-        else // 히트된 액터가 없거나 인터페이스가 구현되지 않은 경우
-        {
-            HUDPackage.CrosshairColor = FLinearColor::White; // 십자선 색상을 흰색으로 설정
-        }
-    }
-
-}
-
-void UCombatComponent::SetHUDCrosshair(float DeltaTime)
-{
-    if( Character == nullptr || Character->Controller == nullptr ) return;
-
-    PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Character->Controller) : PlayerController; // 플레이어 컨트롤러를 가져옵니다.
-    if( PlayerController == nullptr ) return;
-
-    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(PlayerController->GetHUD()) : CharacterHUD; // 캐릭터 HUD를 가져옵니다.
-    if( CharacterHUD == nullptr ) return;
-
-    if(  EquippedWeapon )
-    {
-        HUDPackage.CrosshairCenter = EquippedWeapon->CrosshairCenter; // 십자선 중앙 텍스처
-        HUDPackage.CrosshairLeft = EquippedWeapon->CrosshairLeft; // 십자선 왼쪽 텍스처
-        HUDPackage.CrosshairRight = EquippedWeapon->CrosshairRight; // 십자선 오른쪽 텍스처
-        HUDPackage.CrosshairTop = EquippedWeapon->CrosshairTop; // 십자선 위쪽 텍스처
-        HUDPackage.CrosshairBottom = EquippedWeapon->CrosshairBottom; // 십자선 아래쪽 텍스처
-
-    }
-    else
-    {
-        HUDPackage.CrosshairCenter =nullptr; // 십자선 중앙 텍스처
-        HUDPackage.CrosshairLeft = nullptr; // 십자선 왼쪽 텍스처
-        HUDPackage.CrosshairRight = nullptr; // 십자선 오른쪽 텍스처
-        HUDPackage.CrosshairTop = nullptr; // 십자선 위쪽 텍스처
-        HUDPackage.CrosshairBottom = nullptr; // 십자선 아래쪽 텍스처
-    }
-
-    // 십자선 확산 정도를 계산합니다.
-    // 최대 걷기 속도는 0~600 -> 0~1로 매핑됩니다.
-    float WalkSpeed = Character->GetVelocity().Size2D(); // XY 평면 속도(이동 속도)
-
-    CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(
-        FVector2D(0.f, Character->GetCharacterMovement()->MaxWalkSpeed),
-        FVector2D(0.f, 1.f),
-        WalkSpeed
-    );
-    
-    if( Character->GetCharacterMovement()->IsFalling() ) // 캐릭터가 낙하 중일 때
-    {
-        CrosshairInAirFactor = FMath::FInterpTo(
-            CrosshairInAirFactor, // 현재 십자선 공중 계수
-            2.25f, // 목표 값
-            DeltaTime, // 델타 시간
-            2.25f // 보간 속도
-        );
-    }
-    else // 캐릭터가 낙하 중이 아닐 때
-    {
-        CrosshairInAirFactor = FMath::FInterpTo(
-            CrosshairInAirFactor, // 현재 십자선 공중 계수
-            0.f, // 목표 값
-            DeltaTime, // 델타 시간
-            30.f // 보간 속도
-        );
-    }
-
-    if( bIsAiming ) // Aim 상태일 때
-    {
-        CrosshairAimFactor = FMath::FInterpTo(
-            CrosshairAimFactor, // 현재 십자선 Aim 계수
-            0.5f, // 목표 값
-            DeltaTime, // 델타 시간
-            30.f // 보간 속도
-        );
-    }
-    else // Aim 상태가 아닐 때
-    {
-        CrosshairAimFactor = FMath::FInterpTo(
-            CrosshairAimFactor, // 현재 십자선 Aim 계수
-            0.f, // 목표 값
-            DeltaTime, // 델타 시간
-            30.f // 보간 속도
-        );
-    }
-
-    CrosshairShootingFactor = FMath::FInterpTo(
-        CrosshairShootingFactor, // 현재 십자선 사격 계수
-        0.f, // 목표 값
-        DeltaTime, // 델타 시간
-        40.f // 보간 속도
-    );
-
-    HUDPackage.CrosshairSpread = 
-        0.5f  // 기본 십자선 확산 정도
-        + CrosshairVelocityFactor 
-        + CrosshairInAirFactor 
-        - CrosshairAimFactor
-        + CrosshairShootingFactor;  // firebuttompressed 함수해서 버튼 눌리면 증가
-    // 십자선 확산 정도를 계산합니다.
-
-
-    CharacterHUD->SetHUDPackage(HUDPackage); // 캐릭터 HUD에 십자선 패키지를 설정합니다.
-}
-
-void UCombatComponent::InterpFOV(float DeltaTime)
-{
-    if( Character == nullptr || PlayerController == nullptr || EquippedWeapon == nullptr ) return;
-
-    if( bIsAiming )
-    {
-        CurrentFOV = FMath::FInterpTo(
-            CurrentFOV, // 현재 FOV
-            EquippedWeapon->GetZoomedFOV(), // 목표 FOV (기본 FOV에서 25 감소)
-            DeltaTime, // 델타 시간
-            EquippedWeapon->GetZoomInterpSpeed() // 보간 속도
-        );
-    }
-    else
-    {
-        CurrentFOV = FMath::FInterpTo(
-            CurrentFOV, // 현재 FOV
-            DefaultFOV, // 목표 FOV (기본 FOV)
-            DeltaTime, // 델타 시간
-            EquippedWeapon->GetZoomInterpSpeed() // 보간 속도
-        );
-    }
-
-    if( Character->GetFollowCamera() )
-    {
-        Character->GetFollowCamera()->SetFieldOfView(CurrentFOV); // 카메라의 FOV를 현재 FOV로 설정합니다.
-    }
-    
-}
-
-void UCombatComponent::ClearEquippedWeapon()
-{
-    EquippedWeapon = nullptr;
-}
-
-void UCombatComponent::SetWeaponMesh( bool bShow )
-{
-    if( EquippedWeapon == nullptr || Character == nullptr ) return; // EquippedWeapon이 없으면 함수 종료
-
-    if( bShow ) // 수류탄을 던지지 않는 경우
-    {
-        EquippedWeapon->SetActorHiddenInGame(false); // 무기를 보이게 합니다.
-    }
-    else // 수류탄을 던지는 경우
-    {
-        EquippedWeapon->SetActorHiddenInGame(true); // 무기를 숨깁니다.
-    }
-}
-
-void UCombatComponent::SetGrenadeMesh( bool bShow )
-{
-    if( Character && Character->GetGrenadeMesh() ) // 캐릭터가 존재하고, 캐릭터의 수류탄 메시가 존재하는 경우
-    {
-        Character->GetGrenadeMesh()->SetVisibility(bShow); // 수류탄 메시의 가시성을 설정합니다.
-    }
-}
-
-void UCombatComponent::FireGrenade()
-{
-    SetGrenadeMesh(false); // 수류탄 메시 숨김 (서버/클라 모두)
-    if( Character && Character->IsLocallyControlled() ) // 로컬 플레이어만 수류탄을 던집니다.
-    {
-        Server_FireGrenade(HitTarget); // 서버에 수류탄 투척 요청을 보냅니다. 
-    } 
-}
-
-void UCombatComponent::Server_FireGrenade_Implementation( const FVector_NetQuantize& Target )
-{
-    if( Character && GrenadeClass && Character->GetGrenadeMesh() ) // 서버에서만 실행
+    if (Character && GrenadeClass && Character->GetGrenadeMesh()) // 서버에서만 실행
     {
         const FVector StartingLocation = Character->GetGrenadeMesh()->GetComponentLocation(); // 수류탄 시작 위치
         FVector ToTarget = Target - StartingLocation; // 타겟 위치에서 시작 위치를 뺀 벡터
@@ -908,7 +945,7 @@ void UCombatComponent::Server_FireGrenade_Implementation( const FVector_NetQuant
         SpawnParams.Instigator = Character; // 스폰할 액터의 인스티게이터를 캐릭터로 설정
 
         UWorld* World = GetWorld(); // 현재 월드를 가져옵니다.
-        if( World )
+        if (World)
         {
             // 수류탄을 스폰합니다.
             AProjectile* SpawnGrenade = World->SpawnActor<AProjectile>(
@@ -929,47 +966,35 @@ void UCombatComponent::Server_FireGrenade_Implementation( const FVector_NetQuant
     }
 }
 
-void UCombatComponent::FinshedReload()
+void UCombatComponent::FireGrenade()
 {
-    if (Character == nullptr) return;
-
-    bLocallyReloading = false; // 로컬에서 리로드 중임을 표시합니다.
-    if (Character->HasAuthority())
+    SetGrenadeMesh(false); // 수류탄 메시 숨김 (서버/클라 모두)
+    if (Character && Character->IsLocallyControlled()) // 로컬 플레이어만 수류탄을 던집니다.
     {
-        CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 비활성화 상태로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
-        UpdateAmmoValues(); // HUD에 총알 개수를 업데이트합니다. -> 애님 노티파이로 실행
-    }
-    if (bFireButtonPressed)
-    {
-        Fire(); // 발사 버튼이 눌렸다면 발사 함수를 호출합니다.
+        Server_FireGrenade(HitTarget); // 서버에 수류탄 투척 요청을 보냅니다. 
     }
 }
 
-void UCombatComponent::FinishedThrowGrenade()
+void UCombatComponent::SetWeaponMesh(bool bShow)
 {
-    CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 비활성화 상태로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
-    SetWeaponMesh(true); // 무기 메시 다시 보이게 (서버/클라 모두)
-}
+    if (EquippedWeapon == nullptr || Character == nullptr) return; // EquippedWeapon이 없으면 함수 종료
 
-void UCombatComponent::FinisheSwap()
-{
-    if (Character && Character->HasAuthority())
+    if (bShow) // 수류탄을 던지지 않는 경우
     {
-		CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 비활성화 상태로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
+        EquippedWeapon->SetActorHiddenInGame(false); // 무기를 보이게 합니다.
     }
-	if (SecondaryWeapon) SecondaryWeapon->EnableCustomDepth(true); // 보조 무기를 커스텀 깊이로 활성화합니다.
+    else // 수류탄을 던지는 경우
+    {
+        EquippedWeapon->SetActorHiddenInGame(true); // 무기를 숨깁니다.
+    }
 }
 
-void UCombatComponent::FinishedSwapAttachWeapon()
+void UCombatComponent::SetGrenadeMesh(bool bShow)
 {
-    EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equiped); // 장착된 무기의 상태를 설정합니다.
-    AttachWeaponToSocket(EquippedWeapon); // 장착된 무기를 소켓에 부착합니다.
-    EquippedWeapon->SetHUDAmmo(); // 장착된 무기의 HUD에 총알 수를 설정합니다.
-    UpdateCarriedAmmo(); // 보유 총알 개수를 업데이트합니다.
-    UpdateWeaponIcon(); // HUD에 무기 아이콘을 업데이트합니다.
-    PlayEquipSound(EquippedWeapon); // 무기 장착 사운드를 재생합니다.
-    SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary); // 보조 무기의 상태를 장착됨으로 설정합니다.
-    AttachWeaponToBackpack(SecondaryWeapon); // 현재 장착된 무기를 백팩에 부착합니다.
+    if (Character && Character->GetGrenadeMesh()) // 캐릭터가 존재하고, 캐릭터의 수류탄 메시가 존재하는 경우
+    {
+        Character->GetGrenadeMesh()->SetVisibility(bShow); // 수류탄 메시의 가시성을 설정합니다.
+    }
 }
 
 void UCombatComponent::ThrowGrenade()
@@ -1019,4 +1044,12 @@ void UCombatComponent::UpdateGrenade()
         PlayerController->SetHUDGrenade(Grenade); // HUD에 수류탄 개수를 설정합니다.
     }
 }
+
+void UCombatComponent::FinishedThrowGrenade()
+{
+    CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 비활성화 상태로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
+    SetWeaponMesh(true); // 무기 메시 다시 보이게 (서버/클라 모두)
+}
+//
+// -------------------------------------------------------------------------------------------------------------수류탄 ㅗ
 

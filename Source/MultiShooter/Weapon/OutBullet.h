@@ -16,7 +16,7 @@ class MULTISHOOTER_API AOutBullet : public AActor
 	class UStaticMeshComponent* BulletMesh; // 총알 메쉬 컴포넌트
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
-	float ImpulsePwoer;
+	float ImpulsePwoer; // 이게 쌔지면 탄피가 좀 더 멀리 날아감
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class USoundCue* BulletSound; // 총알 소리
@@ -27,7 +27,8 @@ protected:
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
-	virtual void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	virtual void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, 
+		FVector NormalImpulse, const FHitResult& Hit);
 
 public:	
 	AOutBullet();

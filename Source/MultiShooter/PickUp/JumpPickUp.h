@@ -9,10 +9,10 @@ class MULTISHOOTER_API AJumpPickUp : public APickUp
 {
 	GENERATED_BODY()
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float JumpBuff = 1500.f;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float JumpBuffTime = 10.f; // 점프 버프 지속 시간
 
 protected:

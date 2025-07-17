@@ -31,6 +31,7 @@ APickUp::APickUp()
     PickUpEffectComponent->SetupAttachment(RootComponent); // 루트 컴포넌트에 첨부합니다.
 }
 
+// 생성 되자마자 캘릭터 있으면 오버랩 이벤트 바인딩도 전에 사라지므로 타이머 설정!
 void APickUp::BeginPlay()
 {
 	Super::BeginPlay();
@@ -56,11 +57,13 @@ void APickUp::Tick(float DeltaTime)
 
 }
 
+// 픽업 상속 받는 자식들에서 구현
 void APickUp::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	
 }
 
+// 타이머가 끝나면 오버랩 이벤트를 바인딩합니다.
 void APickUp::FinishBindOverlapTimer()
 {
 	if( HasAuthority() )
@@ -69,6 +72,7 @@ void APickUp::FinishBindOverlapTimer()
 	}
 }
 
+// 오버라이드
 void APickUp::Destroyed()
 {
 	Super::Destroyed();

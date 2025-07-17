@@ -108,6 +108,7 @@ void AProjectile::SpawnTrailSystem()
     }
 }
 
+// 발사체가 파괴되기 전에 타이머를 시작합니다. 특히 로켓 프로젝타일에서 사용
 void AProjectile::StartDestroyTimer()
 {
 	GetWorldTimerManager().SetTimer(DestroyTimer, this, &AProjectile::DestroyTimerFinished, DestroyTime); // 파괴 타이머 설정

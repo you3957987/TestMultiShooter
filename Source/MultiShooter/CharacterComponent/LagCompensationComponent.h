@@ -11,11 +11,13 @@ struct FBoxInformation
 	GENERATED_BODY()
 
 	UPROPERTY()
-	FVector Location;
+	FVector Location = FVector::ZeroVector;
+
 	UPROPERTY()
-	FRotator Rotation;
+	FRotator Rotation = FRotator::ZeroRotator;
+
 	UPROPERTY()
-	FVector BoxExtent; // 박스 범위
+	FVector BoxExtent = FVector::ZeroVector; // 박스 범위
 };
 
 // 프레임 정보. 히트 시간, 히트박스 정보, 캐릭터 정보를 저장하는 구조체
@@ -25,12 +27,13 @@ struct FFramePackage
 	GENERATED_BODY()
 
 	UPROPERTY()
-	float Time; // 프레임 시간
+	float Time = 0.f; // 프레임 시간
+
 	UPROPERTY()
 	TMap<FName, FBoxInformation> HitBoxInfo; // 히트박스 정보
 
 	UPROPERTY()
-	ABaseCharacter* Character; // 이 프레임 패키지를 저장한 캐릭터
+	ABaseCharacter* Character = nullptr; // 이 프레임 패키지를 저장한 캐릭터
 };
 
 // 서버 사이드 리와인드 결과를 저장하는 구조체 == 히트가 확인되었는지 여부와 헤드샷 여부를 저장합니다.
@@ -40,9 +43,10 @@ struct FServerSideRewindResult
 	GENERATED_BODY()
 
 	UPROPERTY()
-	bool bHitConfirmed; // 히트가 확인되었는지 여부
+	bool bHitConfirmed = false; // 히트가 확인되었는지 여부
+
 	UPROPERTY()
-	bool bHeadShot; // 헤드샷 여부
+	bool bHeadShot = false; // 헤드샷 여부
 };
 
 // 샷건용 서버 사이드 리와인드 결과 == 헤드샷과 몸샷 횟수를 저장하는 구조체
@@ -52,10 +56,10 @@ struct FShotgunServerSideRewindResult
 	GENERATED_BODY()
 
 	UPROPERTY()
-	TMap< ABaseCharacter*, uint32 > HeadShot; // 헤드샷 횟수
+	TMap<ABaseCharacter*, uint32> HeadShot;
 
 	UPROPERTY()
-	TMap< ABaseCharacter*, uint32 > BodyShot; //  몸샷 횟수
+	TMap<ABaseCharacter*, uint32> BodyShot;
 };
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -74,9 +78,8 @@ class MULTISHOOTER_API ULagCompensationComponent : public UActorComponent
 
 protected:
 	virtual void BeginPlay() override;
-
-	FFramePackage InterpBetweenFrames(const FFramePackage& OlderFrame, const FFramePackage& YoungerFrame, float HitTime); // 프레임 사이를 보간하는 함수
-
+	//-------------------------------------------------------------------------------------------------------------------------히트 확인 ㅜ
+	//
 	FServerSideRewindResult ConfirmHit(
 		const FFramePackage& Package, 
 		ABaseCharacter* HitCharacter, 
@@ -96,7 +99,10 @@ protected:
 		const FVector_NetQuantize100& InitialVelocity, 
 		float HitTime
 	); // 발사체 히트 확인 함수
+	//
+	//-------------------------------------------------------------------------------------------------------------------------히트 확인 ㅗ
 
+	FFramePackage InterpBetweenFrames(const FFramePackage& OlderFrame, const FFramePackage& YoungerFrame, float HitTime); // 프레임 사이를 보간하는 함수
 	void SaveFramePackage(FFramePackage& Package); // 프레임 패키지를 저장하는 함수
 	FFramePackage GetFrameToCheck(ABaseCharacter* HitCharacter, float HitTime);
 	void CacheBoxPosition(ABaseCharacter* HitCharacter, FFramePackage& OutFramePackage); // 캐릭터의 히트박스 위치를 저장하는 함수
@@ -114,6 +120,8 @@ public:
 
 	void ShowFramePackage(const FFramePackage& Package, FColor Color); // 프레임 패키지를 보여주는 함수
 
+	// -----------------------------------------------------------------------------------------서버 시간 되감기ㅜ
+	//
 	FServerSideRewindResult ServerSideRewind(
 		class ABaseCharacter* HitCharacter, 
 		const FVector_NetQuantize& TraceStart,
@@ -134,8 +142,11 @@ public:
 		const TArray<FVector_NetQuantize>& HitLocations, 
 		float HitTime
 	);
+	//
+	// --------------------------------------------------------------------------------------------서버 시간 되감기ㅗ
 
-	// 서버 사이드 리와인드 결과를 바탕으로 대미지를 적용하는 함수
+	// --------------------------------------------------------서버 사이드 리와인드 결과를 바탕으로 대미지를 적용하는 함수ㅜ
+	// 히트 스캔
 	UFUNCTION( Server, Reliable )
 	void ServerScoreRequest(
 		ABaseCharacter* HitCharacter,
@@ -143,7 +154,7 @@ public:
 		const FVector_NetQuantize& HitLocation,
 		float HitTime
 	);
-
+	// 샷건
 	UFUNCTION(Server, Reliable)
 	void ShotgunServerScoreRequest(
 		const TArray<ABaseCharacter*>& HitCharacters,
@@ -151,7 +162,7 @@ public:
 		const TArray<FVector_NetQuantize>& HitLocations, 
 		float HitTime
 	);
-
+	// 발사체(로캣, 유탄 발사기는 아님)
 	UFUNCTION(Server, Reliable)
 	void ProjectileServerScoreRequest(
 		ABaseCharacter* HitCharacter,
@@ -159,5 +170,6 @@ public:
 		const FVector_NetQuantize100& InitialVelocity, 
 		float HitTime
 	);
-
+	//
+	// --------------------------------------------------------서버 사이드 리와인드 결과를 바탕으로 대미지를 적용하는 함수ㅗ
 };

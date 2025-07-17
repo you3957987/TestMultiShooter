@@ -4,6 +4,8 @@
 #include "PickUp.h"
 #include "InvisiblePickUp.generated.h"
 
+
+// 이거 망함 구현 못함!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 UCLASS()
 class MULTISHOOTER_API AInvisiblePickUp : public APickUp
 {

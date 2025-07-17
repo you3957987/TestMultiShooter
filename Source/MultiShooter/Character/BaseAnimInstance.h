@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
 #include "MultiSHooter/TypeHeader/TurningInPlace.h" // 조준시 좌우로 360도 회전하는게 아니라 90도 정도로만 돌아가게 만들기 위한 헤더
-#include "MultiShooter/Weapon/WeaponType.h"
+#include "MultiShooter/Weapon/WeaponType.h" // 무기 타입을 정의한 헤더
 #include "BaseAnimInstance.generated.h"
 
 UCLASS()
@@ -12,7 +12,7 @@ class MULTISHOOTER_API UBaseAnimInstance : public UAnimInstance
 	GENERATED_BODY()
 
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	class ABaseCharacter* BaseCharacter; // 이 애니메이션 인스턴스가 소속된 캐릭터를 참조합니다.
+	class ABaseCharacter* BaseCharacter; // 내 캐릭터
 
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float Speed; // 캐릭터의 속도를 저장합니다.
@@ -47,12 +47,8 @@ class MULTISHOOTER_API UBaseAnimInstance : public UAnimInstance
 
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	ETurningInPlace TurningInPlace; // 캐릭터가 조준 중일 때 좌우로 회전하는 상태를 제한하기 위한 열거형 변수!
-
-	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
-	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	bool bRotateRootBone; // 루트 본을 회전할지 여부를 저장하는 변수
-	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
-
+	// 이 변수는 TypeHeader/TurningInPlace.h에서 정의되어 있음.
+	
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bDead; // 캐릭터가 죽었는지 여부를 저장하는 변수
 
@@ -61,6 +57,11 @@ class MULTISHOOTER_API UBaseAnimInstance : public UAnimInstance
 
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	EWeaponType WeaponType; // 캐릭터가 사용하는 무기 타입을 저장하는 변수
+
+	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
+	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	bool bRotateRootBone; // 루트 본을 회전할지 여부를 저장하는 변수
+	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 
 public:
 	virtual void NativeInitializeAnimation() override; // 비긴 플레이랑 유사

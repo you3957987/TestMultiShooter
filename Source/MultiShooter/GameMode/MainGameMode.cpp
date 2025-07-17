@@ -17,6 +17,7 @@ AMainGameMode::AMainGameMode()
 	bDelayedStart = true; // 게임 모드가 시작될 때 지연 시작을 활성화합니다. -> 자유 시점으로 플레이어가 시작할 수 있도록 설정
 }
 
+// LevelStartingTime 변수를 초기화하고 레벨 시작 시간을 저장합니다.
 void AMainGameMode::BeginPlay()
 {
 	Super::BeginPlay();
@@ -24,6 +25,7 @@ void AMainGameMode::BeginPlay()
 	LevelStartingTime = GetWorld()->GetTimeSeconds(); // 레벨 시작 시간 초기화
 }
 
+// 매치 상태에 따라 카운트 다운 시간 재고 매치 상태 관리
 void AMainGameMode::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -72,6 +74,7 @@ void AMainGameMode::Tick(float DeltaTime)
 	}
 }
 
+// 게임 모드에서 매치 스테이트가 바뀔 떄 호출. 모든 플레이어 컨트롤러를 순회하며 OnMatchStateSet 함수를 호출하여 매치 상태를 설정
 void AMainGameMode::OnMatchStateSet() // 매치 상태가 설정될 때 호출되는 함수
 {
 	Super::OnMatchStateSet();
@@ -86,6 +89,7 @@ void AMainGameMode::OnMatchStateSet() // 매치 상태가 설정될 때 호출�
 	}
 }
 
+// 플레이가 죽으면 캐릭터 스테이트 점수 및 죽은 횟수 업데이트 및 최고 점수 기록한 플레이어 업데이트
 void AMainGameMode::PlayerEliminated(ABaseCharacter* EliminatedCharacter, ABasePC* EliminatedController, ABasePC* AttackerController)
 {
 	if (AttackerController == nullptr || AttackerController->PlayerState == nullptr) return; 
@@ -150,6 +154,7 @@ void AMainGameMode::PlayerEliminated(ABaseCharacter* EliminatedCharacter, ABaseP
 	}
 }
 
+// 플레이어가 제거되었을 때 리스폰 요청하는 함수. 여기서 캐릭터간 부활 거리 계산 후 부활 시킴
 void AMainGameMode::RequestRespawn(ACharacter* EliminatedCharacter, AController* EliminatedController)
 {
 	if (EliminatedCharacter)
@@ -163,9 +168,10 @@ void AMainGameMode::RequestRespawn(ACharacter* EliminatedCharacter, AController*
 		TArray<AActor*> PlayerStarts;
 		TArray<AActor*> Players;
  
-		// only really need to do this once, as the spawn points do not move (in this game) - but relies on knowing when the match has actually started (e.g. cant use BeginPlay)
-		UGameplayStatics::GetAllActorsOfClass(this, APlayerStart::StaticClass(), PlayerStarts);
-		UGameplayStatics::GetAllActorsOfClass(this, ABaseCharacter::StaticClass(), Players);
+		// 이 게임에서는 스폰 포인트(플레이어 시작 위치)가 움직이지 않으므로 사실상 한 번만 이 작업을 해주면 되긴 함
+		// 하지만 실제로 매치가 시작된 시점을 알아야 하므로그 타이밍을 잘 맞춰야 함
+		UGameplayStatics::GetAllActorsOfClass(this, APlayerStart::StaticClass(), PlayerStarts); // 플레이어 시작 위치를 가져오기
+		UGameplayStatics::GetAllActorsOfClass(this, ABaseCharacter::StaticClass(), Players); // 현재 게임에 있는 모든 플레이어 캐릭터를 가져오기
 		AActor* PlayerStart = GetSpawnPointWithLargestMinimumDistance(PlayerStarts, Players);
  
 		if (PlayerStart)
@@ -174,11 +180,13 @@ void AMainGameMode::RequestRespawn(ACharacter* EliminatedCharacter, AController*
 		}
 		else
 		{
-			// no respawn for you!  (needs error handling)
+			// 비상 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		}
 	}
 }
 
+// ------------------------------------------------------------------------------------플레이어가 게임을 떠났을 때 호출되는 함수
+//
 void AMainGameMode::PlayerLeftGame(ACharacterState* PlayerLeaving)
 {
 	if (PlayerLeaving == nullptr) return; // 플레이어가 nullptr인 경우 함수 종료
@@ -196,6 +204,7 @@ void AMainGameMode::PlayerLeftGame(ACharacterState* PlayerLeaving)
 	}
 }
 
+// 이거는 플레이어가 강종으로 나갈 때 호출되는 함수. 원래 게임 모드에 존재하는 함수 오버라이드
 void AMainGameMode::Logout(AController* Exiting)
 {
 	if (Exiting == nullptr) { return; }
@@ -209,6 +218,21 @@ void AMainGameMode::Logout(AController* Exiting)
 	}
 
 	Super::Logout(Exiting);
+}
+//
+// // ------------------------------------------------------------------------------------플레이어가 게임을 떠났을 때 호출되는 함수
+
+// 플레이어가 채팅 쓰면 다른 플레이어 컨틀롤러 전부 순회 후 ClientChatCommitted 함수를 호출하여 채팅 메시지를 전송
+void AMainGameMode::SendChatMsg(const FText& Text, const FString& PlayerName)
+{
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		ABasePC* PC = Cast<ABasePC>(*It);
+		if (PC)
+		{
+			PC->ClientChatCommitted(Text, PlayerName);
+		}
+	}
 }
 
 // 아래 두줄은 캐릭터 부활시 캐릭터간 거리 가장 먼 곳에서 부활하게 해주는 함수 2개
@@ -245,15 +269,4 @@ float AMainGameMode::GetMinimumDistance(const AActor* PlayerStart, const TArray<
 
 	return FMath::Sqrt(MinimumDistanceSquared);
 }
-
-void AMainGameMode::SendChatMsg(const FText& Text, const FString& PlayerName)
-{
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-	{
-		ABasePC* PC = Cast<ABasePC>(*It);
-		if (PC)
-		{
-			PC->ClientChatCommitted(Text, PlayerName);
-		}
-	}
-}
+//------------------------------------------------------------------------------------------------------------------

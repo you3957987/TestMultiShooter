@@ -5,7 +5,7 @@
 #include "WeaponType.h" // 무기 타입 열거형 헤더 파일
 #include "BaseWeapon.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEquippedDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEquippedDelegate); // 무기 장착시 웨폰 스폰포인트에서 타이머 시작 후 다시 무기 생성
 
 UENUM(BlueprintType) // 무기 타입을 정의하는 열거형 블루프린트에서도 사용 가능하게
 enum class EWeaponState : uint8
@@ -24,6 +24,7 @@ enum class EFireType : uint8
 	EFT_Shotgun UMETA(DisplayName = "Shotgun"), // 산탄총 발사
 	EFT_MAX UMETA(DisplayName = "DefaultMAX") // 최대값을 정의하여 열거형의 크기를 제한
 };
+
 UCLASS()
 class MULTISHOOTER_API ABaseWeapon : public AActor
 {
@@ -41,6 +42,9 @@ class MULTISHOOTER_API ABaseWeapon : public AActor
 	UFUNCTION()
 	void OnRep_WeaponState(); // 무기 상태가 변경될 때 호출되는 함수
 
+	UPROPERTY(EditAnywhere)
+	EWeaponType WeaponType; // 무기 타입
+
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UWidgetComponent* PickUpWidget; // 무기 위젯 컴포넌트
 
@@ -50,8 +54,8 @@ class MULTISHOOTER_API ABaseWeapon : public AActor
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	UParticleSystem* MuzzleFlash; // 총구 플래시 이펙트
 
-	//총알 받아라 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+	//--------------------------------------------------------------------------------------- 탄약 관련 ㅜ
+	//
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	int32 Ammo; // 총알 개수
 	
@@ -66,14 +70,12 @@ class MULTISHOOTER_API ABaseWeapon : public AActor
 	void ClientUpdateAmmo(int32 ServerAmmo); // 클라이언트에서 서버의 총알 개수를 업데이트하는 함수
 	UFUNCTION(Client, Reliable)
 	void ClientAddAmmo(int32 AmmoToAdd); // 클라이언트에서 총알을 추가하는 함수
-
-	UPROPERTY(EditAnywhere)
-	EWeaponType WeaponType; // 무기 타입
-
-	//총알 받아라 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	//
+	//--------------------------------------------------------------------------------------- 탄약 관련 ㅗ
 
 protected:
 	virtual void BeginPlay() override;
+
 	virtual void OnWeaponStateSet();
 	virtual void OnEquipped(); // 무기가 장착될 때 호출되는 함수
 	virtual void OnDropped(); // 무기가 드롭될 때 호출되는 함수
@@ -106,10 +108,10 @@ protected:
 
 	// 산탄 관련
 	UPROPERTY(EditAnywhere, Category = "자체설정")
-	float DinstanceToSphere = 800.f; // 타겟과의 거리
+	float DinstanceToSphere = 800.f; // 산탄 활성화 시 랜덤 산탄 범위의 구가 생성될 거리		
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
-	float SphereRadius = 75.f; // 타겟과의 거리
+	float SphereRadius = 75.f; // 산탄 활성화시 랜덤하게 총이 튈 구의 크기 설정
 
 	UPROPERTY(Replicated, EditAnywhere, Category = "자체설정")
 	bool bUseServerSideRewind = false; // 서버 측 리와인드를 사용할지 여부
@@ -148,7 +150,32 @@ public:
 	FORCEINLINE float GetDamage() const { return Damage; } // 무기의 대미지를 반환하는 함수
 	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; } // 무기의 헤드샷 대미지를 반환하는 함수
 
-	// 십자선 HUD------------------------------------------------------- 팔로우 카메라 focal distance 초점 거리 10000으로 설정, camere->조리개 값 4-> 32로 설정!
+	UPROPERTY(EditAnywhere)
+	UTexture2D* WeaponIcon; // 무기 아이콘 텍스처
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	EFireType FireType;
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	bool bUseScatter = false; // 산탄 사용 여부
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class USoundCue* EquipSound; // 장착 사운드
+
+	bool bDestroyWeapon = false; // 기본적으로 주어지는 무기는 드롭 안되고 부서지게 설정
+
+	UPROPERTY(BlueprintAssignable)
+	FOnEquippedDelegate OnEquippedDelegate;
+
+	FVector TraceEndWithScatter(const FVector& HitTarget); // 산란을 고려한 트레이스 끝점 계산 함수
+
+	void EnableCustomDepth(bool bEnable); // 윤곽선을 활성화하거나 비활성화하는 함수
+
+	// 플레이어 죽음
+	void Dropped();
+
+	// --------------------------------------------------------------------------------------------------------------십자선 HUDㅜ
+	// 팔로우 카메라 focal distance 초점 거리 10000으로 설정, camere->조리개 값 4-> 32로 설정!
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UTexture2D* CrosshairCenter; // 십자선 텍스처
 
@@ -170,12 +197,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float ZoomInterpSpeed = 20.f; // 줌 인터폴레이션 속도
 
-	UPROPERTY(EditAnywhere)
-	UTexture2D* WeaponIcon; // 무기 아이콘 텍스처
+	// 팔로우 카메라 focal distance 초점 거리 10000으로 설정, camere->조리개 값 4-> 32로 설정!
+	// --------------------------------------------------------------------------------------------------------------십자선 HUD ㅗ
 
-	// 십자선 HUD------------------------------------------------------- 팔로우 카메라 focal distance 초점 거리 10000으로 설정, camere->조리개 값 4-> 32로 설정!
-
-	// 자동 발사----------------------------------------------------------------------------------------------------------------------------------------------------------
+	// --------------------------------------------------------------------------------------------------------------발사ㅜ
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float FireDelay = 0.15f; // 발사 딜레이
@@ -186,32 +211,5 @@ public:
 	bool IsEmptyAmmo(); // 총알이 없는지 확인하는 함수
 	bool IsFull(); // 총알이 가득 찼는지 확인하는 함수
 	
-	// 자동 발사----------------------------------------------------------------------------------------------------------------------------------------------------------
-
-	// 플레이어 죽음----------------------------------------------------------------------------------------------------------------------------------------------------------
-	void Dropped();
-	// 플레이어 죽음----------------------------------------------------------------------------------------------------------------------------------------------------------
-
-	// 장착 사운드----------------------------------------------------------------------------------------------------------------------------------------------------------
-	UPROPERTY(EditAnywhere, Category = "자체설정")
-	class USoundCue* EquipSound; // 장착 사운드
-	// 장착 사운드----------------------------------------------------------------------------------------------------------------------------------------------------------
-
-	// 무기 윤곽선----------------------------------------------------------------------------------------------------------------------------------------------------------
-	void EnableCustomDepth(bool bEnable); // 윤곽선을 활성화하거나 비활성화하는 함수
-	// 무기 윤곽선----------------------------------------------------------------------------------------------------------------------------------------------------------
-
-	bool bDestroyWeapon = false;
-
-	UPROPERTY(BlueprintAssignable)
-	FOnEquippedDelegate OnEquippedDelegate;
-
-	UPROPERTY(EditAnywhere, Category = "자체설정")
-	EFireType FireType;
-
-	FVector TraceEndWithScatter(const FVector& HitTarget); // 산란을 고려한 트레이스 끝점 계산 함수
-
-	UPROPERTY(EditAnywhere, Category = "자체설정")
-	bool bUseScatter = false; // 산탄 사용 여부
-
+	// --------------------------------------------------------------------------------------------------------------발사ㅗ
 };
