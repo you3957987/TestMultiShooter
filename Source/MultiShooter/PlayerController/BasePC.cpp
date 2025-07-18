@@ -19,6 +19,7 @@
 #include "MultiShooter/CharacterState/CharacterState.h" // 플레이어 상태 헤더 파일
 #include "MultiShooter/HUD/ReturnToMainMenu.h" // 메인 메뉴로 돌아가는 위젯 헤더 파일
 #include "MultiShooter/HUD/ChatBox.h" // 채팅 박스 위젯 헤더 파일
+#include "MultiShooter/TypeHeader/Announcement.h" // 안내 메시지 헤더 파일
 
 void ABasePC::BeginPlay()
 {
@@ -43,6 +44,8 @@ void ABasePC::Tick(float DeltaTime)
     CheckTimeSync(DeltaTime); // 시간 동기화 확인 함수 호출
 
 	CheckPing(DeltaTime); // 핑 체크 함수 호출
+
+    PollInit(DeltaTime);
 }
 
 void ABasePC::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -50,6 +53,7 @@ void ABasePC::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
     Super::GetLifetimeReplicatedProps(OutLifetimeProps); // 부모 클래스의 GetLifetimeReplicatedProps 함수를 호출합니다.
 
     DOREPLIFETIME(ABasePC, MatchState); // MatchState 변수를 복제할 수 있도록 설정합니다.
+	DOREPLIFETIME(ABasePC, bShowTeamScore); // bShowTeamScore 변수를 복제할 수 있도록 설정합니다.
 }
 
 void ABasePC::SetupInputComponent()
@@ -65,6 +69,30 @@ void ABasePC::SetupInputComponent()
 
 	EnhancedInput->BindAction(IA_EnterToChat, ETriggerEvent::Started, this, &ABasePC::StartChat); // 채팅 입력 액션 바인딩
     
+}
+
+// 허드 관련 초기화( 팀 스코어만!!!! )
+void ABasePC::PollInit(float DeltaTime)
+{
+	if (MatchState != MatchState::InProgress) return; // 매치 상태가 InProgress가 아닐 경우 초기화하지 않습니다.
+    // 이거 안하면 웨이팅 투 스타트 상테에서 허트 세팅 되기도 전에 세팅되서 클라가 먹통됨 ;;;;
+
+
+    if (CharacterHUD && CharacterHUD->CharacterUI)
+    {
+        if (bInitTeamScore == false)
+        {
+            bInitTeamScore = true; // 이거는 핸들 쿨 다운에서 다시 false로 설정함
+            if (bShowTeamScore == true)
+            {
+                InitTeamScore();
+            }
+            else
+            {
+                HideTeamScore();
+            }
+        }
+    }
 }
 
 // 빙의 되었을떄 허드 상태를 초기화하는 함수
@@ -470,14 +498,14 @@ float ABasePC::GetServerTime()
 
 //--------------------------------------------------------------------------------------------------------------- 매치 상태 관련 함수들ㅜ
 
-// 매치 상태를 변경하는 함수.
-void ABasePC::OnMatchStateSet(FName State)
+// 매치 상태를 변경하는 함수. 이거는 메인 게임모드에서 OnMatchStateSet 로 호출   
+void ABasePC::OnMatchStateSet(FName State, bool bTeamMatch)
 {
     MatchState = State; // 매치 상태를 설정합니다. -> OnRep_MatchState() 함수가 호출됩니다.
 
     if( MatchState == MatchState::InProgress ) // 매치 상태가 InProgress인 경우
     {
-        HandleMatchHasStarted(); // 매치가 시작되었을 때 처리하는 함수를 호출합니다.
+        HandleMatchHasStarted(bTeamMatch); // 매치가 시작되었을 때 처리하는 함수를 호출합니다.
     }
     else if( MatchState == MatchState::Cooldown ) // 매치 상태가 Cooldown인 경우
     {
@@ -529,8 +557,8 @@ void ABasePC::OnRep_MatchState()
     }
 }
 
-// 매치가 InProgress이면 실행. 캐릭터 허트를 게임 상태로 변경
-void ABasePC::HandleMatchHasStarted()
+// 매치가 InProgress이면 실행. 캐릭터 허드를 게임 상태로 변경
+void ABasePC::HandleMatchHasStarted(bool bTeamMatch)
 {
     if( MatchState == MatchState::InProgress )
     {
@@ -554,6 +582,17 @@ void ABasePC::HandleMatchHasStarted()
             CharacterHUD->CharacterUI->SetVisibility(ESlateVisibility::Visible); // 캐릭터 UI를 보이도록 설정합니다.
 
 			if (ChatBox) ChatBox->SetVisibility(ESlateVisibility::Visible); // 채팅 박스를 보이도록 설정합니다.
+
+            if(HasAuthority())bShowTeamScore = bTeamMatch; // 팀 게임 여부를 설정합니다. -> 여기서 서버 권한 체크 해야 할 수도 있음
+
+            if (bTeamMatch == true && HasAuthority() ) // 지금 이 게임이 팀게임이라면?
+            {
+				InitTeamScore(); // 팀 점수 초기화 함수 호출
+            }
+            else if(bTeamMatch == false && HasAuthority() )
+            {
+				HideTeamScore(); // 팀 점수 숨김 함수 호출
+            }
         }
     }
 }
@@ -573,7 +612,8 @@ void ABasePC::HandleCoolDown()
         {
             CharacterHUD->Announcement->SetVisibility(ESlateVisibility::Visible); // 시작전 안내 위젯을 보이도록 설정합니다.
 
-            FString AnnouncementText("New Match Start In:");
+			FString AnnouncementText = Announcement::NewMatchStart; // 이 텍스트는 타입 헤더의 아나운스먼트.h에 정의됨!!!
+
             CharacterHUD->Announcement->AnnouncementText->SetText(FText::FromString(AnnouncementText)); // 안내 텍스트를 설정합니다.
 
             ABaseGameState* LocalGameState = Cast<ABaseGameState>(UGameplayStatics::GetGameState(this)); // 현재 게임 상태를 ABaseGameState로 캐스팅합니다.
@@ -582,30 +622,11 @@ void ABasePC::HandleCoolDown()
             if( LocalGameState && LocalPlayerState )
             {
                 TArray<ACharacterState* > TopPlayers = LocalGameState->TopScoreingPlayers; // 게임 상태에서 모든 플레이어 컨트롤러를 가져옵니다.
+               
                 FString InfoText;
-                if( TopPlayers.Num() == 0 )
-                {
-                    InfoText = FString("No Winner"); // 플레이어가 없는 경우 정보 텍스트를 설정합니다.
-                    CharacterHUD->Announcement->InfoText->SetText(FText::FromString(InfoText)); // 정보 텍스트를 설정합니다.
-                }
-                else if( TopPlayers.Num() == 1 && TopPlayers[0] == LocalPlayerState ) // 플레이어가 1명이고 그 플레이어가 현재 플레이어인 경우
-                {
-                    InfoText = FString::Printf(TEXT("You are the winner!")); // 플레이어가 승리한 경우 정보 텍스트를 설정합니다.
-                    CharacterHUD->Announcement->InfoText->SetText(FText::FromString(InfoText)); // 정보 텍스트를 설정합니다.
-                }
-                else if( TopPlayers.Num() == 1 && TopPlayers[0] != LocalPlayerState ) // 플레이어가 1명이고 그 플레이어가 현재 플레이어가 아닌 경우
-                {
-                    InfoText = FString::Printf(TEXT("%s is the winner!"), *TopPlayers[0]->GetPlayerName()); // 플레이어가 승리한 경우 정보 텍스트를 설정합니다.
-                    CharacterHUD->Announcement->InfoText->SetText(FText::FromString(InfoText)); // 정보 텍스트를 설정합니다.
-                }
-                else if( TopPlayers.Num() > 1 )
-                {
-                    InfoText = FString::Printf(TEXT("Players tied for the win:\n"));
-                    for( auto TiedPlayer : TopPlayers ) // 모든 플레이어를 순회합니다.
-                    {
-                        InfoText.Append(FString::Printf(TEXT("%s\n"), *TiedPlayer->GetPlayerName())); // 플레이어 이름을 정보 텍스트에 추가합니다.
-                    }
-                }
+                if (bShowTeamScore == true) InfoText = GetTeamInfoText(LocalGameState); // 팀 게임이라면 팀 점수 정보를 가져옵니다.
+                else if(bShowTeamScore == false) InfoText = GetInfoText(TopPlayers);
+                
                 CharacterHUD->Announcement->InfoText->SetText(FText::FromString(InfoText)); // 정보 텍스트를 설정합니다.
             }
         }
@@ -620,6 +641,80 @@ void ABasePC::HandleCoolDown()
             BaseCharacter->GetCombatComponent()->FireButtonPressed(false); // 전투 컴포넌트의 FireButtonPressed를 false로 설정합니다.
         }
     }
+
+    bInitTeamScore = false; // 다시 게임 시작했을 떄 클라이언트 팀 점수 초기화 되도록
+}
+
+// 매치 종료후 팀게임이냐 개인 게임이냐에 따라 다른 결과 반환!!
+FString ABasePC::GetInfoText(const TArray<class ACharacterState*>& Players)
+{
+
+    ACharacterState* LocalPlayerState = GetPlayerState<ACharacterState>();
+    if (LocalPlayerState == nullptr) return FString();
+
+    FString InfoText; // 정보 텍스트를 저장할 문자열 변수
+
+    if (Players.Num() == 0)
+    {
+        InfoText = Announcement::NoWinner; // 승자가 없는 경우 정보 텍스트를 설정합니다.
+    }
+    else if (Players.Num() == 1 && Players[0] == LocalPlayerState) // 플레이어가 1명이고 그 플레이어가 현재 플레이어인 경우
+    {
+        InfoText = Announcement::YouAreTheWinner;
+    }
+    else if (Players.Num() == 1 && Players[0] != LocalPlayerState) // 플레이어가 1명이고 그 플레이어가 현재 플레이어가 아닌 경우
+    {
+        InfoText = FString::Printf(TEXT("%s is the winner!"), *Players[0]->GetPlayerName()); // 플레이어가 승리한 경우 정보 텍스트를 설정합니다.
+    }
+    else if (Players.Num() > 1)
+    {
+        InfoText = Announcement::PlayersTiedForWin;
+        InfoText.Append(FString("\n")); // 플레이어가 여러 명인 경우 정보 텍스트를 설정합니다.
+
+        for (auto TiedPlayer : Players) // 모든 플레이어를 순회합니다.
+        {
+            InfoText.Append(FString::Printf(TEXT("%s\n"), *TiedPlayer->GetPlayerName())); // 플레이어 이름을 정보 텍스트에 추가합니다.
+        }
+    }
+    return InfoText;
+}
+
+FString ABasePC::GetTeamInfoText(ABaseGameState* BaseGameState)
+{
+    if (BaseGameState == nullptr) return FString();
+
+    FString InfoText; // 정보 텍스트를 저장할 문자열 변수
+
+	int32 RedTeamScore = BaseGameState->RedTeamScore; // 레드 팀 점수 가져오기
+	int32 BlueTeamScore = BaseGameState->BlueTeamScore; // 블루 팀 점수 가져오기
+
+    if (RedTeamScore == 0 && BlueTeamScore == 0)
+    {
+        InfoText = Announcement::NoWinner; // 승자가 없는 경우 정보 텍스트를 설정합니다.
+    }
+    else if (RedTeamScore == BlueTeamScore)
+    {
+		InfoText = FString::Printf(TEXT("%s\n"), *Announcement::TeamsTiedForWin); // 팀이 동점인 경우 정보 텍스트를 설정합니다.
+		InfoText.Append(Announcement::RedTeam); // 레드 팀 점수 추가
+        InfoText.Append(TEXT("\n"));
+        InfoText.Append(Announcement::BlueTeam);
+    }
+    else if (RedTeamScore > BlueTeamScore)
+    {
+		InfoText = Announcement::RedTeamWins; // 레드 팀 승리
+        InfoText.Append(TEXT("\n"));
+		InfoText.Append(FString::Printf(TEXT("%s : %d\n"), *Announcement::RedTeam, RedTeamScore)); // 레드 팀 점수 추가
+        InfoText.Append(FString::Printf(TEXT("%s : %d\n"), *Announcement::BlueTeam, BlueTeamScore)); // 블루 팀 점수 추가
+    }
+    else if (RedTeamScore < BlueTeamScore)
+    {
+        InfoText = Announcement::BlueTeamWins; // 레드 팀 승리
+        InfoText.Append(TEXT("\n"));
+		InfoText.Append(FString::Printf(TEXT("%s : %d\n"), *Announcement::BlueTeam, BlueTeamScore)); // 블루 팀 점수 추가
+        InfoText.Append(FString::Printf(TEXT("%s : %d\n"), *Announcement::RedTeam, RedTeamScore)); // 레드 팀 점수 추가
+    }
+
+    return InfoText;
 }
 
 // --------------------------------------------------------------------------------------------------------------- 매치 상태 관련 함수들ㅗ
@@ -639,21 +734,25 @@ void ABasePC::ServerCheckMatchState_Implementation()
         LevelStartingTime = MainGameMode->LevelStartingTime; // 게임 모드에서 레벨 시작 시간을 가져옵니다.
         CooldownTime = MainGameMode->CooldownTime; // 게임 모드에서 쿨다운 시간을 가져옵니다.
         MatchState = MainGameMode->GetMatchState(); // 게임 모드에서 매치 상태를 가져옵니다.
-        ClientJoinMidGame(MatchState, WarmUpTime, MatchTime, LevelStartingTime, CooldownTime); // 클라이언트에 중간 게임 참여 정보를 보냅니다.
+		bShowTeamScore = MainGameMode->bTeamMatch; // 게임 모드에서 팀 점수 표시 여부를 가져옵니다. -> 중간에 클라 참여시 팀게임인지 확인용!
+
+        ClientJoinMidGame(MatchState, WarmUpTime, MatchTime, LevelStartingTime, CooldownTime, bShowTeamScore); // 클라이언트에 중간 게임 참여 정보를 보냅니다.
     }
 }
 
 // 클라이언트가 중간에 게임에 참여할 때 호출되는 함수 워밍업 시간, 매치 시간, 
 // 레벨 시작 시간, 쿨다운 시간, 매치 상태를 서버한테 받아서 설정
 void ABasePC::ClientJoinMidGame_Implementation( FName StateOfMatch, float WarmUp, float Match, 
-    float LevelStarting, float CoolTime ) // 클라이언트가 중간에 게임에 참여할 때 호출되는 함수
+    float LevelStarting, float CoolTime, bool bIsTeamMatch ) // 클라이언트가 중간에 게임에 참여할 때 호출되는 함수
 {
     WarmUpTime = WarmUp; // 워밍업 시간 설정
     MatchTime = Match; // 매치 시간 설정
     LevelStartingTime = LevelStarting; // 레벨 시작 시간 설정
     CooldownTime = CoolTime; // 게임 모드에서 쿨다운 시간을 가져옵니다.
     MatchState = StateOfMatch; // 매치 상태 설정
-    OnMatchStateSet(MatchState); // 매치 상태 설정 함수 호출
+
+	//bShowTeamScore = bIsTeamMatch; // 팀 점수 표시 여부 설정 이거는 여기서 하면 안되고 온 매치 스테이트 셋에서 해야함
+    OnMatchStateSet(MatchState, bIsTeamMatch); // 매치 상태 설정 함수 호출
 
     if( CharacterHUD && MatchState == MatchState::WaitingToStart ) // 캐릭터 HUD가 유효하고 매치 상태가 WaitingToStart인 경우
     {
@@ -856,7 +955,7 @@ void ABasePC::AddChatBox()
             ChatBox->AddToViewport(100);
             ChatBox->ChatInputBox->SetHintText(FText::FromString("Text.....")); // 채팅 입력 박스에 힌트 텍스트 설정
             ChatBox->SetVisibility(ESlateVisibility::Visible); // 기다리는 동안은 채팅 숨기기
-            ChatBox->ChatInputBox->RevertTextOnEscape = true; // 채팅 입력 박스에서 Escape 키를 누르면 텍스트가 되돌려지도록 설정합니다.
+            ChatBox->ChatInputBox->SetRevertTextOnEscape(true); // 채팅 입력 박스에서 Escape 키를 누르면 텍스트가 되돌려지도록 설정합니다.
             ChatBox->ChatInputBox->OnTextCommitted.AddDynamic(this, &ABasePC::OnChatCommitted);
         }
     }
@@ -938,5 +1037,91 @@ void ABasePC::OnMouseClickAnywhere()
 }
 
 //--------------------------------------------------------------------------------------------------------------------------- 채팅 관련 ㅗ
+
+// ------------------------------------------------------------------------------------------------------ 팀 관련 ㅜ
+
+// 팀 점수를 숨기는 함수 == SetText(FText())
+void ABasePC::HideTeamScore() 
+{
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+    
+    if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
+    {
+        CharacterHUD->AddCharacterUI();
+        if (CharacterHUD->CharacterUI == nullptr)
+            return;
+    }
+   
+    if (CharacterHUD && CharacterHUD->CharacterUI
+        && CharacterHUD->CharacterUI->RedTeamScore && 
+        CharacterHUD->CharacterUI->BlueTeamScore && CharacterHUD->CharacterUI->ScoreSpacerText) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
+    {
+		CharacterHUD->CharacterUI->RedTeamScore->SetText(FText()); // 레드 팀 점수를 비웁니다.
+		CharacterHUD->CharacterUI->BlueTeamScore->SetText(FText()); // 블루 팀 점수를 비웁니다.
+		CharacterHUD->CharacterUI->ScoreSpacerText->SetText(FText()); // 점수 구분 텍스트를 비웁니다.
+    }
+}
+
+// 팀 점수를 초기화하는 함수
+void ABasePC::InitTeamScore() 
+{
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
+    if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
+    {
+        CharacterHUD->AddCharacterUI();
+        if (CharacterHUD->CharacterUI == nullptr)
+            return;
+    }
+   
+    if (CharacterHUD && CharacterHUD->CharacterUI
+        && CharacterHUD->CharacterUI->RedTeamScore &&
+        CharacterHUD->CharacterUI->BlueTeamScore && CharacterHUD->CharacterUI->ScoreSpacerText) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
+    {
+        FString Zero("0");
+		FString Spacer(":"); // 점수 구분 텍스트
+        CharacterHUD->CharacterUI->RedTeamScore->SetText(FText::FromString(Zero)); // 레드 팀 점수를 비웁니다.
+        CharacterHUD->CharacterUI->BlueTeamScore->SetText(FText::FromString(Zero)); // 블루 팀 점수를 비웁니다.
+        CharacterHUD->CharacterUI->ScoreSpacerText->SetText(FText::FromString(Spacer)); // 점수 구분 텍스트를 비웁니다.
+    }
+}
+// 레드 팀 점수를 설정하는 함수
+void ABasePC::SetHUDRedTeamScore(int32 RedScore) 
+{
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
+    if (CharacterHUD && CharacterHUD->CharacterUI && CharacterHUD->CharacterUI->RedTeamScore) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
+    {
+		FString ScoreText = FString::Printf(TEXT("%d"), RedScore); // 점수 텍스트 포맷팅
+        CharacterHUD->CharacterUI->RedTeamScore->SetText(FText::FromString(ScoreText)); // 레드 팀 점수를 비웁니다.
+    }
+}
+
+// 블루 팀 점수를 설정하는 함수
+void ABasePC::SetHUDBlueTeamScore(int32 BlueScore) 
+{
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
+    if (CharacterHUD && CharacterHUD->CharacterUI && CharacterHUD->CharacterUI->BlueTeamScore) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
+    {
+        FString ScoreText = FString::Printf(TEXT("%d"), BlueScore); // 점수 텍스트 포맷팅
+        CharacterHUD->CharacterUI->BlueTeamScore->SetText(FText::FromString(ScoreText)); // 레드 팀 점수를 비웁니다.
+    }
+}
+
+//HandleMatchHasStarted
+void ABasePC::OnRep_ShowTeamScore()
+{
+    if (bShowTeamScore == true) // 지금 이 게임이 팀게임이라면?
+    {
+        InitTeamScore(); // 팀 점수 초기화 함수 호출
+    }
+    else
+    {
+        HideTeamScore(); // 팀 점수 숨김 함수 호출
+    }
+}
+
+//------------------------------------------------------------------------------------------------------ 팀 관련 ㅗ
 
 

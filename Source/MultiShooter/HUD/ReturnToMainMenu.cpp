@@ -18,7 +18,7 @@ void UReturnToMainMenu::MenuSetUp()
 {
 	AddToViewport(); // 뷰포트에 위젯을 추가합니다.
 	SetVisibility(ESlateVisibility::Visible); // 위젯의 가시성을 설정합니다.
-	bIsFocusable = true; // 위젯이 포커스를 받을 수 있도록 설정합니다.
+	SetIsFocusable(true);; // 위젯이 포커스를 받을 수 있도록 설정합니다.
 	//UE_LOG(LogTemp, Error, TEXT("create"));
 	UWorld* World = GetWorld(); // 현재 월드를 가져옵니다.
 	if (World)

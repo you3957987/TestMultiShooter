@@ -27,6 +27,7 @@
 #include "MultiShooter/Weapon/WeaponType.h" // EWeaponType 열거형 사용을 위한 헤더 파일
 #include "MultiShooter/CharacterComponent/LagCompensationComponent.h"
 #include "MultiShooter/GameState/BaseGameState.h" // ABaseGameState 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/TypeHeader/Team.h" // ETeam 열거형 사용을 위한 헤더 파일
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -49,6 +50,9 @@ ABaseCharacter::ABaseCharacter()
 
 	OverHeadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("OverHeadWidget"));
 	OverHeadWidget->SetupAttachment(RootComponent);
+
+	TeamLogoWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("TeamLogoWidget"));
+	TeamLogoWidget->SetupAttachment(RootComponent);
 
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent")); // 전투 컴포넌트 생성
 	CombatComponent->SetIsReplicated(true); // 전투 컴포넌트도 네트워크에서 복제되도록 설정
@@ -231,6 +235,10 @@ void ABaseCharacter::Tick(float DeltaTime)
 
 	HideCameraIfCharacterClose(DeltaTime); // 캐릭터가 카메라에 너무 가까이 있으면 카메라 숨기기
 	PollInit(DeltaTime); // 리스폰 될 시 허드 세팅
+
+	// 머리 위의 위젯을 캐릭터한테 맞게 업데이트
+	UpdateWidgetForLocalView(TeamLogoWidget);
+	UpdateWidgetForLocalView(OverHeadWidget);
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -299,6 +307,7 @@ void ABaseCharacter::PollInit(float DeltaTime)
 		{
 			CharacterState->AddToScore(0.f); // 플레이어 상태에 점수 0 추가해서 업데이트 시키기!
 			CharacterState->AddToDefeat(0); // 플레이어 상태에 처치 수 0 추가해서 업데이트 시키기!
+			SetTeamColor(CharacterState->GetTeam()); // 팀 색상을 설정합니다.
 
 			ABasePC* BasePC = Cast<ABasePC>(Controller);
 			if (BasePC)
@@ -315,6 +324,7 @@ void ABaseCharacter::PollInit(float DeltaTime)
 	}
 }
 
+// 캐릭터가 카메라에 너무 가까이 있으면 무기랑 보조무기랑 캐릭터 숨기기
 void ABaseCharacter::HideCameraIfCharacterClose(float DeltaTime)
 {
 	if (!IsLocallyControlled()) return; // 로컬 플레이어가 아닌 경우 함수 종료
@@ -327,6 +337,10 @@ void ABaseCharacter::HideCameraIfCharacterClose(float DeltaTime)
 		{
 			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = true; // 무기 메쉬도 숨깁니다.
 		}
+		if (CombatComponent && CombatComponent->SecondaryWeapon && CombatComponent->SecondaryWeapon->GetWeaponMesh())
+		{
+			CombatComponent->SecondaryWeapon->GetWeaponMesh()->bOwnerNoSee = true; // 무기 메쉬도 숨깁니다.
+		}
 	}
 	else
 	{
@@ -336,11 +350,34 @@ void ABaseCharacter::HideCameraIfCharacterClose(float DeltaTime)
 		{
 			CombatComponent->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = false;
 		}
+		if (CombatComponent && CombatComponent->SecondaryWeapon && CombatComponent->SecondaryWeapon->GetWeaponMesh())
+		{
+			CombatComponent->SecondaryWeapon->GetWeaponMesh()->bOwnerNoSee = false;
+		}
+	}
+}
+
+// 로컬 플레이어의 뷰에 맞게 위젯을 업데이트합니다.
+void ABaseCharacter::UpdateWidgetForLocalView(UWidgetComponent* Widget)
+{
+	if (!Widget) return;
+
+	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (PC && PC->PlayerCameraManager)
+	{
+		FVector CamLoc = PC->PlayerCameraManager->GetCameraLocation();
+		FVector WidgetLoc = Widget->GetComponentLocation();
+
+		// 항상 카메라 바라보기
+		FRotator LookAtRot = (CamLoc - WidgetLoc).Rotation();
+		Widget->SetWorldRotation(LookAtRot);
+
+		Widget->SetVisibility(true);
 	}
 }
 
 // ------------------------------------------------------------------------------------------------조준 관련ㅜ 
-// 
+
 // AimOffset 함수는 캐릭터의 조준 오프셋을 계산합니다. 여기서 TurnInPlace로 델타 타임 전달
 void ABaseCharacter::AimOffset(float DeltaTime)
 {
@@ -450,11 +487,11 @@ void ABaseCharacter::SimProxyTurn()
 	}
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 좌우 회전 상태를 초기화합니다.
 }
-//
+
 // ------------------------------------------------------------------------------------------------조준 관련ㅗ 
 
 // ------------------------------------------------------------------------------------------------입력 바인딩 관련 함수들ㅜ 
-//
+
 void ABaseCharacter::Move(const FInputActionValue& Value)
 {
 	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
@@ -590,10 +627,11 @@ void ABaseCharacter::Grenade()
 		CombatComponent->ThrowGrenade(); // CombatComponent의 ThrowGrenade 함수를 호출하여 수류탄을 던집니다.
 	}
 }
-//
+
 // ------------------------------------------------------------------------------------------------입력 바인딩 관련 함수들ㅗ 
 
 // ------------------------------------------------------------------------------------------------기타 함수들ㅜ
+
 void ABaseCharacter::OnRep_OverlappingWeapon( ABaseWeapon* LastWeapon ) // 이 함수는 클라이언트에서만 실행 되므로 서버용도 필요
 {
 	if (OverlappingWeapon)
@@ -657,7 +695,11 @@ void ABaseCharacter::OnRep_ReplicatedMovement()
 void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, 
 	AController* InstigatorController, AActor* DamageCauser)
 {
-	if (bDead) return;
+	MainGameMode = MainGameMode == nullptr ? GetWorld()->GetAuthGameMode<AMainGameMode>() : MainGameMode;
+
+	if (bDead || MainGameMode == nullptr) return; // 이미 죽었거나 게임 모드가 널인 경우 함수 종료
+
+	Damage = MainGameMode->CalculateDamage(InstigatorController, Controller, Damage); // 게임 모드에서 팀을 확인후 같은 팀이면 피해를 0으로 설정합니다.
 
 	float DamageToHealth = Damage; // 피해를 Health에 적용할 값으로 설정합니다.
 
@@ -684,7 +726,6 @@ void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDa
 
 	if (Health == 0.f) // Health가 0 이하로 떨어지면
 	{
-		AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
 		if (MainGameMode)
 		{
 			PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
@@ -700,7 +741,7 @@ void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDa
 // ------------------------------------------------------------------------------------------------기타 함수들ㅗ
 
 // ------------------------------------------------------------------------------------------------몽타주 실행 함수들ㅜ
-//
+
 // 무기 추가시 몽타주 추가
 void ABaseCharacter::PlayFireMontage() 
 {
@@ -876,11 +917,11 @@ void ABaseCharacter::PlaySwapMontage()
 		AnimInstance->Montage_Play(SwapMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
 	}
 }
-//
+
 // ------------------------------------------------------------------------------------------------몽타주 실행 함수들ㅗ
 
 // ------------------------------------------------------------------------------------------------허드 업데이트 함수들ㅜ
-//
+
 void ABaseCharacter::UpdateHUDHealth()
 {
 	PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Controller) : PlayerController; // 플레이어 컨트롤러를 ABasePC로 캐스팅합니다.
@@ -917,10 +958,11 @@ void ABaseCharacter::UpdateHUDAmmo()
 		PlayerController->SetHUDAmmo( CombatComponent->EquippedWeapon->GetAmmo() ); // 플레이어 컨트롤러의 HUD 무기 탄약을 설정합니다.
 	}
 }
-//
+
 // ------------------------------------------------------------------------------------------------허드 업데이트 함수들ㅗ
 
 // ------------------------------------------------------------------------------------------------플레이거 죽었을때 관련 함수들ㅜ 
+
 // bLeftGame 값을 bPlayerLeftGame 따라 결정 후 타이머 피니쉬에서 따로 실행
 void ABaseCharacter::MulticastEliminate_Implementation(bool bPlayerLeftGame)
 {
@@ -959,6 +1001,7 @@ void ABaseCharacter::MulticastEliminate_Implementation(bool bPlayerLeftGame)
 	if( CombatComponent ) CombatComponent->FireButtonPressed(false); // CombatComponent의 발사 버튼을 비활성화합니다.
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 캡슐 컴포넌트의 충돌을 비활성화합니다.
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 메쉬의 충돌을 비활성화합니다.
+	GrenadeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 수류탄 메쉬의 충돌을 비활성화합니다.
 
 	if( IsLocallyControlled() && CombatComponent && CombatComponent->bIsAiming && CombatComponent->EquippedWeapon 
 		&& CombatComponent->EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Sniper ) 
@@ -1002,7 +1045,7 @@ void ABaseCharacter::Eliminate(bool bPlayerLeftGame)
 //bLeftGame 따라 리스폰 아니면 OnLeftGame.Broadcast() 실행
 void ABaseCharacter::EliminateTimerFinished()
 {
-	AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+	MainGameMode = MainGameMode == nullptr ? GetWorld()->GetAuthGameMode<AMainGameMode>() : MainGameMode;
 	if( MainGameMode && bLeftGame == false ) // 게임 모드가 존재하고 플레이어가 게임을 떠나지 않은 경우
 	{
 		MainGameMode->RequestRespawn( this, Controller ); // 플레이어 제거 함수 호출
@@ -1047,9 +1090,9 @@ void ABaseCharacter::Destroyed()
 		EliminateBotEffectComponent->DestroyComponent();
 	}
 
-	AMainGameMode* LocalMainGameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(this)); // 현재 게임 모드를 AMainGameMode로 캐스팅합니다.
+	MainGameMode = MainGameMode == nullptr ? GetWorld()->GetAuthGameMode<AMainGameMode>() : MainGameMode; // 현재 게임 모드를 AMainGameMode로 캐스팅합니다.
 
-	bool bMatchNoInProgress = LocalMainGameMode && LocalMainGameMode->GetMatchState() != MatchState::InProgress; // 매치가 진행 중인지 확인합니다.
+	bool bMatchNoInProgress = MainGameMode && MainGameMode->GetMatchState() != MatchState::InProgress; // 매치가 진행 중인지 확인합니다.
 
 	if( CombatComponent && CombatComponent->EquippedWeapon && bMatchNoInProgress )
 	{
@@ -1110,16 +1153,16 @@ void ABaseCharacter::Restart() // Restart는 리스폰/매치 시작 시 호출�
 		}
 	}
 }
-//
+
 // ------------------------------------------------------------------------------------------------플레이거 죽었을때 관련 함수들ㅗ 
 
 // ------------------------------------------------------------------------------------------------- 캐릭터 기본 무기 주는 함수ㅜ
-//
+
 void ABaseCharacter::SpawnDefaultWeapon() // 기본 무기를 스폰하는 함수
 {
-	AMainGameMode* BaseGameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(this)); // 현재 게임 모드를 ABaseGameMode로 캐스팅합니다.
+	MainGameMode = MainGameMode == nullptr ? GetWorld()->GetAuthGameMode<AMainGameMode>() : MainGameMode; // 현재 게임 모드를 ABaseGameMode로 캐스팅합니다.
 	UWorld* World = GetWorld(); // 현재 월드를 가져옵니다.
-	if( BaseGameMode && World && !bDead && DefaultWeaponClass )
+	if(MainGameMode && World && !bDead && DefaultWeaponClass )
 	{
 		ABaseWeapon* StartingWeapon = World->SpawnActor<ABaseWeapon>(DefaultWeaponClass); // 기본 무기를 스폰합니다.
 		StartingWeapon->bDestroyWeapon = true; // 무기를 파괴할 수 있도록 설정합니다.
@@ -1139,11 +1182,11 @@ void ABaseCharacter::InitWeaponAndHUD()
     SpawnDefaultWeapon();
     UpdateHUDAmmo();
 }
-//
+
 // -------------------------------------------------------------------------------------------------캐릭터 기본 무기 주는 함수ㅗ
 
 // --------------------------------------------------------------------------------------------------게터 함수들 모음ㅜ
-//
+
 bool ABaseCharacter::IsWeaponEquipped()
 {
 	return (CombatComponent && CombatComponent->EquippedWeapon); // CombatComponent가 존재하고, 장착된 무기가 있는지 확인
@@ -1172,15 +1215,15 @@ ABaseWeapon* ABaseCharacter::GetEquippedWeapon() const
 
 	return CombatComponent->EquippedWeapon; // CombatComponent의 EquippedWeapon을 반환합니다.
 }
-//
+
 // --------------------------------------------------------------------------------------------------게터 함수들 모음ㅗ
 
 // ------------------------------------------------------------------------------------------------게임 모드 관련 및 유틸ㅜ 
-// 
+
 // 리턴 투 메인메뉴 에서 버튼 클릭시 호출
 void ABaseCharacter::ServerLeaveGame_Implementation()
 {
-	AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+	MainGameMode = MainGameMode == nullptr ? GetWorld()->GetAuthGameMode<AMainGameMode>() : MainGameMode;
 	CharacterState = CharacterState == nullptr ? GetPlayerState<ACharacterState>() : CharacterState; // 플레이어 상태를 ACharacterState로 캐스팅합니다.
 
 	if (MainGameMode && CharacterState)
@@ -1198,7 +1241,7 @@ void ABaseCharacter::MulticastGainedTheLead_Implementation()
 	{
 		CrownComponent = UNiagaraFunctionLibrary::SpawnSystemAttached(
 			CrownSystem, // 크라운 시스템
-			GetCapsuleComponent(), // 메쉬에 부착
+			GetMesh(), // 메쉬에 부착
 			FName(), // 소켓 이름
 			GetActorLocation() + FVector(0.f, 0.f, 110.f), // 위치 오프셋
 			GetActorRotation(), // 회전 오프셋
@@ -1220,6 +1263,36 @@ void ABaseCharacter::MulticastLostTheLead_Implementation()
 		CrownComponent = nullptr; // 크라운 컴포넌트를 nullptr로 설정합니다.
 	}
 }
-//
-// ------------------------------------------------------------------------------------------------게임 모드 관련 및 유틸ㅗ
 
+void ABaseCharacter::SetTeamColor(ETeam Team)
+{
+	switch (Team)
+	{
+		case ETeam::ET_NoTeam:
+			// 팀이 없을 경우 위젯을 숨김
+			if (TeamLogoWidget)
+			{
+				TeamLogoWidget->SetWidget(nullptr);
+				TeamLogoWidget->SetVisibility(false);
+			}
+			break;
+
+		case ETeam::ET_RedTeam:
+			if (TeamLogoWidget && RedTeamWidgetClass)
+			{
+				TeamLogoWidget->SetWidgetClass(RedTeamWidgetClass);
+				TeamLogoWidget->SetVisibility(true);
+			}
+			break;
+
+		case ETeam::ET_BlueTeam:
+			if (TeamLogoWidget && BlueTeamWidgetClass)
+			{
+				TeamLogoWidget->SetWidgetClass(BlueTeamWidgetClass);
+				TeamLogoWidget->SetVisibility(true);
+			}
+			break;
+	}
+}
+
+// ------------------------------------------------------------------------------------------------게임 모드 관련 및 유틸ㅗ

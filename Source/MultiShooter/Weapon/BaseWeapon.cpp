@@ -365,6 +365,7 @@ void ABaseWeapon::EnableCustomDepth(bool bEnable)
 	}
 }
 
+// 산탄 사용시 산탄 범위 세팅하는 함수!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 FVector ABaseWeapon::TraceEndWithScatter(const FVector& HitTarget)
 {
 	if (MuzzlePoint == nullptr) return FVector();

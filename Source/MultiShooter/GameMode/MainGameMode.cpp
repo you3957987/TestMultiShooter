@@ -84,9 +84,15 @@ void AMainGameMode::OnMatchStateSet() // 매치 상태가 설정될 때 호출�
 		ABasePC* PlayerController = Cast<ABasePC>( *It );
 		if ( PlayerController )
 		{
-			PlayerController->OnMatchStateSet(MatchState); // 플레이어 컨트롤러에 매치 상태를 설정
+			PlayerController->OnMatchStateSet(MatchState, bTeamMatch); // 플레이어 컨트롤러에 매치 상태를 설정
 		}
 	}
+}
+
+// 팀킬 방지용. 이거는 팀 게임모드에서 재정의
+float AMainGameMode::CalculateDamage(AController* Attacker, AController* Victim, float BaseDamage)
+{
+	return BaseDamage;
 }
 
 // 플레이가 죽으면 캐릭터 스테이트 점수 및 죽은 횟수 업데이트 및 최고 점수 기록한 플레이어 업데이트
@@ -184,6 +190,7 @@ void AMainGameMode::RequestRespawn(ACharacter* EliminatedCharacter, AController*
 		}
 	}
 }
+
 
 // ------------------------------------------------------------------------------------플레이어가 게임을 떠났을 때 호출되는 함수
 //

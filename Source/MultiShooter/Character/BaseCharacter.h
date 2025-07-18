@@ -6,6 +6,7 @@
 #include "MultiShooter/Interface/CrosshairInterface.h" // 크로스헤어 인터페이스 헤더
 #include "Components/TimelineComponent.h" // 타임라인 컴포넌트 헤더
 #include "MultiShooter/TypeHeader/CombatState.h" // HUD 패키지 구조체 헤더 파일
+#include "MultiShooter/TypeHeader/Team.h"
 #include "BaseCharacter.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLeftGame);
@@ -21,6 +22,20 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	class UCameraComponent* FollowCamera;
 	UPROPERTY(EditAnywhere, Category = "자체설정", BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* OverHeadWidget;
+
+	UPROPERTY(EditAnywhere, Category = "자체설정", BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UWidgetComponent* TeamLogoWidget;
+
+	// 팀별 위젯 클래스(빨강/파랑)
+	UPROPERTY(EditAnywhere, Category = "자체설정", BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UUserWidget> RedTeamWidgetClass;
+	UPROPERTY(EditAnywhere, Category = "자체설정", BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UUserWidget> BlueTeamWidgetClass;
+
+	UPROPERTY()
+	class AMainGameMode* MainGameMode; // 메인 게임 모드
+
+	void UpdateWidgetForLocalView(UWidgetComponent* Widget);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* CombatComponent; // 전투 컴포넌트
@@ -380,6 +395,8 @@ public:
 	void MulticastGainedTheLead(); // 최고 점수 플레이어에게 크라운 이펙트를 생성하는 멀티캐스트 함수
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastLostTheLead();
+
+	void SetTeamColor(ETeam Team); // 팀 색상을 설정하는 함수
 	//
 	// -------------------------------------------------------------------------------------게임 전체적인 게임모드 관련 함수들ㅗ
 

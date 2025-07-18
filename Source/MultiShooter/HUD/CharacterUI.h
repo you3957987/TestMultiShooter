@@ -56,4 +56,13 @@ public:
 	UPROPERTY(meta = (BindWidgetAnim), Transient) // 위젯 애니메이션 바인딩
 	UWidgetAnimation* WifiAnim; // 위젯 애니메이션
 
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* RedTeamScore; // 레드 팀 점수 텍스트 블록 바인딩
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* BlueTeamScore; // 블루 팀 점수 텍스트 블록 바인딩
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* ScoreSpacerText; // 점수 사이의 공백 텍스트 블록 바인딩
+
 };
