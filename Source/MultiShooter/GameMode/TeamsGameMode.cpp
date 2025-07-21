@@ -15,7 +15,6 @@ ATeamsGameMode::ATeamsGameMode()
 void ATeamsGameMode::HandleMatchHasStarted()
 {
 	Super::HandleMatchHasStarted();
-
 	ABaseGameState* BaseGameState = Cast<ABaseGameState>(UGameplayStatics::GetGameState(this));
 	if (BaseGameState)
 	{

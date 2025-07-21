@@ -41,6 +41,15 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 
 	bool bFireButtonPressed; // 발사 버튼이 눌렸는지 여부
 
+	UPROPERTY()
+	ABaseWeapon* TheFlag; // 깃발 무기
+
+	UPROPERTY(ReplicatedUsing = OnRep_bHoldingFlag)
+	bool bHoldingFlag = false; // 깃발을 들고 있는지 여부
+
+	UFUNCTION()
+	void OnRep_bHoldingFlag();
+
 	// -----------------------------------------------------------------------------십자선ㅜ
 	//
 	FHUDPackage HUDPackage; // HUD 패키지, 십자선 관련 정보
@@ -193,6 +202,7 @@ protected:
 	void EquipFirstWeapon(ABaseWeapon* WeaponToEquip); // 기본 무기를 장착하는 함수
 	void EquipSecondaryWeapon(ABaseWeapon* WeaponToEquip); // 보조 무기를 장착하는 함수
 	void AttachWeaponToBackpack(ABaseWeapon* WeaponToAttach); // 무기를 백팩에 부착하는 함수
+	void AttachFlagToSocket(ABaseWeapon* Flag); // 깃발을 소켓에 부착하는 함수
 	void DropEquippedWeapon(); // 현재 장착된 무기를 드롭하는 함수
 	//
 	// ------------------------------------------------------------------------------------------------------------무기 유틸	ㅗ

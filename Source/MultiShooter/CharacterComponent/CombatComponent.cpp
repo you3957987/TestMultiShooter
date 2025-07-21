@@ -53,7 +53,6 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
         SetHUDCrosshair(DeltaTime); // 십자선 HUD를 설정합니다.
         InterpFOV(DeltaTime); // FOV를 업데이트합니다.
     }
-
 }
 
 void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -66,11 +65,11 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
     DOREPLIFETIME(UCombatComponent, CombatState); // CombatState 변수를 네트워크에서 복제하도록 설정
     DOREPLIFETIME(UCombatComponent, Grenade); // Grenade 변수를 네트워크에서 복제하도록 설정
     DOREPLIFETIME(UCombatComponent, SecondaryWeapon); // SecondaryWeapon 변수를 네트워크에서 복제하도록 설정
+	DOREPLIFETIME(UCombatComponent, bHoldingFlag); // bHoldingFlag 변수를 네트워크에서 복제하도록 설정
 }
 
-
 // -------------------------------------------------------------------------------------------------변수 복제 관련 ㅜ
-//
+
 void UCombatComponent::OnRep_EquippedWeapon()
 {
     if (EquippedWeapon && Character )
@@ -149,6 +148,14 @@ void UCombatComponent::OnRep_CombatState()
     }
 }
 
+void UCombatComponent::OnRep_bHoldingFlag()
+{
+    if (bHoldingFlag == true && Character && Character->IsLocallyControlled())
+    {
+        Character->GetCharacterMovement()->MaxWalkSpeed = 100.f;// 이속 최대를 100으로 설정
+    }
+}
+
 void UCombatComponent::OnRep_Grenade()
 {
     UpdateGrenade(); // HUD에 수류탄 개수를 업데이트합니다.
@@ -161,11 +168,11 @@ void UCombatComponent::OnRep_Aiming() // 렉걸릴 시 클라 쪽에서 줌 광�
         bIsAiming = bAimButtonPressed; // Aim 버튼이 눌렸는지 여부를 설정합니다.
     }
 }
-//
+
 // -------------------------------------------------------------------------------------------------변수 복제 관련 ㅗ
 
 // --------------------------------------------------------------------------------------------------탄약 관련 ㅜ
-//
+
 // 무기 추가시 탄약도 추가
 void UCombatComponent::InitCarriedAmmo() 
 {
@@ -235,27 +242,42 @@ void UCombatComponent::UpdateAmmoValues()
     EquippedWeapon->AddAmmo(ReloadAmount); // 무기에 리로드할 총알 개수를 추가합니다.
 }
 
-//
+
 // //----------------------------------------------------------------------------------------------------탄약 관련ㅗ
 
 // --------------------------------------------------------------------------------------------------무기 관련 유틸 ㅜ
-//
+
 void UCombatComponent::EquipWeapon(ABaseWeapon* WeaponToEquip) // 이 함수는 서버에서만 실행됨
 {
     if (Character == nullptr || WeaponToEquip == nullptr) return;
     if( CombatState != ECombatState::ECS_Unoccupied ) return; // 무기를 장착할 수 없습니다. // 전투 상태가 비활성화 상태가 아닐 때
 
-    if( EquippedWeapon != nullptr && SecondaryWeapon == nullptr ) // 이미 장착된 무기가 있고, 보조 무기가 없는 경우
+    if (WeaponToEquip->GetWeaponType() == EWeaponType::EWT_Flag) // 깃발은 따로 처리!!!
     {
-        EquipSecondaryWeapon(WeaponToEquip); // 보조 무기를 장착합니다.
+		bHoldingFlag = true; // 깃발을 들고 있는 상태로 설정합니다. -> 복제되는 변수
+        
+        // 기타 캐릭터 이동 관련 코드는 베이스 캐릭터cpp의 틱에서 구현
+
+		WeaponToEquip->SetWeaponState(EWeaponState::EWS_Equiped); // 깃발의 상태를 장착됨으로 설정합니다.
+		WeaponToEquip->SetOwner(Character); // 깃발의 소유자를 캐릭터로 설정합니다.
+
+        AttachFlagToSocket(WeaponToEquip); // 깃발을 소켓에 부착합니다.
+		TheFlag = WeaponToEquip; // TheFlag 변수에 깃발을 저장합니다.
     }
     else
     {
-        EquipFirstWeapon(WeaponToEquip); // 기본 무기를 장착합니다.
-    }
+        if (EquippedWeapon != nullptr && SecondaryWeapon == nullptr) // 이미 장착된 무기가 있고, 보조 무기가 없는 경우
+        {
+            EquipSecondaryWeapon(WeaponToEquip); // 보조 무기를 장착합니다.
+        }
+        else
+        {
+            EquipFirstWeapon(WeaponToEquip); // 기본 무기를 장착합니다.
+        }
 
-    Character->GetCharacterMovement()->bOrientRotationToMovement = false; // 캐릭터가 이동 방향을 바라보지 않도록 설정
-    Character->bUseControllerRotationYaw = true; // 캐릭터 가 컨트롤러의 회전을 사용하도록 설정
+        Character->GetCharacterMovement()->bOrientRotationToMovement = false; // 캐릭터가 이동 방향을 바라보지 않도록 설정
+        Character->bUseControllerRotationYaw = true; // 캐릭터 가 컨트롤러의 회전을 사용하도록 설정
+    }
 }
 
 void UCombatComponent::EquipFirstWeapon(ABaseWeapon* WeaponToEquip) // 기본 무기를 장착하는 함수
@@ -296,6 +318,17 @@ void UCombatComponent::AttachWeaponToBackpack(ABaseWeapon* WeaponToAttach) // �
     if(BackpackSocket)
     {
         BackpackSocket->AttachActor(WeaponToAttach, Character->GetMesh()); // 백팩 소켓에 무기를 부착합니다.
+    }
+}
+
+void UCombatComponent::AttachFlagToSocket(ABaseWeapon* Flag)
+{
+    if (Character == nullptr || Flag == nullptr || Character->GetMesh() == nullptr) return;
+
+    const USkeletalMeshSocket* FlagSocket = Character->GetMesh()->GetSocketByName(FName("FlagSocket")); // 깃발 소켓을 가져옵니다.
+    if (FlagSocket)
+    {
+        FlagSocket->AttachActor(Flag, Character->GetMesh()); // 백팩 소켓에 무기를 부착합니다.
     }
 }
 
@@ -626,6 +659,7 @@ void UCombatComponent::TraceUnderCrosshair(FHitResult& TraceHitResult)
 
 }
 
+// 십자선 확산 정도 계산 함수
 void UCombatComponent::SetHUDCrosshair(float DeltaTime)
 {
     if (Character == nullptr || Character->Controller == nullptr) return;

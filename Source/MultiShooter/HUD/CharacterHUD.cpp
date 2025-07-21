@@ -143,6 +143,7 @@ void ACharacterHUD::AddElimAnnouncement(FString Attacker, FString Victim)
         if (ElimAnnouncement)
         {
 			ElimAnnouncement->SetElimAnnouncementText(Attacker, Victim); // 제거 알림 텍스트 설정
+      
 			ElimAnnouncement->AddToViewport(); // 뷰포트에 추가
 
 			for (UElimAnnouncement* Msg : ElimMessages) // 이전에 존재하던 킬로그 메시지 위치를 아래로 이동시키기

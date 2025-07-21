@@ -58,6 +58,10 @@ class MULTISHOOTER_API UBaseAnimInstance : public UAnimInstance
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	EWeaponType WeaponType; // 캐릭터가 사용하는 무기 타입을 저장하는 변수
 
+	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	bool bHoldingTheFlag; // 캐릭터가 깃발을 들고 있는지 여부를 저장하는 변수
+
+
 	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 	UPROPERTY(BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bRotateRootBone; // 루트 본을 회전할지 여부를 저장하는 변수

@@ -68,7 +68,9 @@ void AMainGameMode::Tick(float DeltaTime)
 			if (World)
 			{
 				bUseSeamlessTravel = true; // 필요시
-				World->ServerTravel("/Game/Maps/GameMap?listen"); // 서버 트래블을 통해 게임 맵으로 이동
+				FString MapName = UGameplayStatics::GetCurrentLevelName(World, true); // 현재 맵 이름만 추출
+				FString TravelURL = FString::Printf(TEXT("/Game/Maps/%s?listen"), *MapName);
+				World->ServerTravel(TravelURL);
 			}
 		}
 	}

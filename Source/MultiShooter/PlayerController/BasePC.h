@@ -137,7 +137,7 @@ public:
 	// -----------------------------------------------------------------------------------------------------서버랑 클라이언트 시간 싱크ㅜ
 	
 	UPROPERTY(EditAnyWhere, Category = "자체설정")
-	float TimeSyncFrequency = 2.f; // 시간 동기화 빈도 (초 단위)
+	float TimeSyncFrequency = 1.f; // 시간 동기화 빈도 (초 단위)
 
 	float LastTimeSync = 0.f; // 마지막 시간 동기화 시간
 

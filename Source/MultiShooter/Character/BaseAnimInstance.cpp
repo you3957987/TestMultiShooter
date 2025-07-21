@@ -79,4 +79,6 @@ void UBaseAnimInstance::NativeUpdateAnimation(float DeltaTime)
     {
         WeaponType = CombatComp->GetEquippedWeapon()->GetWeaponType();
     }
+
+	bHoldingTheFlag = BaseCharacter->IsHoldingTheFlag(); // 캐릭터가 깃발을 들고 있는지 여부를 가져옵니다.
 }

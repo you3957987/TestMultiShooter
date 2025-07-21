@@ -306,6 +306,10 @@ protected:
 	void ReceiveDamage( AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatorController, AActor* DamageCauser ); 
 
 	void PollInit(float DeltaTime); // 관련 클래스를 확인해서 HUD를 세팅
+	void OnPlayerStateInitialized(); // 플레이어 상태가 초기화되었을 때 호출되는 함수
+
+	void SetSpawnPoint(); // 스폰 포인트를 설정하는 함수
+	bool bFirstSpawn = true; // 첫 스폰 여부를 저장하는 변수 // 개인 게임에서 첫 스폰시 위치 랜덤하게
 
 public:	
 	ABaseCharacter();	
@@ -335,11 +339,15 @@ public:
 	FORCEINLINE UBuffComponent* GetBuffComponent() const { return BuffComponent; } // BuffComponent를 반환하는 함수
 	FORCEINLINE UStaticMeshComponent* GetGrenadeMesh() const { return GrenadeMesh; } // GrenadeMesh를 반환하는 함수
 	FORCEINLINE ULagCompensationComponent* GetLagCompensationComponent() const { return LagCompensationComponent; } // LagCompensationComponent를 반환하는 함수
+	bool IsHoldingTheFlag() const;
 	bool IsWeaponEquipped();
 	bool IsAiming(); // CombatComponent가 존재할 때만 bIsAiming을 반환
 	bool IsLocallyReloading(); // 로컬 플레이어가 리로드 중인지 확인하는 함수
 	ECombatState GetCombatState() const; // CombatComponent가 존재할 때만 CombatState를 반환
 	ABaseWeapon* GetEquippedWeapon() const; // CombatComponent가 존재할 때만 EquippedWeapon을 반환
+	ETeam GetTeam(); // CombatComponent가 존재할 때만 Team을 반환
+
+
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; } // bRotateRootBone을 반환하는 함수
 	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
 	//
@@ -397,6 +405,7 @@ public:
 	void MulticastLostTheLead();
 
 	void SetTeamColor(ETeam Team); // 팀 색상을 설정하는 함수
+	void SetHoldingTheFlag(bool bHolding); // 플레이어가 깃발을 들고 있는지 여부를 설정하는 함수
 	//
 	// -------------------------------------------------------------------------------------게임 전체적인 게임모드 관련 함수들ㅗ
 

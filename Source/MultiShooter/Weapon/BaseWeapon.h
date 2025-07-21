@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "WeaponType.h" // 무기 타입 열거형 헤더 파일
+#include "MultiShooter/TypeHeader/Team.h" // 팀 열거형 헤더 파일
 #include "BaseWeapon.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnEquippedDelegate); // 무기 장착시 웨폰 스폰포인트에서 타이머 시작 후 다시 무기 생성
@@ -42,8 +43,11 @@ class MULTISHOOTER_API ABaseWeapon : public AActor
 	UFUNCTION()
 	void OnRep_WeaponState(); // 무기 상태가 변경될 때 호출되는 함수
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	EWeaponType WeaponType; // 무기 타입
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	ETeam Team; // 무기가 속한 팀 -> 같은 팀의 깃발은 못 얻도록 하게!!!!
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UWidgetComponent* PickUpWidget; // 무기 위젯 컴포넌트
@@ -130,6 +134,9 @@ public:
 
 	virtual void Fire( const FVector& HitTarget ); // 발사 함수, 타겟 위치를 인자로 받음
 
+	// 플레이어 죽어서 무기 떨굼
+	virtual void Dropped();
+
 	void ShowPickUpWidget(bool bShow); // 위젯을 보이거나 숨기는 함수
 
 	void SetWeaponState(EWeaponState NewState); // 무기 상태를 설정하는 함수
@@ -149,8 +156,10 @@ public:
 	FORCEINLINE UTexture2D* GetWeaponIcon() const { return WeaponIcon; } // 무기 상태를 반환하는 함수
 	FORCEINLINE float GetDamage() const { return Damage; } // 무기의 대미지를 반환하는 함수
 	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; } // 무기의 헤드샷 대미지를 반환하는 함수
+	FORCEINLINE UWidgetComponent* GetPickUpWidget() const { return PickUpWidget; } // 무기 위젯 컴포넌트를 반환하는 함수
+	FORCEINLINE ETeam GetTeam() const { return Team; } // 무기가 속한 팀을 반환하는 함수
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "자체설정")
 	UTexture2D* WeaponIcon; // 무기 아이콘 텍스처
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
@@ -170,9 +179,6 @@ public:
 	FVector TraceEndWithScatter(const FVector& HitTarget); // 산란을 고려한 트레이스 끝점 계산 함수
 
 	void EnableCustomDepth(bool bEnable); // 윤곽선을 활성화하거나 비활성화하는 함수
-
-	// 플레이어 죽음
-	void Dropped();
 
 	// --------------------------------------------------------------------------------------------------------------십자선 HUDㅜ
 	// 팔로우 카메라 focal distance 초점 거리 10000으로 설정, camere->조리개 값 4-> 32로 설정!

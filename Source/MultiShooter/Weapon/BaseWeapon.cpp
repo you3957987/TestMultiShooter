@@ -145,14 +145,16 @@ void ABaseWeapon::SetHUDAmmo()
 // //-----------------------------------------------------------------------------------------------------------탄약 관련 ㅗ
 
 //---------------------------------------------------------------------------------------------------------------------------- 무기 픽업 관련 ㅜ
-// 캐릭터가 스피어에 오버랩 처리 해서 픽업 할 수 있게
+
+// 캐릭터가 스피어에 오버랩 처리 해서 픽업 할 수 있게 이때 깃발은 팀 체크 후 같은 팀 깃발은 오버랩 안되게!
 void ABaseWeapon::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, 
     int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
     ABaseCharacter* OverlappingCharacter = Cast<ABaseCharacter>(OtherActor);
     if( OverlappingCharacter )
     {
-        //PickUpWidget->SetVisibility(true);
+		if (WeaponType == EWeaponType::EWT_Flag && OverlappingCharacter->GetTeam() == Team) return; // 깃발은 같은 팀이 아니면 오버랩 안되게
+		if (OverlappingCharacter->IsHoldingTheFlag() == true) return; // 깃발을 들고 있는 캐릭터는 오버랩 안되게
         OverlappingCharacter->SetOverlappingWeapon(this);
     }
 }
@@ -163,7 +165,8 @@ void ABaseWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, A
     ABaseCharacter* OverlappingCharacter = Cast<ABaseCharacter>(OtherActor);
     if( OverlappingCharacter )
     {
-        //PickUpWidget->SetVisibility(false);
+		if (WeaponType == EWeaponType::EWT_Flag && OverlappingCharacter->GetTeam() == Team) return; // 깃발은 같은 팀이 아니면 오버랩 안되게
+		if (OverlappingCharacter->IsHoldingTheFlag() == true) return; // 깃발을 들고 있는 캐릭터는 오버랩 안되게
         OverlappingCharacter->SetOverlappingWeapon(nullptr);
     }
 }

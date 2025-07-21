@@ -31,9 +31,9 @@ void UOverHeadWidget::ShowPlayerNetRole(APawn* InPawn , FString PlayerName)
             break;
     }
     // 이름과 권한을 모두 표시
-    FString DisplayString = FString::Printf(TEXT("이름: %s\n권한: %s"), *PlayerName, *Role);
+    //FString DisplayString = FString::Printf(TEXT("이름: %s\n권한: %s"), *PlayerName, *Role);
+    FString DisplayString = FString::Printf(TEXT("이름: %s"), *PlayerName);
     SetDisplayText(DisplayString); // 위젯에 네트워크 역할을 표시합니다.
-
 }
 
 void UOverHeadWidget::SetDisplayText(const FString& Text)

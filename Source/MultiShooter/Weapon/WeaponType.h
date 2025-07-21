@@ -17,5 +17,6 @@ enum class EWeaponType : uint8
     EWT_GrenadeLauncher UMETA( DisplayName = "Grenade Launcher" ),
     EWT_MiniGun UMETA( DisplayName = "Minigun" ),
     
+	EWT_Flag UMETA(DisplayName = "Flag"), // 플래그 무기 타입 추가
     EWT_MAX UMETA( DisplayName = "DefaultMAX" ) // 최대값을 정의하여 열거형의 크기를 제한
 };

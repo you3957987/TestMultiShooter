@@ -28,6 +28,8 @@
 #include "MultiShooter/CharacterComponent/LagCompensationComponent.h"
 #include "MultiShooter/GameState/BaseGameState.h" // ABaseGameState 클래스 사용을 위한 헤더 파일
 #include "MultiShooter/TypeHeader/Team.h" // ETeam 열거형 사용을 위한 헤더 파일
+#include "MultiShooter/PlayerStart/TeamPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
+#include "MultiShooter/PlayerStart/SoloPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -223,19 +225,35 @@ void ABaseCharacter::Tick(float DeltaTime)
 		Calculate_AO_Pitch(); // AO 피치를 계산합니다.
 	}
 	*/
-	if( bDisableGamePlay )
+
+	if (CombatComponent && CombatComponent->bHoldingFlag)
 	{
-		bUseControllerRotationYaw = false; // 게임 플레이가 비활성화된 경우 컨트롤러 회전 사용 안함
-		TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 게임 플레이가 비활성화된 경우 회전 상태를 초기화	
+		bUseControllerRotationYaw = false; // 깃발을 들고 있는 경우 컨트롤러 회전 사용 안함
+		GetCharacterMovement()->bOrientRotationToMovement = true; // 이동 방향을 향하도록 설정
+		GetCharacterMovement()->MaxWalkSpeed = 100.f;// 이속 최대를 100으로 설정
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 깃발을 들고 있는 경우 회전 상태를 초기화
 	}
 	else
 	{
-		AimOffset(DeltaTime); // AimOffset 함수 호출
+		if (CombatComponent && CombatComponent->EquippedWeapon)
+		{
+			bUseControllerRotationYaw = true; 
+			GetCharacterMovement()->bOrientRotationToMovement = false; 
+		}
+		if (bDisableGamePlay)
+		{
+			bUseControllerRotationYaw = false; // 게임 플레이가 비활성화된 경우 컨트롤러 회전 사용 안함
+			TurningInPlace = ETurningInPlace::ETIP_NotTurning; // 게임 플레이가 비활성화된 경우 회전 상태를 초기화	
+		}
+		else
+		{
+			AimOffset(DeltaTime); // AimOffset 함수 호출
+		}
 	}
 
-	HideCameraIfCharacterClose(DeltaTime); // 캐릭터가 카메라에 너무 가까이 있으면 카메라 숨기기
-	PollInit(DeltaTime); // 리스폰 될 시 허드 세팅
+	PollInit(DeltaTime); // 리스폰 될 시 캐릭터 초기화
 
+	HideCameraIfCharacterClose(DeltaTime); // 캐릭터가 카메라에 너무 가까이 있으면 카메라 숨기기
 	// 머리 위의 위젯을 캐릭터한테 맞게 업데이트
 	UpdateWidgetForLocalView(TeamLogoWidget);
 	UpdateWidgetForLocalView(OverHeadWidget);
@@ -305,9 +323,7 @@ void ABaseCharacter::PollInit(float DeltaTime)
 		CharacterState = GetPlayerState<ACharacterState>(); // 플레이어 상태를 ACharacterState로 캐스팅합니다.
 		if (CharacterState)
 		{
-			CharacterState->AddToScore(0.f); // 플레이어 상태에 점수 0 추가해서 업데이트 시키기!
-			CharacterState->AddToDefeat(0); // 플레이어 상태에 처치 수 0 추가해서 업데이트 시키기!
-			SetTeamColor(CharacterState->GetTeam()); // 팀 색상을 설정합니다.
+			OnPlayerStateInitialized();
 
 			ABasePC* BasePC = Cast<ABasePC>(Controller);
 			if (BasePC)
@@ -320,6 +336,63 @@ void ABaseCharacter::PollInit(float DeltaTime)
 			{
 				MulticastGainedTheLead(); // 멀티캐스트로 우위를 점한 플레이어를 알립니다.
 			}
+		}
+	}
+}
+
+void ABaseCharacter::OnPlayerStateInitialized()
+{
+	CharacterState->AddToScore(0.f); // 플레이어 상태에 점수 0 추가해서 업데이트 시키기!
+	CharacterState->AddToDefeat(0); // 플레이어 상태에 처치 수 0 추가해서 업데이트 시키기!
+	SetTeamColor(CharacterState->GetTeam()); // 팀 색상을 설정합니다.
+	SetSpawnPoint(); // 스폰 포인트를 설정합니다.
+}
+
+// 팀 게임에서 스폰 포인트 설정
+void ABaseCharacter::SetSpawnPoint()
+{
+	if (HasAuthority() && CharacterState && CharacterState->GetTeam() != ETeam::ET_NoTeam) // 팀게임에서만 스폰 포인트 설정
+	{
+		TArray<AActor*> PlayerStarts;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATeamPlayerStart::StaticClass(), PlayerStarts); // 팀 플레이어 스타트 액터를 모두 가져옵니다.
+		TArray<ATeamPlayerStart*> TeamPlayerStarts; // 팀 플레이어 스타트 액터 배열
+		for (auto Start : PlayerStarts)
+		{
+			ATeamPlayerStart* TeamStart = Cast<ATeamPlayerStart>(Start); // ATeamPlayerStart로 캐스팅
+
+			if (TeamStart && TeamStart->Team == CharacterState->GetTeam() && TeamStart->bSpawned == false) 
+			// 캐릭터의 팀과 일치하는 플레이어 스타트만 추가하고 스폰 쿨타 보기
+			{
+				TeamPlayerStarts.Add(TeamStart); // 캐릭터가 스폰 가능한 플레이어 스타트만 추가
+			}
+		}
+		if (TeamPlayerStarts.Num() > 0)
+		{
+			ATeamPlayerStart* SpawnPoint = TeamPlayerStarts[FMath::RandRange(0, TeamPlayerStarts.Num() - 1)]; // 랜덤으로 스폰 포인트 선택
+			SetActorLocationAndRotation(SpawnPoint->GetActorLocation(), SpawnPoint->GetActorRotation()); // 스폰 포인트 위치와 회전 설정
+			SpawnPoint->StartSpawnCooldown(); // 스폰 쿨타임 시작
+		}
+	}
+	if (HasAuthority() && CharacterState && CharacterState->GetTeam() == ETeam::ET_NoTeam && bFirstSpawn) // 개인 게임에서 첫 스폰 관리
+	{
+		bFirstSpawn = false; // 첫 스폰이 완료되었음을 표시합니다. 이후로는 메인 게임 모드의 requestspawn을 통해 랜덤 스폰
+
+		TArray<AActor*> PlayerStarts;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASoloPlayerStart::StaticClass(), PlayerStarts);
+		TArray<ASoloPlayerStart*> SoloPlayerStarts; // 솔로 플레이어 스타트 액터 배열
+		for (auto Start : PlayerStarts)
+		{
+			ASoloPlayerStart* SoloStart = Cast<ASoloPlayerStart>(Start); // ASoloPlayerStart로 캐스팅
+			if (SoloStart && SoloStart->bSpawned == false) // 스폰 쿨타임이 없는 스타트만 추가
+			{
+				SoloPlayerStarts.Add(SoloStart); // 스폰 가능한 플레이어 스타트만 추가
+			}
+		}
+		if (SoloPlayerStarts.Num() > 0)
+		{
+			ASoloPlayerStart* SpawnPoint = SoloPlayerStarts[FMath::RandRange(0, SoloPlayerStarts.Num() - 1)]; // 랜덤으로 스폰 포인트 선택
+			SetActorLocationAndRotation(SpawnPoint->GetActorLocation(), SpawnPoint->GetActorRotation()); // 스폰 포인트 위치와 회전 설정
+			SpawnPoint->StartSpawnCooldown(); // 스폰 쿨타임 시작
 		}
 	}
 }
@@ -520,6 +593,7 @@ void ABaseCharacter::Move(const FInputActionValue& Value)
 void ABaseCharacter::Jump()
 {
 	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 점프를 무시합니다.
+	if (CombatComponent && CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
 
 	Super::Jump(); // 기본 점프 함수 호출
 }
@@ -537,6 +611,8 @@ void ABaseCharacter::Equip()
 
     if(  CombatComponent  ) // CombatComponent가 존재
 	{
+		if (CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
+
 		if(CombatComponent->CombatState == ECombatState::ECS_Unoccupied ) ServerEquipWeapon();
 
 		if (CombatComponent->ShouldSwapWeapon() && HasAuthority() == false && 
@@ -573,6 +649,7 @@ void ABaseCharacter::ServerEquipWeapon_Implementation() // 서버에서 지시�
 void ABaseCharacter::AimPressed()
 {
 	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+	if (CombatComponent && CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
 
 	if (CombatComponent) // CombatComponent가 존재하는 경우
 	{
@@ -583,6 +660,7 @@ void ABaseCharacter::AimPressed()
 void ABaseCharacter::AimReleased()
 {
 	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+	if (CombatComponent && CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
 	
 	if (CombatComponent) // CombatComponent가 존재하는 경우
 	{
@@ -593,6 +671,7 @@ void ABaseCharacter::AimReleased()
 void ABaseCharacter::FirePressed()
 {
 	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+	if (CombatComponent && CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
 	
 	if (CombatComponent) // CombatComponent가 존재하는 경우
 	{
@@ -603,6 +682,7 @@ void ABaseCharacter::FirePressed()
 void ABaseCharacter::FireReleased()
 {
 	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+	if (CombatComponent && CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
 	
 	if (CombatComponent) // CombatComponent가 존재하는 경우
 	{
@@ -613,6 +693,7 @@ void ABaseCharacter::FireReleased()
 void ABaseCharacter::Reload()
 {
 	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+	if (CombatComponent && CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
 	
 	if( CombatComponent )
 	{
@@ -624,6 +705,8 @@ void ABaseCharacter::Grenade()
 {
 	if( CombatComponent ) 
 	{
+		if (CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
+
 		CombatComponent->ThrowGrenade(); // CombatComponent의 ThrowGrenade 함수를 호출하여 수류탄을 던집니다.
 	}
 }
@@ -1025,20 +1108,37 @@ void ABaseCharacter::Eliminate(bool bPlayerLeftGame)
 {
 	//if( CombatComponent == nullptr || CombatComponent->EquippedWeapon == nullptr ) return; // CombatComponent나 EquippedWeapon이 없으면 함수 종료
 	// CombatComponent->EquippedWeapon->Dropped(); // 무기를 떨어뜨립니다.
-
-    // CombatComponent나 EquippedWeapon이 있을 때만 무기 드랍
-    if(CombatComponent && CombatComponent->EquippedWeapon)
-    {
-		if(CombatComponent->EquippedWeapon->bDestroyWeapon)
+	// CombatComponent나 EquippedWeapon이 있을 때만 무기 드랍
+	if (CombatComponent)
+	{
+		if (CombatComponent->EquippedWeapon)
 		{
-			CombatComponent->EquippedWeapon->Destroy(); // 무기를 파괴합니다.
+			if (CombatComponent->EquippedWeapon->bDestroyWeapon)
+			{
+				CombatComponent->EquippedWeapon->Destroy(); // 무기를 파괴합니다.
+			}
+			else
+			{
+				CombatComponent->EquippedWeapon->Dropped();
+			}
 		}
-		else
+		if (CombatComponent->SecondaryWeapon)
 		{
-			CombatComponent->EquippedWeapon->Dropped();
+			if (CombatComponent->SecondaryWeapon->bDestroyWeapon)
+			{
+				CombatComponent->SecondaryWeapon->Destroy(); // 무기를 파괴합니다.
+			}
+			else
+			{
+				CombatComponent->SecondaryWeapon->Dropped();
+			}
 		}
-    }
-	
+		if (CombatComponent->TheFlag)
+		{
+			CombatComponent->TheFlag->Dropped(); // 깃발을 떨어뜨립니다.
+			CombatComponent->TheFlag = nullptr; // 깃발을 널로 설정합니다.
+		}
+	}
 	MulticastEliminate(bPlayerLeftGame); // 멀티캐스트로 함수 실행
 }
 
@@ -1194,11 +1294,13 @@ bool ABaseCharacter::IsWeaponEquipped()
 
 bool ABaseCharacter::IsAiming()
 {
+	if (CombatComponent == nullptr) return false; // CombatComponent가 없으면 false 반환
 	return (CombatComponent && CombatComponent->bIsAiming); // CombatComponent가 존재하고, Aim 상태인지 확인
 }
 
 bool ABaseCharacter::IsLocallyReloading()
 {
+	if(CombatComponent == nullptr) return false; // CombatComponent가 없으면 false 반환
 	return CombatComponent->bLocallyReloading; // 로컬 플레이어가 리로드 중인지 확인합니다.
 }
 
@@ -1215,6 +1317,22 @@ ABaseWeapon* ABaseCharacter::GetEquippedWeapon() const
 
 	return CombatComponent->EquippedWeapon; // CombatComponent의 EquippedWeapon을 반환합니다.
 }
+
+ETeam ABaseCharacter::GetTeam()
+{
+	CharacterState = CharacterState == nullptr ? GetPlayerState<ACharacterState>() : CharacterState; // 플레이어 상태를 ACharacterState로 캐스팅합니다.
+
+	if (CharacterState == nullptr) return ETeam::ET_NoTeam; // CharacterState가 없으면 NoTeam 반환
+	return CharacterState->GetTeam(); // CharacterState의 GetTeam 함수를 호출하여 팀을 반환합니다.
+}
+
+bool ABaseCharacter::IsHoldingTheFlag() const
+{
+	if (CombatComponent == nullptr) return false; // CombatComponent가 없으면 false 반환
+
+	return CombatComponent->bHoldingFlag; // CombatComponent의 bHoldingTheFlag 값을 반환합니다.
+}
+
 
 // --------------------------------------------------------------------------------------------------게터 함수들 모음ㅗ
 
@@ -1293,6 +1411,13 @@ void ABaseCharacter::SetTeamColor(ETeam Team)
 			}
 			break;
 	}
+}
+
+// 깃발을 들고 있는지 설정하는 함수
+void ABaseCharacter::SetHoldingTheFlag(bool bHolding)
+{
+	if (CombatComponent == nullptr) return;
+	CombatComponent->bHoldingFlag = bHolding; // CombatComponent의 bHoldingFlag 값을 설정합니다.
 }
 
 // ------------------------------------------------------------------------------------------------게임 모드 관련 및 유틸ㅗ

@@ -145,15 +145,33 @@ void ABasePC::SetHUDTime()
         }
     }
 
-    if (!HasAuthority()) // 또는 if (IsLocalController())
+    if (HasAuthority() == false)
     {
-        //UE_LOG(LogTemp, Warning, TEXT("SetHUDTime: State=%s, WarmUp=%f, Match=%f, LevelStart=%f, Cooldown=%f, GetServerTime=%f, TimeLeft=%f"),
-        //*MatchState.ToString(), WarmUpTime, MatchTime, LevelStartingTime, CooldownTime, GetServerTime(), TimeLeft);
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(
+                1, // Key값을 1로 고정
+                5.f, FColor::Yellow,
+                FString::Printf(
+                    TEXT("클라이언트: 매치상태= %s, 준비시간= %.2f, 매치시간= %.2f, 시작시간= %.2f, 쿨다운= %.2f, 서버시간= %.2f, 남은시간= %.2f"),
+                    *MatchState.ToString(), WarmUpTime, MatchTime, LevelStartingTime, CooldownTime, GetServerTime(), TimeLeft
+                )
+            );
+        }
     }
-    if (HasAuthority()) // 또는 if (IsLocalController())
+    if (HasAuthority())
     {
-        //UE_LOG(LogTemp, Warning, TEXT("SetHUDTime: State=%s, WarmUp=%f, Match=%f, LevelStart=%f, Cooldown=%f, GetServerTime=%f, TimeLeft=%f"),
-        //*MatchState.ToString(), WarmUpTime, MatchTime, LevelStartingTime, CooldownTime, GetServerTime(), TimeLeft);
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(
+                2, // Key값을 2로 고정(서버용)
+                5.f, FColor::Green,
+                FString::Printf(
+                    TEXT("서버: 상태= %s, 준비시간= %.2f, 매치시간= %.2f, 시작시간= %.2f, 쿨다운= %.2f, 서버시간= %.2f, 남은시간= %.2f"),
+                    *MatchState.ToString(), WarmUpTime, MatchTime, LevelStartingTime, CooldownTime, GetServerTime(), TimeLeft
+                )
+            );
+        }
     }
 
     if (CountDownTimeInt != SecondsLeft)
@@ -379,6 +397,7 @@ void ABasePC::SetHUDDefeat(int32 Defeat)
 
     SetHUDWeponIconClear(); // 무기 아이콘을 숨깁니다.
 }
+
 // 누구한테 죽었는지 HUD에 표시하는 함수
 void ABasePC::SetHUDKilledBy(FString KilledBy)
 {
@@ -393,7 +412,7 @@ void ABasePC::SetHUDKilledBy(FString KilledBy)
 
     if (CharacterHUD && CharacterHUD->CharacterUI && CharacterHUD->CharacterUI->KilledByText && CharacterHUD->CharacterUI->DeathMessageText )  // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
     {
-        UE_LOG(LogTemp, Error, TEXT("SetHUDKilledBy called with KilledBy: %s"), *KilledBy); // 디버그용 로그 출력
+        //UE_LOG(LogTemp, Error, TEXT("SetHUDKilledBy called with KilledBy: %s"), *KilledBy); // 디버그용 로그 출력
         CharacterHUD->CharacterUI->KilledByText->SetText(FText::FromString(KilledBy)); // 죽은 메시지를 설정합니다.
         CharacterHUD->CharacterUI->KilledByText->SetVisibility(ESlateVisibility::Visible); // 죽은 메시지 텍스트를 보이도록 설정합니다.
         CharacterHUD->CharacterUI->DeathMessageText->SetVisibility(ESlateVisibility::Visible); // 죽은 메시지 텍스트를 보이도록 설정합니다.
@@ -425,19 +444,27 @@ void ABasePC::SetHUDAnnouncementCountDown(float CountDownTime)
 
     if (CharacterHUD && CharacterHUD->Announcement && CharacterHUD->Announcement->WarmUpTimeText) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
     {
-        if (CountDownTime < 0.f)
+        if (CountDownTime < 1.f)
         {
-            CharacterHUD->Announcement->WarmUpTimeText->SetText(FText()); // 카운트다운 시간이 0보다 작으면 텍스트를 비웁니다.
-            if (MatchState == MatchState::Cooldown)
+            if (HasAuthority() == false) // 클라이언트만
             {
-                CharacterHUD->Announcement->AnnouncementText->SetText(FText());
-                CharacterHUD->Announcement->InfoText->SetText(FText());
-                CharacterHUD->Announcement->RemoveFromParent();
-                CharacterHUD->Announcement = nullptr;
-                if (ChatBox)
+                CharacterHUD->Announcement->WarmUpTimeText->SetText(FText()); // 카운트다운 시간이 0보다 작으면 텍스트를 비웁니다.
+                if (MatchState == MatchState::Cooldown) // 다시 게임 시작하기 전!
                 {
-                    ChatBox->RemoveFromParent(); // 채팅 박스를 제거합니다.
-					ChatBox = nullptr; // 채팅 박스 포인터를 nullptr로 설정합니다.
+                    CharacterHUD->Announcement->AnnouncementText->SetText(FText());
+                    CharacterHUD->Announcement->InfoText->SetText(FText());
+                    CharacterHUD->Announcement->RemoveFromParent();
+                    CharacterHUD->Announcement = nullptr;
+                    if (ChatBox)
+                    {
+                        ChatBox->RemoveFromParent(); // 채팅 박스를 제거합니다.
+                        ChatBox = nullptr; // 채팅 박스 포인터를 nullptr로 설정합니다.
+                    }
+                }
+                else if (MatchState == MatchState::WaitingToStart) // 게임 시작 전에 텍스트 비우기
+                {
+                    CharacterHUD->Announcement->AnnouncementText->SetText(FText());
+                    CharacterHUD->Announcement->InfoText->SetText(FText());
                 }
             }
             return; // 함수 종료
@@ -560,6 +587,11 @@ void ABasePC::OnRep_MatchState()
 // 매치가 InProgress이면 실행. 캐릭터 허드를 게임 상태로 변경
 void ABasePC::HandleMatchHasStarted(bool bTeamMatch)
 {
+    if (IsLocalController()) // 로컬 컨트롤러인 경우
+    {
+        ServerRequestServerTime(GetWorld()->GetTimeSeconds()); // 서버에 시간 요청을 보냅니다.
+    }
+
     if( MatchState == MatchState::InProgress )
     {
         CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
@@ -600,6 +632,11 @@ void ABasePC::HandleMatchHasStarted(bool bTeamMatch)
 // 매치 종료시 아나운스 먼트 캐릭터 UI를 보여주면서 게임 결과를 보여주는 함수
 void ABasePC::HandleCoolDown()
 {
+    if (IsLocalController() ) // 로컬 컨트롤러인 경우
+    {
+        ServerRequestServerTime(GetWorld()->GetTimeSeconds()); // 서버에 시간 요청을 보냅니다.
+    }
+
     CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
     if( CharacterHUD )
     {

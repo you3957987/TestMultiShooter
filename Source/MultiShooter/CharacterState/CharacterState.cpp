@@ -103,7 +103,6 @@ void ACharacterState::UpdateDeathMessage(FString KillerName)
     if( Controller == nullptr ) return;
 
     Controller->SetHUDKilledBy(KilledBy); // 플레이어 컨트롤러의 HUD에 죽은 메시지를 설정합니다.
-    
 }
 
 
