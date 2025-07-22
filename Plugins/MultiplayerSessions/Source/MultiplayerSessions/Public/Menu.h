@@ -1,22 +1,31 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Interfaces/OnlineSessionInterface.h"
+
 #include "Menu.generated.h"
 
-/**
- * 
- */
+
 UCLASS()
 class MULTIPLAYERSESSIONS_API UMenu : public UUserWidget
 {
 	GENERATED_BODY()
 public:
 	UFUNCTION(BlueprintCallable)
-	void MenuSetup(int32 NumberOfPublicConnections = 4, FString TypeOfMatch = FString(TEXT("FreeForAll")), FString LobbyPath = FString(TEXT("/Game/ThirdPersonCPP/Maps/Lobby")));
+	void MenuSetup(int32 NumberOfPublicConnections = 4, FString TypeOfMatch = FString(TEXT("FreeForAll")), 
+		FString LobbyPath = FString(TEXT("/Game/ThirdPersonCPP/Maps/Lobby")));
+
+	void SetJoinSessionName(FString SessionName, FString MatchType);
+
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	class UCheckBox* JoinFreeForAllCheckBox; // 매치 타입 체크박스
+
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	class UCheckBox* JoinTeamCheckBox; // 매치 타입 체크박스
+
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	class UCheckBox* JoinTeamFlagCheckBox; // 매치 타입 체크박스
 
 protected:
 
@@ -35,13 +44,36 @@ protected:
 	UFUNCTION()
 	void OnStartSession(bool bWasSuccessful);
 
+	void OnFindServerList(const TArray<FOnlineSessionSearchResult>& SessionResults, bool bWasSuccessful);
+
+
 private:
 
 	UPROPERTY(meta = (BindWidget))
-	class UButton* HostButton;
+	class UButton* HostButton; // 세션 생성 버튼
 
 	UPROPERTY(meta = (BindWidget))
-	UButton* JoinButton;
+	UButton* JoinButton; // 세션 참여 버튼
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* FindServerButton; // 세션 찾기 버튼
+
+	UPROPERTY(meta = (BindWidget))
+	class UScrollBox* ServerListScrollBox; // 서버 목록 스크롤 박스
+
+	UPROPERTY(meta = (BindWidget)) // 에디터블 텍스트 블럭
+	class UEditableTextBox* HostSessionNameTextBox; // 서버 이름 입력 박스
+
+	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* NumPlayerTextBox; // 플레이어 수 입력 박스
+
+	UPROPERTY(meta = (BindWidget)) // 에디터블 텍스트 블럭
+	class UEditableTextBox* JoinSessionNameTextBox; // 클라이언트 세션 이름 박스
+
+	// 서버 리스트 위젯 클래스 (블루프린트에서 할당 가능)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "자체설정", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<class UServerList> ServerListWidgetClass;
+
 
 	UFUNCTION()
 	void HostButtonClicked();
@@ -49,7 +81,26 @@ private:
 	UFUNCTION()
 	void JoinButtonClicked();
 
+	UFUNCTION()
+	void FindServerButtonClicked();
+
 	void MenuTearDown();
+
+	UFUNCTION()
+	void HandleNumPlayerTextBoxChanged(const FText& Text, ETextCommit::Type CommitMethod);
+
+	UFUNCTION()
+	void HandleHostSessionNameTextBoxCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+
+	UFUNCTION()
+	void HandleJoinSessionNameTextBoxCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+
+
+	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	FString HostSessionName{ TEXT("DefaultSession") }; // 세션 이름(기본값: MySession)
+
+	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	FString JoinSessionName{ TEXT("DefaultSession") }; // 세션 이름(기본값: MySession)
 
 	// The subsystem designed to handle all online session functionality
 	class UMultiplayerSessionsSubsystem* MultiplayerSessionsSubsystem;
@@ -58,7 +109,10 @@ private:
 	int32 NumPublicConnections{4}; // 최대 플레이어 수
 
 	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	FString MatchType{TEXT("FreeForAll")};
+	FString HostMatchType{TEXT("FreeForAll")};
+
+	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	FString JoinMatchType{ TEXT("FreeForAll") };
 
 	FString PathToLobby{TEXT("")};
 };

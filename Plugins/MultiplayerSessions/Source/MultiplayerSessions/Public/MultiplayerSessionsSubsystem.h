@@ -17,9 +17,9 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FMultiplayerOnJoinSessionComplete, EOnJoinSe
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnDestroySessionComplete, bool, bWasSuccessful);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnStartSessionComplete, bool, bWasSuccessful);
 
-/**
- * 
- */
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnFindServerListComplete, const TArray<FOnlineSessionSearchResult>&, bool bWasSuccessful);
+
+
 UCLASS()
 class MULTIPLAYERSESSIONS_API UMultiplayerSessionsSubsystem : public UGameInstanceSubsystem
 {
@@ -30,10 +30,13 @@ public:
 	//
 	// To handle session functionality. The Menu class will call these
 	//
-	void CreateSession(int32 NumPublicConnections, FString MatchType);
+	void CreateSession(int32 NumPublicConnections, FString MatchType, FString SessionName);
 	void FindSessions(int32 MaxSearchResults);
-	void JoinSession(const FOnlineSessionSearchResult& SessionResult);
-	void DestroySession();
+
+	void FindAllSessions(int32 MaxSearchResults);
+
+	void JoinSession(const FOnlineSessionSearchResult& SessionResult , FString SessionName);
+	void DestroySession(FName SessionName);
 	void StartSession();
 
 	bool IsValidSessionInterface();
@@ -47,8 +50,13 @@ public:
 	FMultiplayerOnDestroySessionComplete MultiplayerOnDestroySessionComplete;
 	FMultiplayerOnStartSessionComplete MultiplayerOnStartSessionComplete;
 
+	FOnFindServerListComplete MultiplayerOnFindServerListComplete; // 새로운 델리게이트
+
+
 	int32 DesiredNumPublicConnections{};
 	FString DesiredMatchType{ }; // 
+
+	FName GetCurrentSessionName() const { return CurrentSessionName; }
 
 protected:
 
@@ -61,6 +69,9 @@ protected:
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
 	void OnDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 	void OnStartSessionComplete(FName SessionName, bool bWasSuccessful);
+
+	void OnFindServerListComplete(bool bWasSuccessful);
+
 
 private:
 	IOnlineSessionPtr SessionInterface;
@@ -82,8 +93,13 @@ private:
 	FOnStartSessionCompleteDelegate StartSessionCompleteDelegate;
 	FDelegateHandle StartSessionCompleteDelegateHandle;
 
+	FDelegateHandle FindServerListDelegateHandle;
+
+
 	bool bCreateSessionOnDestroy{ false };
 	int32 LastNumPublicConnections;
 	FString LastMatchType;
+
+	FName CurrentSessionName; // 현재 세션 이름
 
 };

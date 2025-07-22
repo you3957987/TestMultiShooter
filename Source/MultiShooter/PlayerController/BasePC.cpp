@@ -74,9 +74,21 @@ void ABasePC::SetupInputComponent()
 // 허드 관련 초기화( 팀 스코어만!!!! )
 void ABasePC::PollInit(float DeltaTime)
 {
+    if (CharacterHUD == nullptr) return; // 캐릭터 HUD가 nullptr인 경우 초기화하지 않습니다.
+   
+    if (bInitAnnouncement == false && MatchState == MatchState::WaitingToStart)
+    {
+        bInitAnnouncement = true; // 이거는 핸들 쿨 다운에서 다시 false로 설정함
+        CharacterHUD->AddAnnouncement(); // 시작전 안내 위젯을 추가합니다.
+        if (CharacterHUD->Announcement->AnnouncementText && CharacterHUD->Announcement->InfoText)
+        {
+			CharacterHUD->Announcement->AnnouncementText->SetText(FText::FromString(TEXT("Start in :"))); // 시작전 안내 텍스트를 설정합니다.
+			CharacterHUD->Announcement->InfoText->SetText(FText::FromString(TEXT("Fly Around: W A S D"))); // 안내 메시지 텍스트를 설정합니다.
+        }
+    }
+    
 	if (MatchState != MatchState::InProgress) return; // 매치 상태가 InProgress가 아닐 경우 초기화하지 않습니다.
     // 이거 안하면 웨이팅 투 스타트 상테에서 허트 세팅 되기도 전에 세팅되서 클라가 먹통됨 ;;;;
-
 
     if (CharacterHUD && CharacterHUD->CharacterUI)
     {
@@ -144,49 +156,15 @@ void ABasePC::SetHUDTime()
             SecondsLeft = FMath::CeilToInt(LocalGameMode->GetCountDownTime() + LevelStartingTime);
         }
     }
-
-    if (HasAuthority() == false)
-    {
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(
-                1, // Key값을 1로 고정
-                5.f, FColor::Yellow,
-                FString::Printf(
-                    TEXT("클라이언트: 매치상태= %s, 준비시간= %.2f, 매치시간= %.2f, 시작시간= %.2f, 쿨다운= %.2f, 서버시간= %.2f, 남은시간= %.2f"),
-                    *MatchState.ToString(), WarmUpTime, MatchTime, LevelStartingTime, CooldownTime, GetServerTime(), TimeLeft
-                )
-            );
-        }
-    }
-    if (HasAuthority())
-    {
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(
-                2, // Key값을 2로 고정(서버용)
-                5.f, FColor::Green,
-                FString::Printf(
-                    TEXT("서버: 상태= %s, 준비시간= %.2f, 매치시간= %.2f, 시작시간= %.2f, 쿨다운= %.2f, 서버시간= %.2f, 남은시간= %.2f"),
-                    *MatchState.ToString(), WarmUpTime, MatchTime, LevelStartingTime, CooldownTime, GetServerTime(), TimeLeft
-                )
-            );
-        }
-    }
-
     if (CountDownTimeInt != SecondsLeft)
     {
-        if (MatchState == MatchState::WaitingToStart)
+        if (MatchState == MatchState::WaitingToStart || MatchState == MatchState::Cooldown )
         {
             SetHUDAnnouncementCountDown(TimeLeft);
         }
         else if (MatchState == MatchState::InProgress)
         {
             SetHUDMatchCountDown(TimeLeft);
-        }
-        else if (MatchState == MatchState::Cooldown)
-        {
-            SetHUDAnnouncementCountDown(TimeLeft);
         }
     }
     CountDownTimeInt = SecondsLeft;
@@ -354,6 +332,25 @@ void ABasePC::SetHUDMatchCountDown(float CountDownTime)
         }
         int32 Minutes = FMath::FloorToInt(CountDownTime / 60.0f); // 분 계산
         int32 Seconds = FMath::FloorToInt(CountDownTime) % 60; // 초 계산
+        
+        // 클라이언트/서버 각각 카운트다운 값 출력
+        if (GEngine)
+        {
+            if (HasAuthority())
+            {
+                GEngine->AddOnScreenDebugMessage(
+                    2, 5.f, FColor::Yellow,
+                    FString::Printf(TEXT("서버 매치 카운트다운: %.2f"), CountDownTime)
+                );
+            }
+            else
+            {
+                GEngine->AddOnScreenDebugMessage(
+                    2, 5.f, FColor::Yellow,
+                    FString::Printf(TEXT("클라이언트 매치 카운트다운: %.2f"), CountDownTime)
+                );
+            }
+        }
 
         FString CountDownText = FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds); // 카운트다운 텍스트 포맷팅
         CharacterHUD->CharacterUI->MatchCountDownText->SetText(FText::FromString(CountDownText)); // 카운트다운 텍스트를 설정합니다.
@@ -469,6 +466,25 @@ void ABasePC::SetHUDAnnouncementCountDown(float CountDownTime)
             }
             return; // 함수 종료
         }
+        // 클라이언트/서버 각각 카운트다운 값 출력
+        if (GEngine)
+        {
+            if (HasAuthority())
+            {
+                GEngine->AddOnScreenDebugMessage(
+                    2, 5.f, FColor::Red,
+                    FString::Printf(TEXT("서버 아나 카운트다운: %.2f"), CountDownTime)
+                );
+            }
+            else
+            {
+                GEngine->AddOnScreenDebugMessage(
+                    2, 5.f, FColor::Red,
+                    FString::Printf(TEXT("클라이언트 아나 카운트다운: %.2f"), CountDownTime)
+                );
+            }
+        }
+
         int32 Minutes = FMath::FloorToInt(CountDownTime / 60.0f); // 분 계산
         int32 Seconds = FMath::FloorToInt(CountDownTime) % 60; // 초 계산
         FString CountDownText = FString::Printf(TEXT("%02d:%02d"), Minutes, Seconds); // 카운트다운 텍스트 포맷팅
@@ -680,6 +696,7 @@ void ABasePC::HandleCoolDown()
     }
 
     bInitTeamScore = false; // 다시 게임 시작했을 떄 클라이언트 팀 점수 초기화 되도록
+	bInitAnnouncement = false; // 다시 게임 시작했을 떄 아나운스먼트 초기화 되도록
 }
 
 // 매치 종료후 팀게임이냐 개인 게임이냐에 따라 다른 결과 반환!!

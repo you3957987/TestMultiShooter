@@ -201,6 +201,8 @@ public:
 
 	bool bInitTeamScore = false; // 팀 점수 초기화 여부
 
+	bool bInitAnnouncement = false; // 안내 위젯 초기화 여부
+
 	UFUNCTION()
 	void OnRep_ShowTeamScore(); // 
 

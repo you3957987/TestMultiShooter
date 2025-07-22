@@ -149,6 +149,7 @@ void UReturnToMainMenu::OnPlayerLeftGame()
 {
 	if (MultiplayerSessionsSubsystem)
 	{
-		MultiplayerSessionsSubsystem->DestroySession(); // 세션을 파괴합니다.
+		FName CurrentSessionName = MultiplayerSessionsSubsystem->GetCurrentSessionName(); // 현재 세션 이름을 가져옵니다.
+		MultiplayerSessionsSubsystem->DestroySession(CurrentSessionName); // 세션을 파괴합니다.
 	}
 }
