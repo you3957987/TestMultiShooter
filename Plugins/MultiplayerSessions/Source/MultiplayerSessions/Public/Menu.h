@@ -27,6 +27,9 @@ public:
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
 	class UCheckBox* JoinTeamFlagCheckBox; // 매치 타입 체크박스
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "자체설정")
+	TArray<USkeletalMesh*> SelectedSkeletalMesh;
+
 protected:
 
 	virtual bool Initialize() override;
@@ -115,4 +118,5 @@ private:
 	FString JoinMatchType{ TEXT("FreeForAll") };
 
 	FString PathToLobby{TEXT("")};
+
 };

@@ -12,5 +12,7 @@ class MULTISHOOTER_API ALobbyGameMode : public AGameMode
 
 public:
 	virtual void PostLogin(APlayerController* NewPlayer) override; // 플레이어가 로그인할 때 호출되는 함수
-	
+
+protected:
+    void StartGame();
 };

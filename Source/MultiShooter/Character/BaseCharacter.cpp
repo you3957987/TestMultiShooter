@@ -30,6 +30,7 @@
 #include "MultiShooter/TypeHeader/Team.h" // ETeam 열거형 사용을 위한 헤더 파일
 #include "MultiShooter/PlayerStart/TeamPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
 #include "MultiShooter/PlayerStart/SoloPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
+#include "MultiShooter/GameInstance/BaseGameInstance.h" // UBaseGameInstance 클래스 사용을 위한 헤더 파일
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -46,6 +47,9 @@ ABaseCharacter::ABaseCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom);
 	FollowCamera->bUsePawnControlRotation = false; // 컨트롤러 회전 사용 안함
+
+	FrontCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FrontCamera"));
+	FrontCamera->SetupAttachment(GetCapsuleComponent()); // 캡슐 컴포넌트에 연결
 
 	bUseControllerRotationYaw = false; // 캐릭터가 컨트롤러 방향으로 회전하게 만들기
 	GetCharacterMovement()->bOrientRotationToMovement = true; // 캐릭터가 이동 방향을 향하도록 설정
@@ -204,6 +208,9 @@ void ABaseCharacter::BeginPlay()
 	{
 		GrenadeMesh->SetVisibility(false); // 수류탄 메쉬를 처음에는 보이지 않게 설정합니다.
 	}
+
+	SetCamera(); // 비긴 플레이에서 카메라 설정
+	SetCharacterMesh(); // 캐릭터 메쉬 설정
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -268,6 +275,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseCharacter, Health); // CurrentHealth 변수를 네트워크에서 복제합니다.
 	DOREPLIFETIME(ABaseCharacter, Shield); // MaxHealth 변수를 네트워크에서 복제합니다.
 	DOREPLIFETIME(ABaseCharacter, bDisableGamePlay); // 게임 플레이 비활성화 변수 복제
+	DOREPLIFETIME(ABaseCharacter, CharacterSkeletalMeshName); // 죽음 상태 변수 복제
 }
 // 컴포넌트 초기화시 실행. 컴뱃 컴포넌트 및 버프 컴포넌트, 렉 컴포넌트 초기화
 void ABaseCharacter::PostInitializeComponents() 
@@ -1148,6 +1156,7 @@ void ABaseCharacter::EliminateTimerFinished()
 	MainGameMode = MainGameMode == nullptr ? GetWorld()->GetAuthGameMode<AMainGameMode>() : MainGameMode;
 	if( MainGameMode && bLeftGame == false ) // 게임 모드가 존재하고 플레이어가 게임을 떠나지 않은 경우
 	{
+		UE_LOG(LogTemp, Error, TEXT("Respawn"));
 		MainGameMode->RequestRespawn( this, Controller ); // 플레이어 제거 함수 호출
 	}
 	if (bLeftGame == true && IsLocallyControlled()) // 로컬 플레이어가 게임을 떠난 경우
@@ -1421,3 +1430,93 @@ void ABaseCharacter::SetHoldingTheFlag(bool bHolding)
 }
 
 // ------------------------------------------------------------------------------------------------게임 모드 관련 및 유틸ㅗ
+
+// ------------------------------------------------------------------------------------------------캐릭터 메쉬 관련 함수들ㅜ
+
+void ABaseCharacter::OnRep_CharacterSkeletalMeshName()
+{
+	// OnRep 함수에서는 메시를 설정하는 로직만 남깁니다.
+	// 서버로부터 복제된 CharacterSkeletalMeshName을 기반으로 메시를 설정합니다.
+	int32 Index = -1;
+
+	if (CharacterSkeletalMeshName == "Alien_SK") Index = 0;
+	else if (CharacterSkeletalMeshName == "BasicFemale_SK") Index = 1;
+	else if (CharacterSkeletalMeshName == "BasicMale_SK") Index = 2;
+	else if (CharacterSkeletalMeshName == "Bear_SK") Index = 3;
+	else if (CharacterSkeletalMeshName == "Chemicalman_SK") Index = 4;
+	else if (CharacterSkeletalMeshName == "Chicken_SK") Index = 5;
+	else if (CharacterSkeletalMeshName == "Cowboy_SK") Index = 6;
+	else if (CharacterSkeletalMeshName == "Hero_SK") Index = 7;
+	else if (CharacterSkeletalMeshName == "Hoodie_SK") Index = 8;
+	else if (CharacterSkeletalMeshName == "Jester_SK") Index = 9;
+	else if (CharacterSkeletalMeshName == "Knight_SK") Index = 10;
+	else if (CharacterSkeletalMeshName == "Ninja_SK") Index = 11;
+	else if (CharacterSkeletalMeshName == "Robot_SK") Index = 12;
+	else if (CharacterSkeletalMeshName == "Salaryman_SK") Index = 13;
+	else if (CharacterSkeletalMeshName == "Samurai_SK") Index = 14;
+	else if (CharacterSkeletalMeshName == "Sniper_SK") Index = 15;
+	else if (CharacterSkeletalMeshName == "Soldier_SK") Index = 16;
+	else if (CharacterSkeletalMeshName == "Spaceman_SK") Index = 17;
+	else if (CharacterSkeletalMeshName == "Terrorist_SK") Index = 18;
+	else if (CharacterSkeletalMeshName == "Veteran_SK") Index = 19;
+
+	if (SelectedSkeletalMesh.IsValidIndex(Index) && SelectedSkeletalMesh[Index] && GetMesh() && Index != -1)
+	{
+		GetMesh()->SetSkeletalMesh(SelectedSkeletalMesh[Index]);
+	}
+}
+
+void ABaseCharacter::ServerSetCharacterMeshName_Implementation(const FString& NewMeshName)
+{
+	CharacterSkeletalMeshName = NewMeshName;
+	// 서버에서 OnRep 함수를 직접 호출하여 서버 자신의 캐릭터 메시도 설정합니다.
+	OnRep_CharacterSkeletalMeshName();
+}
+
+void ABaseCharacter::SetCharacterMeshOnMenu(USkeletalMesh* NewMesh)
+{
+	if (NewMesh && GetMesh())
+	{
+		// 메뉴 맵에서 캐릭터의 외형을 즉시 변경합니다.
+		GetMesh()->SetSkeletalMesh(NewMesh);
+
+		UBaseGameInstance* GameInstance = Cast<UBaseGameInstance>(GetGameInstance());
+		if (GameInstance == nullptr) return;
+
+		// 선택한 메시의 이름을 GameInstance에 저장합니다.
+		// 이 정보는 이후 게임 맵에 진입할 때 사용됩니다.
+		FString MeshName = NewMesh->GetName();
+		GameInstance->SelectedSkeletalMesh = MeshName;
+	}
+}
+
+void ABaseCharacter::SetCharacterMesh()
+{
+	// 이 함수는 로컬 플레이어 컨트롤러를 가진 캐릭터에 의해서만 호출되어야 합니다.
+	if (IsLocallyControlled())
+	{
+		UBaseGameInstance* GameInstance = Cast<UBaseGameInstance>(GetGameInstance());
+		if (GameInstance && !GameInstance->SelectedSkeletalMesh.IsEmpty())
+		{
+			// 로컬 클라이언트의 GameInstance에 저장된 메시 이름으로 서버에 RPC를 보냅니다.
+			ServerSetCharacterMeshName(GameInstance->SelectedSkeletalMesh);
+		}
+	}
+}
+
+void ABaseCharacter::SetCamera()
+{
+	FString MapName = GetWorld()->GetMapName();
+	if (MapName.Contains("GameStartMap"))
+	{
+		FrontCamera->SetActive(true);
+		FollowCamera->SetActive(false);
+	}
+	else
+	{
+		FrontCamera->SetActive(false);
+		FollowCamera->SetActive(true);
+	}
+}
+
+// ------------------------------------------------------------------------------------------------캐릭터 메쉬 관련 함수들ㅗ

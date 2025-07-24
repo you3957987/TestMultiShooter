@@ -26,14 +26,14 @@ class MULTISHOOTER_API ACharacterState : public APlayerState
 
 	UFUNCTION()
 	void OnRep_Team(); // 팀 정보가 변경되었을 때 호출되는 함수
-	
+
 public:
 	virtual void OnRep_Score() override; // 점수가 변경되었을 때 호출되는 함수
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void BeginPlay() override;
 
 	FORCEINLINE ETeam GetTeam() const { return Team; } // 팀 정보를 반환하는 함수
-	
+
 	void SetTeam(ETeam TeamToSet); // 팀 정보를 설정하는 함수
 
 	UFUNCTION()
@@ -43,6 +43,6 @@ public:
 
 	void AddToScore(float ScoreAmount); // 점수를 추가하는 함수
 	void AddToDefeat(int32 DefeatAmount);  // 죽은 횟수를 추가하는 함수
-	void UpdateDeathMessage( FString KillerName ); // 죽은 메시지를 업데이트하는 함수
-	
+	void UpdateDeathMessage(FString KillerName); // 죽은 메시지를 업데이트하는 함수
+
 };

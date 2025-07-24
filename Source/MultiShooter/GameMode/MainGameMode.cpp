@@ -188,6 +188,7 @@ void AMainGameMode::RequestRespawn(ACharacter* EliminatedCharacter, AController*
 		}
 		else
 		{
+			UE_LOG(LogTemp, Error, TEXT("Visang!!!!!!!!!!!!!"));
 			// 비상 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		}
 	}
@@ -247,7 +248,14 @@ void AMainGameMode::SendChatMsg(const FText& Text, const FString& PlayerName)
 // 아래 두줄은 캐릭터 부활시 캐릭터간 거리 가장 먼 곳에서 부활하게 해주는 함수 2개
 AActor* AMainGameMode::GetSpawnPointWithLargestMinimumDistance(TArray<AActor*> PlayerStarts, TArray<AActor*> Players) const
 {
-	if (PlayerStarts.Num() == 0 || Players.Num() == 0) { return nullptr; }
+	if (PlayerStarts.Num() == 0) { return nullptr; }
+
+	if (Players.Num() == 0)
+	{
+		// 플레이어가 없으면 랜덤으로 하나 선택
+		int32 RandIdx = FMath::RandRange(0, PlayerStarts.Num() - 1);
+		return PlayerStarts[RandIdx];
+	}
 
 	float LargestMinimumDistance = -1 * std::numeric_limits<float>::infinity();
 	AActor* Result = nullptr;

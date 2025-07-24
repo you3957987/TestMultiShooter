@@ -20,6 +20,10 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	class USpringArmComponent* CameraBoom;
 	UPROPERTY(VisibleAnywhere)
 	class UCameraComponent* FollowCamera;
+
+	UPROPERTY(VisibleAnywhere)
+	class UCameraComponent* FrontCamera;
+
 	UPROPERTY(EditAnywhere, Category = "자체설정", BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* OverHeadWidget;
 
@@ -233,17 +237,23 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY( EditAnywhere )
 	class UCurveFloat* DissolveCurve; // 디졸브를 위한 커브
 
-	UPROPERTY( VisibleAnyWhere, Category = "자체설정" )
+	UPROPERTY( VisibleAnyWhere )
 	UMaterialInstanceDynamic* DynamicDissolveMaterialInstanceBody; // 디졸브를 위한 동적 머티리얼 인스턴스. 게임 도중 바꿀 수 있음
 
-	UPROPERTY( EditAnywhere, Category = "자체설정" )
+	UPROPERTY( EditAnywhere, Category = "디졸브" )
 	UMaterialInstance* DIssolveMaterialInstanceBody; // 디졸브를 위한 머티리얼 인스턴스
 
-	UPROPERTY( VisibleAnyWhere, Category = "자체설정" )
+	UPROPERTY( VisibleAnyWhere )
 	UMaterialInstanceDynamic* DynamicDissolveMaterialInstanceHead; // 디졸브를 위한 동적 머티리얼 인스턴스. 게임 도중 바꿀 수 있음
 
-	UPROPERTY( EditAnywhere, Category = "자체설정" )
+	UPROPERTY( EditAnywhere, Category = "디졸브" )
 	UMaterialInstance* DIssolveMaterialInstanceHead; // 디졸브를 위한 머티리얼 인스턴스
+
+	UPROPERTY(EditAnywhere, Category = "디졸브")
+	TArray<UMaterialInstance*> DissolveMaterialsBodyArray;// 디졸브를 위한 머티리얼 인스턴스 배열
+
+	UPROPERTY(EditAnywhere, Category = "디졸브")
+	TArray<UMaterialInstance*> DissolveMaterialsHeadArray; // 디졸브를 위한 머티리얼 인스턴스 배열
 
 	void EliminateBotTimerFinished(); // 제거 봇 타이머가 끝났을 때 호출되는 함수
 
@@ -322,7 +332,7 @@ public:
     virtual void Restart() override; // 매치 스타트 할 시 서버에서 입력이 안되는거 해결 위한 함수 
 
 	// --------------------------------------------------------------------------------------------------------겟터 함수들ㅜ 
-	//
+	
 	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; } // AO_Yaw를 반환하는 함수
 	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; } // AO_Pitch를 반환하는 함수
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; } // TurningInPlace를 반환하는 함수
@@ -350,19 +360,19 @@ public:
 
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; } // bRotateRootBone을 반환하는 함수
 	// 이거 91 강의 무슨 애니메이션 흔들림 없앤다는데 좀 이상해서 안씀. 안써도 그리 이상하지 않음
-	//
+	
 	// --------------------------------------------------------------------------------------------------------겟터 함수들ㅗ 
 
 	// --------------------------------------------------------------------------------------------------------무기 관련 함수들ㅜ 
-	//
+	
 	void SetOverlappingWeapon(ABaseWeapon* Weapon);
 	void SpawnDefaultWeapon(); // 기본 무기를 스폰하는 함수
 	void InitWeaponAndHUD(); // 기본 무기를 장착하고 HUD를 초기화하는 함수
-	//
+	
 	// --------------------------------------------------------------------------------------------------------무기 관련 함수들ㅗ 
 
 	// ---------------------------------------------------------------------------------------------애니메이션 몽타주 재생 함수들ㅜ 
-	//
+	
 	void PlayFireMontage(); // 무기 발사 애니메이션 몽타주를 재생하는 함수. 
 	void PlayHitReactMontage(); // 적에게 맞았을 때 애니메이션 몽타주를 재생하는 함수
 	void PlayDieMontage(); // 플레이어가 죽었을 때 애니메이션 몽타주를 재생하는 함수
@@ -380,11 +390,11 @@ public:
 	void UpdateHUDGrenade(); // HUD에 수류탄 개수를 업데이트하는 함수 
 	UFUNCTION(BlueprintImplementableEvent) // 이 함수는 블루프린트에서 구현됩니다. 그러니깐 cpp에 없음,,
 	void ShowScopeSniperWidget(bool bShow); // 스코프 위젯을 보이게 하는 함수
-	//
+	
 	//-------------------------------------------------------------------------------------------- HUD 업데이트 함수들ㅗ
 
 	// -------------------------------------------------------------------------------------게임 전체적인 게임모드 관련 함수들ㅜ
-	//
+	
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastEliminate(bool bPlayerLeftGame); // 플레이어가 제거되었을 때 호출되는 멀티캐스트 함수
 
@@ -406,11 +416,35 @@ public:
 
 	void SetTeamColor(ETeam Team); // 팀 색상을 설정하는 함수
 	void SetHoldingTheFlag(bool bHolding); // 플레이어가 깃발을 들고 있는지 여부를 설정하는 함수
-	//
+	
 	// -------------------------------------------------------------------------------------게임 전체적인 게임모드 관련 함수들ㅗ
 
+	//--------------------------------------------------------------------------------------------------------캐릭터 변경 관련ㅜ
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "자체설정")
+	TArray<USkeletalMesh*> SelectedSkeletalMesh;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CharacterSkeletalMeshName)
+	FString CharacterSkeletalMeshName; // 캐릭터 스켈레탈 메쉬 이름
+
+	UFUNCTION()
+	void OnRep_CharacterSkeletalMeshName();
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetCharacterMeshName(const FString& NewMeshName);
+
+
+	UFUNCTION(BlueprintCallable)
+	void SetCharacterMeshOnMenu(USkeletalMesh* NewMesh); // 메뉴에서 캐릭터 메쉬를 설정하는 함수
+
+	void SetCharacterMesh(); // 캐릭터 메쉬를 설정하는 함수
+
+	void SetCamera(); // 비긴 플레이에서 맵에 따라서 카메라를 설정하는 함수
+
+	//--------------------------------------------------------------------------------------------------------캐릭터 변경 관련ㅗ
+
 	// ------------------------------------------------------------------------------서버에서 렉걸릴떄 히트 박스 조정하기 위한 박스ㅜ
-	//
+	
 	UPROPERTY(EditAnywhere)
 	class UBoxComponent* head;
 	UPROPERTY(EditAnywhere)
@@ -446,6 +480,6 @@ public:
 
 	UPROPERTY()
 	TMap<FName, UBoxComponent* > HitCollisionBoxes; // 히트 박스 맵. 이름과 박스 컴포넌트를 매핑합니다.
-	//
+	
 	// ---------------------------------------------------------------------------------서버에서 렉걸릴떄 히트 박스 조정하기 위한 박스ㅗ
 };
