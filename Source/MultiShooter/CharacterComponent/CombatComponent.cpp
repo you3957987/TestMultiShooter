@@ -1,6 +1,4 @@
 #include "CombatComponent.h"
-#include "MultiShooter/Weapon/BaseWeapon.h"
-#include "MultiShooter/Character/BaseCharacter.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "Net/UnrealNetwork.h" // 네트워크 복제를 위한 헤더 파일
 #include "GameFramework/CharacterMovementComponent.h" // 캐릭터 이동 컴포넌트 헤더 파일
@@ -11,6 +9,8 @@
 #include "Sound/SoundCue.h" // 사운드 큐 헤더 파일
 #include "Camera/CameraComponent.h" // 카메라 컴포넌트 헤더 파일
 
+#include "MultiShooter/Weapon/BaseWeapon.h"
+#include "MultiShooter/Character/BaseCharacter.h"
 #include "MultiShooter/PlayerController/BasePC.h" // 플레이어 컨트롤러 헤더 파일
 #include "MultiShooter/Weapon/Projectile.h" // 수류탄 클래스 헤더 파일
 #include "MultiShooter/Weapon/ShotGun.h" // 산탄총 클래스 헤더 파일
@@ -124,7 +124,7 @@ void UCombatComponent::OnRep_CombatState()
             {
                 Fire(); // 발사 함수를 호출합니다.
             }
-            SetWeaponMesh(true); // 무기 메시 숨김
+            SetWeaponMesh(true);
             break;
         case ECombatState::ECS_Reloading:
             // 리로드 중일 때 처리할 로직
@@ -137,12 +137,19 @@ void UCombatComponent::OnRep_CombatState()
                 SetWeaponMesh(false); // 무기 메시 숨김
                 SetGrenadeMesh(true); // 수류탄 메시 보이게 (서버/클라 모두)
             }
+            break;
         case ECombatState::ECS_SwappingWeapons:
             if( Character && Character->IsLocallyControlled() == false ) // 무기를 교체하는 중일 때
             {
                 Character->PlaySwapMontage(); // 무기 교체 애니메이션을 재생합니다.
             }
 			break;
+        case ECombatState::ECS_Rolling:
+            if (Character)
+            {
+                Character->PlayRollMontage(); // 캐릭터의 구르기 애니메이션 몽타주를 재생합니다.
+            }
+            break;
         default:
             break;
     }
@@ -346,7 +353,7 @@ void UCombatComponent::SwapWeapon()
 	if (SecondaryWeapon) SecondaryWeapon->EnableCustomDepth(false); // 보조 무기의 윤곽선을 비활성화합니다.
 }
 
-void UCombatComponent::FinisheSwap()
+void UCombatComponent::FinishedSwap()
 {
     if (Character && Character->HasAuthority())
     {
@@ -506,11 +513,11 @@ void UCombatComponent::ClearEquippedWeapon()
     EquippedWeapon = nullptr;
 }
 
-//
-// --------------------------------------------------------------------------------------------------무기 관련 유틸 ㅜ
+
+// --------------------------------------------------------------------------------------------------무기 관련 유틸 ㅗ
 
 // --------------------------------------------------------------------------------------------------리로드 관련ㅜ
-//
+
 void UCombatComponent::ReloadEmptyWeapon()
 {
     if( EquippedWeapon && EquippedWeapon->IsEmptyAmmo() )
@@ -576,11 +583,11 @@ void UCombatComponent::FinshedReload()
         Fire(); // 발사 버튼이 눌렸다면 발사 함수를 호출합니다.
     }
 }
-//
+
 // --------------------------------------------------------------------------------------------------리로드 관련ㅜ
 
 // -----------------------------------------------------------------------------------------------Aim 및 크로스헤어 관련ㅜ
-//
+
 void UCombatComponent::SetAiming(bool IsAiming)
 {
     if( Character == nullptr || EquippedWeapon == nullptr ) return; // 캐릭터가 없으면 함수 종료
@@ -784,11 +791,11 @@ void UCombatComponent::InterpFOV(float DeltaTime)
     }
 
 }
-//
+
 //------------------------------------------------------------------------------------------------Aim 및 크로스헤어 관련ㅗ
 
 // -----------------------------------------------------------------------------------------------------------------------발사 관련ㅜ
-//
+
 void UCombatComponent::Server_Fire_Implementation( const FVector_NetQuantize& TraceHitTarget, float FireDelay)
 {
     Multicast_Fire( TraceHitTarget ); // 서버에서 발사 버튼이 눌렸을 때 멀티캐스트로 호출합니다.
@@ -963,11 +970,11 @@ void UCombatComponent::FireTimerFinished()
     }
     ReloadEmptyWeapon(); // 빈 무기를 리로드합니다.
 }
-//
+
 // -----------------------------------------------------------------------------------------------------------------------발사 관련ㅗ
 
 // -------------------------------------------------------------------------------------------------------------수류탄 ㅜ
-//
+
 void UCombatComponent::Server_FireGrenade_Implementation(const FVector_NetQuantize& Target)
 {
     if (Character && GrenadeClass && Character->GetGrenadeMesh()) // 서버에서만 실행
@@ -1084,6 +1091,39 @@ void UCombatComponent::FinishedThrowGrenade()
     CombatState = ECombatState::ECS_Unoccupied; // 전투 상태를 비활성화 상태로 설정합니다. -> on_rep_CombatState() 함수가 호출됩니다.
     SetWeaponMesh(true); // 무기 메시 다시 보이게 (서버/클라 모두)
 }
-//
+
 // -------------------------------------------------------------------------------------------------------------수류탄 ㅗ
 
+// -------------------------------------------------------------------------------------------------------------구르기 ㅜ
+
+void UCombatComponent::Roll()
+{
+    if (CombatState != ECombatState::ECS_Unoccupied || EquippedWeapon == nullptr) return;
+
+    CombatState = ECombatState::ECS_Rolling;
+
+    if (Character)
+    {
+        Character->PlayRollMontage();
+    }
+    if (Character && !Character->HasAuthority())
+    {
+        ServerRoll(); // 서버에 구르기 요청
+    }
+}
+
+void UCombatComponent::ServerRoll_Implementation()
+{
+    CombatState = ECombatState::ECS_Rolling;
+    if (Character)
+    {
+        Character->PlayRollMontage();
+    }
+}
+
+void UCombatComponent::FinishedRoll()
+{
+    CombatState = ECombatState::ECS_Unoccupied;
+}
+
+// -------------------------------------------------------------------------------------------------------------구르기 ㅗ

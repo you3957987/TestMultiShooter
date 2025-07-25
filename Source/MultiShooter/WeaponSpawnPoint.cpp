@@ -2,20 +2,32 @@
 #include "MultiShooter/Weapon/BaseWeapon.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
+#include "Net/UnrealNetwork.h"
 
 AWeaponSpawnPoint::AWeaponSpawnPoint()
 {
     PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
+}
+
+void AWeaponSpawnPoint::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AWeaponSpawnPoint, SpawnedWeapon);
 }
 
 void AWeaponSpawnPoint::BeginPlay()
 {
     Super::BeginPlay();
-    SpawnWeapon();
+	if (HasAuthority())
+	{
+		SpawnWeapon();
+	}
 }
 
 void AWeaponSpawnPoint::SpawnWeapon()
 {
+    if (!HasAuthority()) return;
     if (WeaponClassesToSpawn.Num() == 0) return;
 
     int32 Index = FMath::RandRange(0, WeaponClassesToSpawn.Num() - 1);
@@ -35,21 +47,27 @@ void AWeaponSpawnPoint::SpawnWeapon()
         SpawnParams
     );
 
+    OnRep_SpawnedWeapon(); // 서버에서도 델리게이트 바인딩을 위해 호출
+}
+
+void AWeaponSpawnPoint::OnWeaponEquipped()
+{
+    if (HasAuthority())
+    {
+        GetWorld()->GetTimerManager().SetTimer(
+            RespawnTimerHandle,
+            this,
+            &AWeaponSpawnPoint::SpawnWeapon,
+            RespawnTime,
+            false
+        );
+    }
+}
+
+void AWeaponSpawnPoint::OnRep_SpawnedWeapon()
+{
     if (SpawnedWeapon)
     {
         SpawnedWeapon->OnEquippedDelegate.AddDynamic(this, &AWeaponSpawnPoint::OnWeaponEquipped);
-        // 스폰된 무기가 장착되면 타이머 설정후 재스폰
     }
-}
-// SpawnedWeapon->OnEquippedDelegate.AddDynamic(this, &AWeaponSpawnPoint::OnWeaponEquipped);
-// 이렇게 바인딩 되어 있음
-void AWeaponSpawnPoint::OnWeaponEquipped()
-{
-    GetWorld()->GetTimerManager().SetTimer(
-        RespawnTimerHandle,
-        this,
-        &AWeaponSpawnPoint::SpawnWeapon,
-        RespawnTime,
-        false
-    );
 }

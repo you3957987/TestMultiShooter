@@ -145,7 +145,6 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 protected:
 	virtual void BeginPlay() override;
 
-	void SetAiming(bool IsAiming); // Aim 상태를 설정하는 함수
 	UFUNCTION( Server, Reliable )
 	void ServerSetAiming(bool IsAiming); // 서버에서 Aim 상태를 설정하는 함수
 
@@ -246,6 +245,8 @@ public:
 	//
 	//------------------------------------------------------------------------------------------------------------겟터ㅗ
 
+	void SetAiming(bool IsAiming); // Aim 상태를 설정하는 함수
+
 	void EquipWeapon(class ABaseWeapon* WeaponToEquip); // 무기를 장착하는 함수
 	void SwapWeapon(); // 무기를 교체하는 함수
 
@@ -260,7 +261,7 @@ public:
 	void FinishedThrowGrenade(); // 수류탄 던지기가 완료되었을 때 호출되는 함수 -> 애님 몽타주 노타퍼아에서 블루프린트로 연결후 거기서 사용!
 
 	UFUNCTION(BlueprintCallable)
-	void FinisheSwap();
+	void FinishedSwap();
 
 	UFUNCTION(BlueprintCallable)
 	void FinishedSwapAttachWeapon();
@@ -270,4 +271,17 @@ public:
 	void PickUpAmmo( EWeaponType WeaponType, int32 AmmoAmount ); // 무기 타입에 따라 총알을 획득하는 함수
 
 	void PickUpGrenade(int32 Amount); // 수류탄을 획득하는 함수
+
+
+	// ------------------------------------------------------------------------------------------------------------구르기 ㅜ
+
+	void Roll(); // 구르기 함수
+
+	UFUNCTION(Server, Reliable)
+	void ServerRoll(); // 서버에서 구르기를 수행하는 함수
+
+	UFUNCTION(BlueprintCallable)
+	void FinishedRoll(); // 구르기가 완료되었을 때 호출되는 함수 -> 애님 몽타주 노타퍼아에서 블루프린트로 연결후 거기서 사용!
+
+	// ------------------------------------------------------------------------------------------------------------구르기 ㅗ
 };

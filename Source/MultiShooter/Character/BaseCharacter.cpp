@@ -233,6 +233,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	}
 	*/
 
+
 	if (CombatComponent && CombatComponent->bHoldingFlag)
 	{
 		bUseControllerRotationYaw = false; // 깃발을 들고 있는 경우 컨트롤러 회전 사용 안함
@@ -242,11 +243,12 @@ void ABaseCharacter::Tick(float DeltaTime)
 	}
 	else
 	{
-		if (CombatComponent && CombatComponent->EquippedWeapon)
-		{
-			bUseControllerRotationYaw = true; 
-			GetCharacterMovement()->bOrientRotationToMovement = false; 
+		if(CombatComponent && CombatComponent->EquippedWeapon )
+		{	
+			bUseControllerRotationYaw = true;
+			GetCharacterMovement()->bOrientRotationToMovement = false;
 		}
+
 		if (bDisableGamePlay)
 		{
 			bUseControllerRotationYaw = false; // 게임 플레이가 비활성화된 경우 컨트롤러 회전 사용 안함
@@ -254,13 +256,17 @@ void ABaseCharacter::Tick(float DeltaTime)
 		}
 		else
 		{
-			AimOffset(DeltaTime); // AimOffset 함수 호출
+			if (CombatComponent->CombatState != ECombatState::ECS_Rolling)
+			{
+				AimOffset(DeltaTime); // AimOffset 함수 호출
+			}
 		}
 	}
 
 	PollInit(DeltaTime); // 리스폰 될 시 캐릭터 초기화
 
 	HideCameraIfCharacterClose(DeltaTime); // 캐릭터가 카메라에 너무 가까이 있으면 카메라 숨기기
+
 	// 머리 위의 위젯을 캐릭터한테 맞게 업데이트
 	UpdateWidgetForLocalView(TeamLogoWidget);
 	UpdateWidgetForLocalView(OverHeadWidget);
@@ -320,6 +326,7 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Completed, this, &ABaseCharacter::FireReleased);
 		EnhancedInput->BindAction(IA_Reload, ETriggerEvent::Started, this, &ABaseCharacter::Reload); // 리로드 액션 바인딩
 		EnhancedInput->BindAction(IA_Grenade, ETriggerEvent::Started, this, &ABaseCharacter::Grenade); // 수류탄 액션 바인딩
+		EnhancedInput->BindAction(IA_Roll, ETriggerEvent::Started, this, &ABaseCharacter::Roll); // 수류탄 액션 바인딩
     }
 }
 
@@ -711,11 +718,25 @@ void ABaseCharacter::Reload()
 
 void ABaseCharacter::Grenade()
 {
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+
 	if( CombatComponent ) 
 	{
 		if (CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
 
 		CombatComponent->ThrowGrenade(); // CombatComponent의 ThrowGrenade 함수를 호출하여 수류탄을 던집니다.
+	}
+}
+
+void ABaseCharacter::Roll()
+{
+	if(bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+
+	if (CombatComponent)
+	{
+		if (CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
+
+		CombatComponent->Roll(); // CombatComponent의 ThrowGrenade 함수를 호출하여 수류탄을 던집니다.
 	}
 }
 
@@ -789,6 +810,8 @@ void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDa
 	MainGameMode = MainGameMode == nullptr ? GetWorld()->GetAuthGameMode<AMainGameMode>() : MainGameMode;
 
 	if (bDead || MainGameMode == nullptr) return; // 이미 죽었거나 게임 모드가 널인 경우 함수 종료
+
+	if (CombatComponent->CombatState == ECombatState::ECS_Rolling) return; // 롤링 중인 경우 피해를 받지 않습니다.
 
 	Damage = MainGameMode->CalculateDamage(InstigatorController, Controller, Damage); // 게임 모드에서 팀을 확인후 같은 팀이면 피해를 0으로 설정합니다.
 
@@ -959,6 +982,7 @@ void ABaseCharacter::PlayReloadMontage()
 	}
 }
 
+// 맞는 몽타주는 다른 몽타주를 끊으므로 애님 노티파이를 강제로 실행해 주어야 함!!!!
 void ABaseCharacter::PlayHitReactMontage()
 {
 	if( CombatComponent == nullptr || HitReactMontage == nullptr  ) return; // CombatComponent나 HitReactMontage가 없으면 함수 종료
@@ -973,7 +997,18 @@ void ABaseCharacter::PlayHitReactMontage()
 		AnimInstance->Montage_JumpToSection(SectionName); // 해당 섹션으로 점프합니다.
 	}
 
-	CombatComponent->FinshedReload();
+	if (CombatComponent->CombatState == ECombatState::ECS_ThrowingGrenade)
+	{
+		CombatComponent->FinishedThrowGrenade();
+	}
+	else if (CombatComponent->CombatState == ECombatState::ECS_Reloading)
+	{
+		CombatComponent->FinshedReload();
+	}
+	else if (CombatComponent->CombatState == ECombatState::ECS_SwappingWeapons)
+	{
+		CombatComponent->FinishedSwap();
+	}
 }
 
 void ABaseCharacter::PlayDieMontage()
@@ -1006,6 +1041,16 @@ void ABaseCharacter::PlaySwapMontage()
 	if (AnimInstance && SwapMontage)
 	{
 		AnimInstance->Montage_Play(SwapMontage); // 적에게 맞았을 때 애니메이션 몽타주를 재생합니다.
+	}
+}
+
+// 구를때는 내가 움직이는 방향으로 캐릭터가 회전하게 하고 싶었지만 벽을 느낌 ㅜㅜ
+void ABaseCharacter::PlayRollMontage()
+{
+	UBaseAnimInstance* AnimInstance = Cast<UBaseAnimInstance>(GetMesh()->GetAnimInstance());
+	if (AnimInstance && RollMontage)
+	{
+		AnimInstance->Montage_Play(RollMontage);
 	}
 }
 
@@ -1261,6 +1306,15 @@ void ABaseCharacter::Restart() // Restart는 리스폰/매치 시작 시 호출�
 			}
 		}
 	}
+
+	MainGameMode = MainGameMode == nullptr ? GetWorld()->GetAuthGameMode<AMainGameMode>() : MainGameMode;
+
+	if (MainGameMode && MainGameMode->GetMatchState() != MatchState::InProgress) // 만약 다시 태어나고 매치 상태 아니면 입력 안됨
+	{
+		bDisableGamePlay = true;
+		GetCharacterMovement()->DisableMovement(); // 캐릭터의 움직임을 비활성화합니다.
+		if (CombatComponent) CombatComponent->FireButtonPressed(false); // CombatComponent의 발사 버튼을 비활성화합니다.
+	}
 }
 
 // ------------------------------------------------------------------------------------------------플레이거 죽었을때 관련 함수들ㅗ 
@@ -1427,6 +1481,15 @@ void ABaseCharacter::SetHoldingTheFlag(bool bHolding)
 {
 	if (CombatComponent == nullptr) return;
 	CombatComponent->bHoldingFlag = bHolding; // CombatComponent의 bHoldingFlag 값을 설정합니다.
+}
+
+void ABaseCharacter::HideSniperScope()
+{
+	if (IsLocallyControlled() && CombatComponent && CombatComponent->bIsAiming && CombatComponent->EquippedWeapon
+		&& CombatComponent->EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Sniper)
+	{
+		ShowScopeSniperWidget(false); // 스나이퍼 조준 위젯을 숨깁니다.
+	}
 }
 
 // ------------------------------------------------------------------------------------------------게임 모드 관련 및 유틸ㅗ

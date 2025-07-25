@@ -52,13 +52,15 @@ class MULTISHOOTER_API ABasePC : public APlayerController
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float HighPingDuration = 5.f; // 핑 경고 지속 시간
 	UPROPERTY(EditAnywhere, Category = "자체설정")
-	float CheckPingFrequency = 20.f; // 핑 체크 빈도 (초 단위)
+	float CheckPingFrequency = 5.f; // 핑 체크 빈도 (초 단위)
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	float HighPingThreshold = 50.f; // 핑 경고 임계값 (ms 단위)
 	float PingAnimationRunningTime = 0.f; // 핑 애니메이션 실행 시간
 
 	UFUNCTION(Server, Reliable)
 	void ServerReportPingStaus(bool bHighPing);
+
+	void UpdateHUDPing(float CurretPing); // HUD의 핑 정보를 업데이트하는 함수
 	
 	// ----------------------------------------------------------------------------------------------------------핑 관련 ㅗ
 

@@ -692,6 +692,7 @@ void ABasePC::HandleCoolDown()
         if( BaseCharacter->GetCombatComponent() ) // 전투 컴포넌트가 있는 경우
         {
             BaseCharacter->GetCombatComponent()->FireButtonPressed(false); // 전투 컴포넌트의 FireButtonPressed를 false로 설정합니다.
+			BaseCharacter->HideSniperScope(); // 스나이퍼 스코프를 숨깁니다. 만약 스나이퍼로 줌중이면
         }
     }
 
@@ -829,7 +830,9 @@ void ABasePC::CheckPing(float DeltaTime)
         PlayerState = PlayerState == nullptr ? GetPlayerState<ACharacterState>() : PlayerState; // 플레이어 상태가 nullptr인 경우 현재 플레이어의 게임 상태를 가져옵니다.
         if (PlayerState)
         {
-            UE_LOG(LogTemp, Warning, TEXT("PlayerState->GetPingInMilliseconds() = %d"), FMath::RoundToInt(PlayerState->GetPingInMilliseconds()));
+            UpdateHUDPing(PlayerState->GetPingInMilliseconds()); // HUD의 핑 정보를 업데이트합니다.
+
+            //UE_LOG(LogTemp, Warning, TEXT("PlayerState->GetPingInMilliseconds() = %d"), FMath::RoundToInt(PlayerState->GetPingInMilliseconds()));
             if (PlayerState->GetPingInMilliseconds() > HighPingThreshold)
             {
                 HighPingWarning();
@@ -852,6 +855,7 @@ void ABasePC::CheckPing(float DeltaTime)
             StopHighPingWarning();
         }
     }
+ 
 }
 
 // 핑 상태 를 서버에 보고하는 함수
@@ -909,6 +913,24 @@ void ABasePC::StopHighPingWarning() // 핑 경고 중지 함수
         {
             CharacterHUD->CharacterUI->StopAnimation(CharacterHUD->CharacterUI->WifiAnim); // WiFi 애니메이션을 중지합니다.
         }
+    }
+}
+
+void ABasePC::UpdateHUDPing(float CurretPing)
+{
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
+    if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
+    {
+        CharacterHUD->AddCharacterUI();
+        if (CharacterHUD->CharacterUI == nullptr)
+            return;
+    }
+
+    if (CharacterHUD && CharacterHUD->CharacterUI && CharacterHUD->CharacterUI->PingText) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
+    {
+        FString PingText = FString::Printf(TEXT("%dms"), FMath::RoundToInt(CurretPing)); // 핑 텍스트 포맷팅
+        CharacterHUD->CharacterUI->PingText->SetText(FText::FromString(PingText)); // 핑 텍스트를 설정합니다.
     }
 }
 

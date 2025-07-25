@@ -65,4 +65,7 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* ScoreSpacerText; // 점수 사이의 공백 텍스트 블록 바인딩
 
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* PingText; // 팀 이름 텍스트 블록 바인딩
+
 };

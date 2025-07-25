@@ -96,6 +96,8 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	class UInputAction* IA_Reload;
 	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Grenade; // 수류탄 던지는 액션
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
+	class UInputAction* IA_Roll; // 무기 교체 액션
 	//
 	// --------------------------------------------------------------------------------------------------------IA 입력 매핑 ㅗ
 
@@ -183,7 +185,10 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* SwapMontage; // 무기를 교체할 때 사용할 애니메이션 몽타주
-	//
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UAnimMontage* RollMontage; // 무기를 교체할 때 사용할 애니메이션 몽타주
+	
 	//-------------------------------------------------------------------------------------------------------애니메이션 몽타주ㅗ
 
 	//-------------------------------------------------------------------------------------------------------플레이어 상태ㅜ
@@ -301,6 +306,10 @@ protected:
 	void Reload();
 	UFUNCTION()
 	void Grenade(); // 수류탄 던지기 입력을 처리하는 함수
+	UFUNCTION()
+	void Roll(); // 굴러잇
+
+
 	//
 	// ----------------------------------------------------------------------------------------------입력 매핑 바인딩 함수들ㅗ
 
@@ -379,6 +388,7 @@ public:
 	void PlayReloadMontage(); // 무기를 재장전할 때 애니메이션 몽타주를 재생하는 함수
 	void PlayThrowGrenadeMontage(); // 유탄 발사기를 던질 때 애니메이션 몽타주를 재생하는 함수
 	void PlaySwapMontage(); // 무기를 교체할 때 애니메이션 몽타주를 재생하는 함수
+	void PlayRollMontage(); // 무기를 교체할 때 애니메이션 몽타주를 재생하는 함수
 	//
 	// ---------------------------------------------------------------------------------------------애니메이션 몽타주 재생 함수들ㅗ
 
@@ -390,7 +400,8 @@ public:
 	void UpdateHUDGrenade(); // HUD에 수류탄 개수를 업데이트하는 함수 
 	UFUNCTION(BlueprintImplementableEvent) // 이 함수는 블루프린트에서 구현됩니다. 그러니깐 cpp에 없음,,
 	void ShowScopeSniperWidget(bool bShow); // 스코프 위젯을 보이게 하는 함수
-	
+	void UpdateHUDPing(); // HUD에 핑을 업데이트하는 함수
+
 	//-------------------------------------------------------------------------------------------- HUD 업데이트 함수들ㅗ
 
 	// -------------------------------------------------------------------------------------게임 전체적인 게임모드 관련 함수들ㅜ
@@ -416,6 +427,8 @@ public:
 
 	void SetTeamColor(ETeam Team); // 팀 색상을 설정하는 함수
 	void SetHoldingTheFlag(bool bHolding); // 플레이어가 깃발을 들고 있는지 여부를 설정하는 함수
+
+	void HideSniperScope();// 스나이퍼 스코프를 숨기는 함수
 	
 	// -------------------------------------------------------------------------------------게임 전체적인 게임모드 관련 함수들ㅗ
 
@@ -442,6 +455,7 @@ public:
 	void SetCamera(); // 비긴 플레이에서 맵에 따라서 카메라를 설정하는 함수
 
 	//--------------------------------------------------------------------------------------------------------캐릭터 변경 관련ㅗ
+
 
 	// ------------------------------------------------------------------------------서버에서 렉걸릴떄 히트 박스 조정하기 위한 박스ㅜ
 	

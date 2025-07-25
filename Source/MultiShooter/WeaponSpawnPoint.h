@@ -4,31 +4,35 @@
 #include "GameFramework/Actor.h"
 #include "WeaponSpawnPoint.generated.h"
 
+class ABaseWeapon;
+
 UCLASS()
 class MULTISHOOTER_API AWeaponSpawnPoint : public AActor
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Spawning")
+	TArray<TSubclassOf<ABaseWeapon>> WeaponClassesToSpawn;
+
+	UPROPERTY(VisibleAnywhere, ReplicatedUsing = OnRep_SpawnedWeapon)
+	ABaseWeapon* SpawnedWeapon;
+
+	UPROPERTY(EditAnywhere, Category = "Spawning")
+	float RespawnTime = 5.0f;
+
+	FTimerHandle RespawnTimerHandle;
 
 protected:
-    virtual void BeginPlay() override;
+	virtual void BeginPlay() override;
 
-    // 여러 무기 클래스 배열
-    UPROPERTY(EditAnywhere, Category = "자체설정")
-    TArray<TSubclassOf<class ABaseWeapon>> WeaponClassesToSpawn;
+	void SpawnWeapon();
 
-    UPROPERTY(EditAnywhere, Category = "자체설정")
-    float RespawnTime = 10.f;
+	UFUNCTION()
+	void OnWeaponEquipped();
 
-    UPROPERTY()
-    ABaseWeapon* SpawnedWeapon;
-
-    FTimerHandle RespawnTimerHandle;
-
-    void SpawnWeapon();
-
-    UFUNCTION()
-    void OnWeaponEquipped();
+	UFUNCTION()
+	void OnRep_SpawnedWeapon();
 
 public:
-    AWeaponSpawnPoint();
+	AWeaponSpawnPoint();
 };
