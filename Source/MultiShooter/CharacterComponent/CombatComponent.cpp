@@ -14,6 +14,7 @@
 #include "MultiShooter/PlayerController/BasePC.h" // 플레이어 컨트롤러 헤더 파일
 #include "MultiShooter/Weapon/Projectile.h" // 수류탄 클래스 헤더 파일
 #include "MultiShooter/Weapon/ShotGun.h" // 산탄총 클래스 헤더 파일
+#include "MultiShooter/HUD/CharacterUI.h" // 캐릭터 UI 헤더 파일
 
 UCombatComponent::UCombatComponent()
 {
@@ -150,6 +151,12 @@ void UCombatComponent::OnRep_CombatState()
                 Character->PlayRollMontage(); // 캐릭터의 구르기 애니메이션 몽타주를 재생합니다.
             }
             break;
+		case ECombatState::ECS_BackDashing:
+            if (Character)
+            {
+                Character->PlayBackDashMontage(); // 캐릭터의 백 대시 애니메이션 몽타주를 재생합니다.
+            }
+			break;
         default:
             break;
     }
@@ -1100,6 +1107,26 @@ void UCombatComponent::Roll()
 {
     if (CombatState != ECombatState::ECS_Unoccupied || EquippedWeapon == nullptr) return;
 
+	PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Character->GetController()) : PlayerController; 
+    // 플레이어 컨트롤러가 nullptr인 경우 현재 플레이어의 컨트롤러를 가져옵니다.
+
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(PlayerController->GetHUD()) : CharacterHUD; 
+    // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
+    if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
+    {
+        CharacterHUD->AddCharacterUI();
+        if (CharacterHUD->CharacterUI == nullptr)
+            return;
+    }
+
+    if( CharacterHUD && CharacterHUD->CharacterUI->CurrentRollCooldown > 0.f  ) return; // 현재 구르기 쿨타임이 0보다 크면 구르기를 실행하지 않습니다.
+	
+    if (CharacterHUD && CharacterHUD->CharacterUI)
+    {
+        CharacterHUD->CharacterUI->StartRollCooldown(RollCollDownTime);
+    }
+
     CombatState = ECombatState::ECS_Rolling;
 
     if (Character)
@@ -1127,3 +1154,62 @@ void UCombatComponent::FinishedRoll()
 }
 
 // -------------------------------------------------------------------------------------------------------------구르기 ㅗ
+
+// ------------------------------------------------------------------------------------------------------------뒤로 대시 ㅜ
+
+void UCombatComponent::BackDash()
+{
+    if (CombatState != ECombatState::ECS_Unoccupied || EquippedWeapon == nullptr) return;
+    PlayerController = PlayerController == nullptr ? Cast<ABasePC>(Character->GetController()) : PlayerController; // 플레이어 컨트롤러가 nullptr인 경우 현재 플레이어의 컨트롤러를 가져옵니다.
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(PlayerController->GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+    if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
+    {
+        CharacterHUD->AddCharacterUI();
+        if (CharacterHUD->CharacterUI == nullptr)
+            return;
+    }
+
+	if (CharacterHUD && CharacterHUD->CharacterUI->CurrentBackDashCooldown > 0.f) return; // 현재 뒤로 대시 쿨타임이 0보다 크면 뒤로 대시를 실행하지 않습니다.
+
+    if (CharacterHUD && CharacterHUD->CharacterUI)
+    {
+        CharacterHUD->CharacterUI->StartBackDashCooldown(BackDashCollDownTime);
+    }
+    CombatState = ECombatState::ECS_BackDashing;
+    if (Character)
+    {
+        Character->PlayBackDashMontage();
+    }
+    if (Character && !Character->HasAuthority())
+    {
+        ServerBackDash(); // 서버에 뒤로 대시 요청
+    }
+}
+
+void UCombatComponent::ServerBackDash_Implementation()
+{
+    CombatState = ECombatState::ECS_BackDashing;
+    if (Character)
+    {
+        Character->PlayBackDashMontage();
+    }
+}
+
+void UCombatComponent::FinishedBackDash()
+{
+    CombatState = ECombatState::ECS_Unoccupied;
+
+    if (CarriedAmmo > 0 && EquippedWeapon && !EquippedWeapon->IsFull() && !bLocallyReloading) // 보유 총알이 
+    {
+        if (Character->HasAuthority())
+        {
+            UpdateAmmoValues(); // HUD에 총알 개수를 업데이트합니다. -> 애님 노티파이로 실행
+        }
+    }
+    if (bFireButtonPressed)
+    {
+        Fire(); // 발사 버튼이 눌렸다면 발사 함수를 호출합니다.
+    }
+}
+
+// ------------------------------------------------------------------------------------------------------------뒤로 대시 ㅗ

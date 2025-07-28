@@ -324,9 +324,15 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		EnhancedInput->BindAction(IA_Aim, ETriggerEvent::Completed, this, &ABaseCharacter::AimReleased);
 		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Started, this, &ABaseCharacter::FirePressed);
 		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Completed, this, &ABaseCharacter::FireReleased);
-		EnhancedInput->BindAction(IA_Reload, ETriggerEvent::Started, this, &ABaseCharacter::Reload); // 리로드 액션 바인딩
 		EnhancedInput->BindAction(IA_Grenade, ETriggerEvent::Started, this, &ABaseCharacter::Grenade); // 수류탄 액션 바인딩
-		EnhancedInput->BindAction(IA_Roll, ETriggerEvent::Started, this, &ABaseCharacter::Roll); // 수류탄 액션 바인딩
+
+
+		//EnhancedInput->BindAction(IA_Reload, ETriggerEvent::Started, this, &ABaseCharacter::Reload); // 리로드 액션 바인딩
+		//EnhancedInput->BindAction(IA_Roll, ETriggerEvent::Started, this, &ABaseCharacter::Roll); // 수류탄 액션 바인딩
+		//EnhancedInput->BindAction(IA_BackDash, ETriggerEvent::Started, this, &ABaseCharacter::BackDash); // 백대쉬 액션 바인딩
+
+		EnhancedInput->BindAction(IA_Reload, ETriggerEvent::Started, this, &ABaseCharacter::OnReloadKeyPressed);
+		EnhancedInput->BindAction(IA_CtrlOnly, ETriggerEvent::Started, this, &ABaseCharacter::OnCtrlKeyPressed);
     }
 }
 
@@ -734,9 +740,57 @@ void ABaseCharacter::Roll()
 
 	if (CombatComponent)
 	{
-		if (CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
+		//if (CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
 
 		CombatComponent->Roll(); // CombatComponent의 ThrowGrenade 함수를 호출하여 수류탄을 던집니다.
+	}
+}
+
+void ABaseCharacter::BackDash()
+{
+	if (bDisableGamePlay) return; // 게임 플레이가 비활성화된 경우 이동을 무시합니다.
+
+	if (CombatComponent)
+	{
+		if (CombatComponent->bHoldingFlag == true) return; // 깃발을 들고 있는 경우 무기 장착을 무시합니다.
+
+		CombatComponent->BackDash(); // CombatComponent의 BackDash 함수를 호출하여 백 대시를 실행합니다.
+	}
+}
+
+void ABaseCharacter::OnReloadKeyPressed()
+{
+	if (bDisableGamePlay) return;
+	bWaitingForCtrl = true;
+	// 0.1초 후에 리로드 실행(만약 Ctrl이 안 눌리면)
+	GetWorldTimerManager().SetTimer(
+		CtrlWaitTimerHandle,
+		this,
+		&ABaseCharacter::OnReloadTimeout,
+		0.1f,
+		false
+	);
+}
+
+void ABaseCharacter::OnCtrlKeyPressed()
+{
+	if (bWaitingForCtrl)
+	{
+		// 0.1초 이내에 Ctrl이 눌렸으므로 백대쉬
+		bWaitingForCtrl = false;
+		GetWorldTimerManager().ClearTimer(CtrlWaitTimerHandle);
+		BackDash();
+	}
+	// 아니면 아무 동작 없음(원래 Ctrl 단독 동작이 필요하면 추가)
+	Roll(); // Ctrl 단독 동작이 필요하면 롤링 실행
+}
+
+void ABaseCharacter::OnReloadTimeout()
+{
+	if (bWaitingForCtrl)
+	{
+		bWaitingForCtrl = false;
+		Reload();
 	}
 }
 
@@ -813,6 +867,11 @@ void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDa
 
 	if (CombatComponent->CombatState == ECombatState::ECS_Rolling) return; // 롤링 중인 경우 피해를 받지 않습니다.
 
+	if (CombatComponent->CombatState == ECombatState::ECS_BackDashing)
+	{
+		Damage /= 2.f; // 백 대시 중인 경우 피해를 절반으로 줄입니다.
+	}
+
 	Damage = MainGameMode->CalculateDamage(InstigatorController, Controller, Damage); // 게임 모드에서 팀을 확인후 같은 팀이면 피해를 0으로 설정합니다.
 
 	float DamageToHealth = Damage; // 피해를 Health에 적용할 값으로 설정합니다.
@@ -834,7 +893,7 @@ void ABaseCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDa
 	Health = FMath::Clamp(Health - DamageToHealth, 0.f, MAxHealth); // 피해를 받아 Health를 감소시키고, 0과 MAxHealth 사이로 제한합니다.
 	// 이떄 OnRep_Health가 호출 클라이언트에서 플레이 힛 몽타주 실행
 	// 이떄 캐릭터 체력이 0 이면 변수 변경 없고 복제도 안 일어남. 그레서 0 이하로 내려가면 힛 몽타주가 한쪽에서 안보임!
-	PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
+	if (CombatComponent->CombatState != ECombatState::ECS_BackDashing) PlayHitReactMontage(); // 멀티캐스트로 애니메이션 몽타주를 재생합니다.
 	UpdateHUDHealth();
 	UpdateHUDShield(); // HUD에 체력과 방어구 업데이트
 
@@ -1051,6 +1110,15 @@ void ABaseCharacter::PlayRollMontage()
 	if (AnimInstance && RollMontage)
 	{
 		AnimInstance->Montage_Play(RollMontage);
+	}
+}
+
+void ABaseCharacter::PlayBackDashMontage()
+{
+	UBaseAnimInstance* AnimInstance = Cast<UBaseAnimInstance>(GetMesh()->GetAnimInstance());
+	if (AnimInstance && BackDashMontage)
+	{
+		AnimInstance->Montage_Play(BackDashMontage);
 	}
 }
 

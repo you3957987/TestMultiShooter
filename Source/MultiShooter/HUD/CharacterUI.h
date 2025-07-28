@@ -11,6 +11,8 @@ class MULTISHOOTER_API UCharacterUI : public UUserWidget
 	GENERATED_BODY()
 	
 public:
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override; // 위젯 틱 함수 오버라이드
+
 	UPROPERTY(meta = (BindWidget)) // 위젯 바인딩
 	class UTextBlock* HealthText; // 플레이어 이름 텍스트 블록 바인딩
 
@@ -67,5 +69,36 @@ public:
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* PingText; // 팀 이름 텍스트 블록 바인딩
+
+	//--------------------------------------------------------------------------------------구르기 관련 변수들ㅜ
+	UPROPERTY(meta = (BindWidget))
+	class UProgressBar* RollBar; // 구르기 쿨타임 시간 바인딩
+
+	// 현재 남은 쿨타임
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Roll")
+	float CurrentRollCooldown = 0.0f;
+
+	float RollCooldownTime = 5.0f; // 구르기 쿨타임 시간
+
+	// 쿨타임 시작 함수
+	UFUNCTION(BlueprintCallable, Category = "Roll")
+	void StartRollCooldown(float CooldownTime);
+
+	//--------------------------------------------------------------------------------------구르기 관련 변수들ㅗ
+
+	//-------------------------------------------------------------------------------------- 백대쉬 관련 변수들ㅜ
+
+	UPROPERTY(meta = (BindWidget))
+	class UProgressBar* BackDashBar; // 구르기 쿨타임 시간 바인딩
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "BackDash")
+	float CurrentBackDashCooldown = 0.0f; // 현재 남은 백대쉬 쿨타임
+
+	float BackDashCooldownTime = 7.0f; // 백대쉬 쿨타임 시간
+
+	UFUNCTION(BlueprintCallable, Category = "BackDash")
+	void StartBackDashCooldown(float CooldownTime);
+
+	//--------------------------------------------------------------------------------------- 백대쉬 관련 변수들ㅗ
 
 };

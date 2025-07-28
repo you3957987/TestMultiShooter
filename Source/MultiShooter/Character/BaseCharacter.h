@@ -98,6 +98,11 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	class UInputAction* IA_Grenade; // 수류탄 던지는 액션
 	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Roll; // 무기 교체 액션
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
+	class UInputAction* IA_BackDash; // 뒤로 대시 액션
+
+	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
+	class UInputAction* IA_CtrlOnly; // Ctrl 키만 눌렀을 때 액션
 	//
 	// --------------------------------------------------------------------------------------------------------IA 입력 매핑 ㅗ
 
@@ -188,6 +193,9 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* RollMontage; // 무기를 교체할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UAnimMontage* BackDashMontage; // 뒤로 대시할 때 사용할 애니메이션 몽타주
 	
 	//-------------------------------------------------------------------------------------------------------애니메이션 몽타주ㅗ
 
@@ -308,7 +316,15 @@ protected:
 	void Grenade(); // 수류탄 던지기 입력을 처리하는 함수
 	UFUNCTION()
 	void Roll(); // 굴러잇
+	UFUNCTION()
+	void BackDash(); // 뒤로 대시 입력을 처리하는 함수
 
+
+	bool bWaitingForCtrl = false;
+	FTimerHandle CtrlWaitTimerHandle;
+	void OnReloadKeyPressed();
+	void OnCtrlKeyPressed();
+	void OnReloadTimeout();
 
 	//
 	// ----------------------------------------------------------------------------------------------입력 매핑 바인딩 함수들ㅗ
@@ -389,7 +405,8 @@ public:
 	void PlayThrowGrenadeMontage(); // 유탄 발사기를 던질 때 애니메이션 몽타주를 재생하는 함수
 	void PlaySwapMontage(); // 무기를 교체할 때 애니메이션 몽타주를 재생하는 함수
 	void PlayRollMontage(); // 무기를 교체할 때 애니메이션 몽타주를 재생하는 함수
-	//
+	void PlayBackDashMontage(); // 뒤로 대시할 때 애니메이션 몽타주를 재생하는 함수
+	
 	// ---------------------------------------------------------------------------------------------애니메이션 몽타주 재생 함수들ㅗ
 
 	// ---------------------------------------------------------------------------------------------HUD 업데이트 함수들ㅜ

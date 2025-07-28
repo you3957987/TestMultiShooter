@@ -377,14 +377,14 @@ void ABasePC::SetHUDGrenade(int32 Grenade)
 
 void ABasePC::SetHUDDefeat(int32 Defeat)
 {
+    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
+
     if (CharacterHUD && CharacterHUD->CharacterUI == nullptr)
     {
         CharacterHUD->AddCharacterUI();
         if (CharacterHUD->CharacterUI == nullptr)
             return;
     }
-
-    CharacterHUD = CharacterHUD == nullptr ? Cast<ACharacterHUD>(GetHUD()) : CharacterHUD; // 캐릭터 HUD가 nullptr인 경우 현재 플레이어의 HUD를 캐스팅합니다.
 
     if (CharacterHUD && CharacterHUD->CharacterUI && CharacterHUD->CharacterUI->DefeatAmount) // 캐릭터 HUD와 캐릭터 UI가 유효한 경우
     {
