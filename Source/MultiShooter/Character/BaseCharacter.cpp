@@ -359,6 +359,11 @@ void ABaseCharacter::PollInit(float DeltaTime)
 			}
 		}
 	}
+	if (!bTriedSetCharacterMesh && IsLocallyControlled())
+	{
+		SetCharacterMesh();
+		bTriedSetCharacterMesh = true;
+	}
 }
 
 void ABaseCharacter::OnPlayerStateInitialized()
@@ -1632,6 +1637,7 @@ void ABaseCharacter::SetCharacterMesh()
 			// 로컬 클라이언트의 GameInstance에 저장된 메시 이름으로 서버에 RPC를 보냅니다.
 			ServerSetCharacterMeshName(GameInstance->SelectedSkeletalMesh);
 		}
+		UE_LOG(LogTemp, Warning, TEXT("Name: %s"), *GameInstance->SelectedSkeletalMesh);
 	}
 }
 
