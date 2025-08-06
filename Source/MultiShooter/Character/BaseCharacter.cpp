@@ -978,6 +978,18 @@ void ABaseCharacter::PlayFireMontage()
 				AnimInstance->Montage_Play(FireMinigunMontage);
 			}
 			break;
+		case EWeaponType::EWT_Crossbow:
+			if (FireCrossbowMontage)
+			{
+				AnimInstance->Montage_Play(FireCrossbowMontage);
+			}
+			break;
+		case EWeaponType::EWT_HuntingRifle:
+			if (FireHuntingRifleMontage)
+			{
+				AnimInstance->Montage_Play(FireHuntingRifleMontage);
+			}
+			break;
         default:
             break;
     }
@@ -1039,6 +1051,18 @@ void ABaseCharacter::PlayReloadMontage()
 		if (ReloadMinigunMontage)
 		{
 			AnimInstance->Montage_Play(ReloadMinigunMontage);
+		}
+		break;
+	case EWeaponType::EWT_Crossbow:
+		if (ReloadCrossbowMontage)
+		{
+			AnimInstance->Montage_Play(ReloadCrossbowMontage);
+		}
+		break;
+	case EWeaponType::EWT_HuntingRifle:
+		if (ReloadHuntingRifleMontage)
+		{
+			AnimInstance->Montage_Play(ReloadHuntingRifleMontage);
 		}
 		break;
 	default:

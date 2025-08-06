@@ -199,6 +199,8 @@ void UCombatComponent::InitCarriedAmmo()
     CarriedAmmoMap.Emplace(EWeaponType::EWT_Sniper, StartingSniperAmmo); // 스나이퍼 시작 총알 개수
     CarriedAmmoMap.Emplace(EWeaponType::EWT_GrenadeLauncher, StartingGrenadeLauncherAmmo); // 유탄 발사기 시작 총알 개수
     CarriedAmmoMap.Emplace(EWeaponType::EWT_MiniGun, StartingMinigunAmmo); // 미니건 시작 총알 개수
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_Crossbow, StartingCrossbowAmmo); // 크로스보우 시작 총알 개수
+    CarriedAmmoMap.Emplace(EWeaponType::EWT_HuntingRifle, StartingHuntingRifleAmmo); // 헌팅 라이플 시작 총알 개수
 }
 
 void UCombatComponent::PickUpAmmo(EWeaponType WeaponType, int32 Amount)
@@ -484,6 +486,28 @@ void UCombatComponent::AttachWeaponToSocket(ABaseWeapon* WeaponToEquip)
         );
         WeaponMesh->SetRelativeLocation(FVector(-10.5811f, 25.454687, -9.787731f));
         WeaponMesh->SetRelativeRotation(FRotator(0.f, 90.000206f, 0.f));
+    }
+    else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+        WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("Crossbow_SK"))
+    {
+        EquippedWeapon->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            FName("hand_rSocket") // 소켓 지정
+        );
+        WeaponMesh->SetRelativeLocation(FVector(-9.323024f, 2.345588f, 14.207951f));
+        WeaponMesh->SetRelativeRotation(FRotator(-0.000031f, 90.000137f, 0.00002f));
+    }
+    else if (WeaponMesh && WeaponMesh->GetSkeletalMeshAsset() &&
+        WeaponMesh->GetSkeletalMeshAsset()->GetName() == TEXT("HuntingRifle_SK"))
+    {
+        EquippedWeapon->AttachToComponent(
+            Character->GetMesh(),
+            FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+            FName("hand_rSocket") // 소켓 지정
+        );
+        WeaponMesh->SetRelativeLocation(FVector(-5.215671f, 4.368505f, 6.534248f));
+        WeaponMesh->SetRelativeRotation(FRotator(0.00002f, 90.000191f, 0.00002f));
     }
 }
 

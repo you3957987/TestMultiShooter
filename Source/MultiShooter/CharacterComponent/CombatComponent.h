@@ -139,7 +139,13 @@ class MULTISHOOTER_API UCombatComponent : public UActorComponent
 
 	UPROPERTY(  EditAnywhere, Category = "자체설정")
 	int32 StartingMinigunAmmo = 0; // 유탄 발사기 시작 총
-	//
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	int32 StartingCrossbowAmmo = 0; // 크로스보우 시작 총알 개수
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	int32 StartingHuntingRifleAmmo = 0; // 헌팅 라이플 시작 총알 개수
+	
 	//-----------------------------------------------------------------------------총알ㅗ
 
 protected:

@@ -153,6 +153,12 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* FireMinigunMontage; // 미니건을 발사할 때 사용할 애니메이션 몽타주
 
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UAnimMontage* FireCrossbowMontage; // 크로스보우를 발사할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UAnimMontage* FireHuntingRifleMontage; // 헌팅 라이플을 발사할 때 사용할 애니메이션 몽타주
+
 	//-------------------------------------------------------------------------------------------------
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
@@ -181,6 +187,14 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* ThrowGrenadeMontage; // 유탄 발사기를 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UAnimMontage* ReloadCrossbowMontage; // 크로스보우를 재장전할 때 사용할 애니메이션 몽타주
+
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UAnimMontage* ReloadHuntingRifleMontage; // 헌팅 라이플을 재장전할 때 사용할 애니메이션 몽타주
+
+	//--------------------------------------------------------------------------------------------------------
 
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* HitReactMontage; // 적에게 맞았을 때 사용할 애니메이션 몽타주

@@ -19,7 +19,7 @@ class MULTISHOOTER_API AProjectile : public AActor
 	FTimerHandle DestroyTimer; // 파괴 타이머 핸들
 
 	UPROPERTY( EditAnywhere, Category = "자체설정")
-	float DestroyTime = 3.f; // 파괴 시간. 이거 로켓 삭제시 파티클 바로 안지워 지게 설정하는 거임. 로켓이 터지면 파티클이 사라지기 전에 파괴되게 하는거임 중요 X
+	float DestroyTime = 3.f; // 파괴 시간.이거 로켓 삭제시 파티클 바로 안지워 지게 설정하는 거임. 로켓이 터지면 파티클이 사라지기 전에 파괴되게 하는거임 중요 X
 
 protected:
 	virtual void BeginPlay() override;
