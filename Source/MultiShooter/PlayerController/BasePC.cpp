@@ -33,6 +33,17 @@ void ABasePC::BeginPlay()
         InputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &ABasePC::OnMouseClickAnywhere);
         InputComponent->BindKey(EKeys::RightMouseButton, IE_Pressed, this, &ABasePC::OnMouseClickAnywhere);
     }
+
+    if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+    {
+        if (DefaultMappingContext)
+        {
+			Subsystem->RemoveMappingContext(DefaultMappingContext); // 기존 매핑 컨텍스트를 제거합니다.
+            Subsystem->AddMappingContext(DefaultMappingContext, 0);
+
+			SetBindInputAction(); // 입력 액션을 바인딩합니다.
+        }
+    }
 }
 
 void ABasePC::Tick(float DeltaTime)
@@ -59,16 +70,8 @@ void ABasePC::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 void ABasePC::SetupInputComponent()
 {
     Super::SetupInputComponent(); // 부모 클래스의 SetupInputComponent 함수를 호출합니다.
-    
-    UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent);
-    if (!EnhancedInput) return;
 
-    // IA_QuitButton_WhenInProgress는 UInputAction* 타입의 멤버 변수로 선언되어 있어야 합니다.
-  
-    EnhancedInput->BindAction(IA_Quit, ETriggerEvent::Started, this, &ABasePC::ShowReturnToMainMenu);
-
-	EnhancedInput->BindAction(IA_EnterToChat, ETriggerEvent::Started, this, &ABasePC::StartChat); // 채팅 입력 액션 바인딩
-    
+    //SetBindInputAction() 입력 매핑은 여기 안에다가 코드를 넣고 실행 위치는 OnMatchStateSet, OnRep_MatchState
 }
 
 // 허드 관련 초기화( 팀 스코어만!!!! )
@@ -1199,5 +1202,23 @@ void ABasePC::OnRep_ShowTeamScore()
 }
 
 //------------------------------------------------------------------------------------------------------ 팀 관련 ㅗ
+
+
+
+// ------------------------------------------------------------------------------------------------------ 입력 매핑 관련 ㅜ
+
+void ABasePC::SetBindInputAction()
+{
+    UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(InputComponent);
+    if (!EnhancedInput) return;
+
+    // IA_QuitButton_WhenInProgress는 UInputAction* 타입의 멤버 변수로 선언되어 있어야 합니다.
+
+    EnhancedInput->BindAction(IA_Quit, ETriggerEvent::Started, this, &ABasePC::ShowReturnToMainMenu);
+
+    EnhancedInput->BindAction(IA_EnterToChat, ETriggerEvent::Started, this, &ABasePC::StartChat); // 채팅 입력 액션 바인딩
+}
+
+// ------------------------------------------------------------------------------------------------------ 입력 매핑 관련 ㅗ 
 
 

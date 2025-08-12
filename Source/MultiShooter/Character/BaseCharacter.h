@@ -77,9 +77,10 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	// --------------------------------------------------------------------------------------------------------무기 관련 ㅗ
 
 	// --------------------------------------------------------------------------------------------------------IA 입력 매핑 ㅜ
-	//
+	
 	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputMappingContext* DefaultMappingContext;
+
 	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
 	class UInputAction* IA_Jump;
 	UPROPERTY(EditDefaultsOnly, Category = "자체설정")
@@ -529,4 +530,5 @@ public:
 	TMap<FName, UBoxComponent* > HitCollisionBoxes; // 히트 박스 맵. 이름과 박스 컴포넌트를 매핑합니다.
 	
 	// ---------------------------------------------------------------------------------서버에서 렉걸릴떄 히트 박스 조정하기 위한 박스ㅗ
+
 };

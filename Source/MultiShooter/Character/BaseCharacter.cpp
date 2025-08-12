@@ -359,7 +359,7 @@ void ABaseCharacter::PollInit(float DeltaTime)
 			}
 		}
 	}
-	if (!bTriedSetCharacterMesh && IsLocallyControlled())
+	if ( bTriedSetCharacterMesh == false && IsLocallyControlled())
 	{
 		SetCharacterMesh();
 		bTriedSetCharacterMesh = true;
@@ -1399,6 +1399,7 @@ void ABaseCharacter::Restart() // Restart는 리스폰/매치 시작 시 호출�
 		{
 			if (DefaultMappingContext)
 			{
+				Subsystem->RemoveMappingContext(DefaultMappingContext); // 기존 매핑 컨텍스트를 제거합니다.
 				Subsystem->AddMappingContext(DefaultMappingContext, 0);
 			}
 		}
