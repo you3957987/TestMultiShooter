@@ -218,7 +218,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	/*
-	if( GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled() ) 
+	if( GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled() )
 	{
 		AimOffset(DeltaTime); // AimOffset 함수 호출
 	}
@@ -243,8 +243,8 @@ void ABaseCharacter::Tick(float DeltaTime)
 	}
 	else
 	{
-		if(CombatComponent && CombatComponent->EquippedWeapon )
-		{	
+		if (CombatComponent && CombatComponent->EquippedWeapon)
+		{
 			bUseControllerRotationYaw = true;
 			GetCharacterMovement()->bOrientRotationToMovement = false;
 		}
@@ -270,6 +270,11 @@ void ABaseCharacter::Tick(float DeltaTime)
 	// 머리 위의 위젯을 캐릭터한테 맞게 업데이트
 	UpdateWidgetForLocalView(TeamLogoWidget);
 	UpdateWidgetForLocalView(OverHeadWidget);
+
+	if (HasAuthority() == true)
+	{
+		UE_LOG(LogTemp, Error, TEXT("1111111111"));
+	}
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
