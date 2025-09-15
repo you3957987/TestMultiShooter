@@ -271,10 +271,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	UpdateWidgetForLocalView(TeamLogoWidget);
 	UpdateWidgetForLocalView(OverHeadWidget);
 
-	if (HasAuthority() == true)
-	{
-		UE_LOG(LogTemp, Error, TEXT("1111111111"));
-	}
+
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
