@@ -271,7 +271,6 @@ void ABaseCharacter::Tick(float DeltaTime)
 	UpdateWidgetForLocalView(TeamLogoWidget);
 	UpdateWidgetForLocalView(OverHeadWidget);
 
-
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
