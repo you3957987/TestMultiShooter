@@ -25,7 +25,7 @@ ABaseWeapon::ABaseWeapon()
 	WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECR_Ignore); // Pawn 채널에 대해서는 충돌 응답을 무시합니다.
 	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // 충돌을 비활성화합니다. 나중에 필요할 때 활성화할 수 있습니다.
 
-	WeaponMesh->SetCustomDepthStencilValue(CUSTOM_DEPTH_BLUE); // 무기 메쉬의 커스텀 깊이 스텐실 값을 설정합니다. 윤곽선 색상을 설정하기 위해 사용됩니다.
+	WeaponMesh->SetCustomDepthStencilValue(CUSTOM_DEPTH_BLUE); // 무기 메쉬의 커스텀 깊이 스텐실 값을 설정합니다. 윤곽선 색상을설정하기 위해 사용됩니다.
 	//#define CUSTOM_DEPTH_PURPLE 250 #define CUSTOM_DEPTH_BLUE 251  CUSTOM_DEPTH_BROWN 252
 	WeaponMesh->MarkRenderStateDirty(); // 렌더 상태를 업데이트하여 커스텀 깊이 스텐실 값이 적용되도록 합니다.
 	EnableCustomDepth(true); // 윤곽선을 활성화합니다. 이 함수는 BaseWeapon.h에서 정의되어 있습니다.
@@ -60,6 +60,8 @@ void ABaseWeapon::BeginPlay()
 	{
 		PickUpWidget->SetVisibility(false); // 위젯을 초기에는 보이지 않도록 설정합니다.
 	}
+
+	
 }
 
 void ABaseWeapon::Tick(float DeltaTime)
