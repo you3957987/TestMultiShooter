@@ -6,6 +6,8 @@
 
 #include "Menu.generated.h"
 
+// 이름값을 브로드 캐스트 함
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerNameSet, const FString&, PlayerName);
 
 UCLASS()
 class MULTIPLAYERSESSIONS_API UMenu : public UUserWidget
@@ -20,6 +22,15 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
 	class UCheckBox* JoinFreeForAllCheckBox; // 매치 타입 체크박스
+
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	class UEditableTextBox* NameBox; // 이름 입력 박스
+
+	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
+	class UButton* NameButton; // 이름 설정 버튼
+
+	UPROPERTY(BlueprintAssignable)
+	FOnPlayerNameSet OnPlayerNameSet;
 
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
 	class UCheckBox* JoinTeamCheckBox; // 매치 타입 체크박스
@@ -97,6 +108,12 @@ private:
 
 	UFUNCTION()
 	void HandleJoinSessionNameTextBoxCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+	
+	UFUNCTION(BlueprintCallable)
+	void OnCLickedNameButton(); // 이름 설정 버튼 클릭해서 이름 바꾸는 함수
+
+	UFUNCTION()
+	void UpdatePlayerName(const FText& Text); // 이름 입력 박스에서 텍스트가 변경될 때 호출되는 함수
 
 
 	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))

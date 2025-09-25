@@ -12,7 +12,7 @@
 
 #include "ServerList.h"
 
-// 초기화. 비긴 플레이같은거
+// 초기화. 비긴 플레이같은거 -> 여가서 버튼 클릭이랑 매핑
 bool UMenu::Initialize()
 {
 	if (!Super::Initialize())
@@ -43,6 +43,14 @@ bool UMenu::Initialize()
 	if (FindServerButton)
 	{
 		FindServerButton->OnClicked.AddDynamic(this, &ThisClass::FindServerButtonClicked);
+	}
+	if ( NameButton )
+	{
+		NameButton->OnClicked.AddDynamic(this, &ThisClass::OnCLickedNameButton);
+	}
+	if ( NameBox )
+	{
+		NameBox->OnTextChanged.AddDynamic(this, &ThisClass::UpdatePlayerName);
 	}
 
 	return true;
@@ -448,6 +456,40 @@ void UMenu::HandleJoinSessionNameTextBoxCommitted(const FText& Text, ETextCommit
 			FColor::Yellow,
 			FString::Printf(TEXT("JoinSessionName: %s"), *JoinSessionName)
 		);
+	}
+}
+
+void UMenu::OnCLickedNameButton()
+{
+	// NameBox에서 값 가져와서 게임 인스턴스에 저장
+	if (NameBox)
+	{
+		FString PlayerName = NameBox->GetText().ToString();
+
+		// 앞 뒤 공백 제거
+		PlayerName = PlayerName.TrimStartAndEnd();
+
+		// 이름 입력 안하고 버튼 누르면 리턴
+		if (PlayerName.IsEmpty())
+		{
+			UE_LOG(LogTemp, Error, TEXT("PlayerName is empty!"));
+			return;
+		}
+		OnPlayerNameSet.Broadcast(PlayerName);
+	}
+}
+
+void UMenu::UpdatePlayerName(const FText& Text)
+{
+	// 이름 길이가 8자 넘으면 자르기
+	FString InputString = Text.ToString();
+	if (InputString.Len() > 8)
+	{
+		InputString = InputString.Left(8);
+		if (NameBox)
+		{
+			NameBox->SetText(FText::FromString(InputString));
+		}
 	}
 }
 

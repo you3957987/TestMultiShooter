@@ -12,7 +12,7 @@ class MULTISHOOTER_API UOverHeadWidget : public UUserWidget
 
 public:
 	UPROPERTY( meta = (BindWidget) )
-	class UTextBlock* DisplayText; // Ä³¸¯ÅÍ À§¿¡ Ç¥½ÃµÉ ÅØ½ºÆ® ºí·Ï
+	class UTextBlock* DisplayText; // Ä³ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ç¥ï¿½Ãµï¿½ ï¿½Ø½ï¿½Æ® ï¿½ï¿½ï¿½
 
 	void SetDisplayText(const FString& Text);
 	UFUNCTION(BlueprintCallable)
@@ -20,5 +20,8 @@ public:
 
 protected:
 	virtual void NativeDestruct() override;
+
+	UFUNCTION()
+	void OnNameChanged();
 	
 };

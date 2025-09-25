@@ -270,7 +270,7 @@ void ABaseCharacter::Tick(float DeltaTime)
 	// 머리 위의 위젯을 캐릭터한테 맞게 업데이트
 	UpdateWidgetForLocalView(TeamLogoWidget);
 	UpdateWidgetForLocalView(OverHeadWidget);
-
+	
 }
 
 void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -1635,6 +1635,7 @@ void ABaseCharacter::ServerSetCharacterMeshName_Implementation(const FString& Ne
 	OnRep_CharacterSkeletalMeshName();
 }
 
+// 메인 화면에서 블루프린트로 실행하는 함수
 void ABaseCharacter::SetCharacterMeshOnMenu(USkeletalMesh* NewMesh)
 {
 	if (NewMesh && GetMesh())
