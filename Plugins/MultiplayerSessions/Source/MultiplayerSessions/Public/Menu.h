@@ -136,4 +136,28 @@ private:
 
 	FString PathToLobby{TEXT("")};
 
+
+
+	// ----------------------------------------------------------------------------------------설정 ㅜ
+
+	UPROPERTY(meta = (BindWidget))
+	class USlider* MouseUpDownSlider; 
+	UPROPERTY(meta = (BindWidget))
+	class USlider* MouseLefrRightSlider;
+	UPROPERTY(meta = (BindWidget))
+	class USlider* AimMouseUpDownSlider;
+	UPROPERTY(meta = (BindWidget))
+	class USlider* AimMouseLefrRightSlider; 
+
+	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* MouseUpDownText;
+	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* MouseLefrRightText;
+	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* AimMouseUpDownText;
+	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* AimMouseLefrRightText;
+	
+	// ----------------------------------------------------------------------------------------설정 ㅗ
+
 };

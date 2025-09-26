@@ -30,7 +30,7 @@
 #include "MultiShooter/TypeHeader/Team.h" // ETeam 열거형 사용을 위한 헤더 파일
 #include "MultiShooter/PlayerStart/TeamPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
 #include "MultiShooter/PlayerStart/SoloPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
-#include "MultiShooter/GameInstance/BaseGameInstance.h" // UBaseGameInstance 클래스 사용을 위한 헤더 파일
+#include "MultiShooter/SaveData/SaveData.h" // USaveData 클래스 사용을 위한 헤더 파일
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -211,6 +211,7 @@ void ABaseCharacter::BeginPlay()
 
 	SetCamera(); // 비긴 플레이에서 카메라 설정
 	SetCharacterMesh(); // 캐릭터 메쉬 설정
+	SetCharacterSettingFromSaveData(); // 세이브 데이터에서 캐릭터 설정 불러오기
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -802,6 +803,17 @@ void ABaseCharacter::OnReloadTimeout()
 // ------------------------------------------------------------------------------------------------입력 바인딩 관련 함수들ㅗ 
 
 // ------------------------------------------------------------------------------------------------기타 함수들ㅜ
+
+void ABaseCharacter::SetCharacterSettingFromSaveData()
+{
+	USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot( SaveSlot::SettingSlot, 0));
+
+	if (SaveData)
+	{
+		MouseUpDown = SaveData->MouseUpDown;
+		MouseLeftRight = SaveData->MouseLeftRight;
+	}
+}
 
 void ABaseCharacter::OnRep_OverlappingWeapon( ABaseWeapon* LastWeapon ) // 이 함수는 클라이언트에서만 실행 되므로 서버용도 필요
 {
@@ -1642,6 +1654,18 @@ void ABaseCharacter::SetCharacterMeshOnMenu(USkeletalMesh* NewMesh)
 		// 메뉴 맵에서 캐릭터의 외형을 즉시 변경합니다.
 		GetMesh()->SetSkeletalMesh(NewMesh);
 
+		// 세이브 데이터 객체 생성 또는 로드
+		USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+		if (!SaveData) return;
+
+		// 메시 이름 저장
+		FString MeshName = NewMesh->GetName();
+		SaveData->SelectedSkeletalMesh = MeshName;
+
+		// 세이브 슬롯에 저장
+		UGameplayStatics::SaveGameToSlot(SaveData, SaveSlot::ProfileSlot, 0);
+		
+		/*
 		UBaseGameInstance* GameInstance = Cast<UBaseGameInstance>(GetGameInstance());
 		if (GameInstance == nullptr) return;
 
@@ -1649,6 +1673,7 @@ void ABaseCharacter::SetCharacterMeshOnMenu(USkeletalMesh* NewMesh)
 		// 이 정보는 이후 게임 맵에 진입할 때 사용됩니다.
 		FString MeshName = NewMesh->GetName();
 		GameInstance->SelectedSkeletalMesh = MeshName;
+		*/
 	}
 }
 
@@ -1657,13 +1682,21 @@ void ABaseCharacter::SetCharacterMesh()
 	// 이 함수는 로컬 플레이어 컨트롤러를 가진 캐릭터에 의해서만 호출되어야 합니다.
 	if (IsLocallyControlled())
 	{
+		/*
 		UBaseGameInstance* GameInstance = Cast<UBaseGameInstance>(GetGameInstance());
 		if (GameInstance && !GameInstance->SelectedSkeletalMesh.IsEmpty())
 		{
 			// 로컬 클라이언트의 GameInstance에 저장된 메시 이름으로 서버에 RPC를 보냅니다.
 			ServerSetCharacterMeshName(GameInstance->SelectedSkeletalMesh);
-		}
+		} 
 		UE_LOG(LogTemp, Warning, TEXT("Name: %s"), *GameInstance->SelectedSkeletalMesh);
+		*/
+
+		USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+		if (SaveData)
+		{
+			ServerSetCharacterMeshName(SaveData->SelectedSkeletalMesh);
+		}
 	}
 }
 

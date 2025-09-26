@@ -56,6 +56,15 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 	UPROPERTY()
 	class UNiagaraComponent* CrownComponent; // 크라운 이펙트를 생성하기 위한 Niagara 컴포넌트
 
+	// --------------------------------------------------------------------------------------------------------세이브 데이터- 설정 ㅜ
+
+	void SetCharacterSettingFromSaveData(); // 세이브 데이터에서 캐릭터 설정을 불러오는 함수
+
+	float MouseUpDown = 1.0f; // 수평 감도
+	float MouseLeftRight = 1.0f; // 수직 감도
+
+	// --------------------------------------------------------------------------------------------------------세이브 데이터- 설정 ㅗ
+
 	// --------------------------------------------------------------------------------------------------------무기 관련 ㅜ
 	//
 	UPROPERTY(EditAnywhere, Category = "자체설정")

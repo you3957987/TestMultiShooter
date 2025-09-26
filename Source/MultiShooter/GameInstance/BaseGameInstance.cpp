@@ -1,27 +1,38 @@
 #include "BaseGameInstance.h"
-#include "Menu.h"
+#include "Kismet/GameplayStatics.h"
+
+#include "MultiShooter/SaveData/SaveData.h"
 
 void UBaseGameInstance::Init()
 {
 	Super::Init();
-}
 
-void UBaseGameInstance::SetPlayerName(const FString& Name)
-{
-	PlayerName = Name;
-	UE_LOG(LogTemp, Warning, TEXT( "PlayerName : %s"), *PlayerName);
-	OnNameChanged.Broadcast(); // 오버 헤드 위젯한테 이름 변경됬다고 방송
-}
-
-void UBaseGameInstance::ShowMenu()
-{
-	if ( MenuClass )
+	// ProfileSlot에 해당하는 세이브 파일이 존재하는지 확인합니다.
+	if (UGameplayStatics::DoesSaveGameExist( SaveSlot::ProfileSlot, 0 ) == false )
 	{
-		MenuWidget = CreateWidget<UMenu>(this, MenuClass);
-		if ( MenuWidget )
+		// 세이브 파일이 없으면 새로운 SaveData 객체를 생성합니다.
+		USaveData* ProfileSaveData = Cast<USaveData>(UGameplayStatics::CreateSaveGameObject(USaveData::StaticClass()));
+		if (ProfileSaveData)
 		{
-			MenuWidget->OnPlayerNameSet.AddDynamic(this, &UBaseGameInstance::SetPlayerName);
-			MenuWidget->MenuSetup(4, "FreeForAll", "/Game/Maps/Lobby");
+			// 여기에 기본값을 설정합니다. 예를 들어, 기본 캐릭터 메쉬 이름 등
+			ProfileSaveData->SelectedSkeletalMesh = TEXT("BasicMale_SK");
+			ProfileSaveData->PlayerName = TEXT("VICE");
+            
+			// 설정된 기본값으로 세이브 파일을 생성합니다.
+			UGameplayStatics::SaveGameToSlot(ProfileSaveData, SaveSlot::ProfileSlot, 0);
+		}
+	}
+	if (UGameplayStatics::DoesSaveGameExist( SaveSlot::SettingSlot, 0 ) == false)
+	{
+		USaveData* SettingSaveData = Cast<USaveData>(UGameplayStatics::CreateSaveGameObject(USaveData::StaticClass()));
+		if (SettingSaveData)
+		{
+			// 여기에 기본값을 설정합니다. 예를 들어, 기본 캐릭터 메쉬 이름 등
+			SettingSaveData->MouseLeftRight = 1.0f;
+			SettingSaveData->MouseUpDown = 1.0f;
+			
+			// 설정된 기본값으로 세이브 파일을 생성합니다.
+			UGameplayStatics::SaveGameToSlot(SettingSaveData, SaveSlot::SettingSlot, 0);
 		}
 	}
 }

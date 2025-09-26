@@ -12,7 +12,7 @@ class MULTISHOOTER_API UOverHeadWidget : public UUserWidget
 
 public:
 	UPROPERTY( meta = (BindWidget) )
-	class UTextBlock* DisplayText; // ĳ���� ���� ǥ�õ� �ؽ�Ʈ ���
+	class UTextBlock* DisplayText; // 캐릭터 위에 표시할 텍스트 블록
 
 	void SetDisplayText(const FString& Text);
 	UFUNCTION(BlueprintCallable)
@@ -22,6 +22,6 @@ protected:
 	virtual void NativeDestruct() override;
 
 	UFUNCTION()
-	void OnNameChanged();
+	void OnNameChanged(const FString& PlayerName);
 	
 };

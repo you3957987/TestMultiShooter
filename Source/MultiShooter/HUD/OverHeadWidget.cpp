@@ -1,8 +1,11 @@
 #include "OverHeadWidget.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/PlayerState.h"
+#include "Kismet/GameplayStatics.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 
-#include "MultiShooter/GameInstance/BaseGameInstance.h"
+#include "MultiShooter/SaveData/SaveData.h"
+#include "Menu.h"
 
 void UOverHeadWidget::NativeDestruct()
 {
@@ -11,42 +14,56 @@ void UOverHeadWidget::NativeDestruct()
 
 }
 
-void UOverHeadWidget::OnNameChanged()
+void UOverHeadWidget::OnNameChanged(const FString& PlayerName)
 {
-    UBaseGameInstance* GameInstance = Cast<UBaseGameInstance>(GetGameInstance());
-    
-    if ( GameInstance )
+    USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+    if (SaveData)
     {
-        FString PlayerName = GameInstance->PlayerName;
+        SaveData->PlayerName = PlayerName;
+        UGameplayStatics::SaveGameToSlot(SaveData, SaveSlot::ProfileSlot, 0);
         SetDisplayText(PlayerName); // 위젯의 텍스트를 설정합니다.
     }
 }
 
-// 게임 인스턴스에서 이름 바꾸는 델리게이트 여기서 설정
+// 게임 인스턴스에서 이름 바꾸는 델리게이트 여기서 설정. 이거는 베이스 캐릭터 블루프린트에서 비긴 플레이에서 실행함.
 void UOverHeadWidget::ShowPlayerNetRole(APawn* InPawn, FString PlayerNameTemp)
 {
     APlayerState* PS = InPawn ? InPawn->GetPlayerState() : nullptr;
-
-    UBaseGameInstance* GameInstance = Cast<UBaseGameInstance>(GetGameInstance());
-
-    FString PlayerName;
-    if (GameInstance)
+    
+    TArray<UUserWidget*> FoundWidgets;
+    UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), FoundWidgets, UMenu::StaticClass());
+    UMenu* Menu = nullptr;
+    if (FoundWidgets.Num() > 0)
     {
-        // 중복 바인딩 방지
-        if (!GameInstance->OnNameChanged.IsAlreadyBound(this, &UOverHeadWidget::OnNameChanged))
+        Menu = Cast<UMenu>(FoundWidgets[0]); // umenu는 한번만 생성할꺼니깐 첫번째꺼만
+    }
+    if (Menu)
+    {
+        if ( Menu->OnPlayerNameSet.IsAlreadyBound(this, &UOverHeadWidget::OnNameChanged) == false ) // 이미 바인딩 되어있으면 또 바인딩 안되게
         {
-            GameInstance->OnNameChanged.AddDynamic(this, &UOverHeadWidget::OnNameChanged);
-        }
-        if ( GameInstance->PlayerName != "VICE" ) // 기본 이름이 아닐때만
-        {
-            PlayerName = GameInstance->PlayerName;
-        }
-        else
-        {
-            PlayerName = PS ? PS->GetPlayerName() : TEXT("Unknown"); //이거는 스팀 이름 가져오기
+            Menu->OnPlayerNameSet.AddDynamic(this, &UOverHeadWidget::OnNameChanged);
         }
     }
     
+    FString PlayerName;
+    USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+    
+    if ( SaveData->PlayerName != "VICE" ) // 기본 이름이 아닐때만
+    {
+        PlayerName = SaveData->PlayerName;
+    }
+    else
+    {
+        // 기본 이름이면 ps 에서 스팀 이름 가져와서 savedata에 저장
+        if ( PS && SaveData )
+        {
+            PlayerName = PS->GetPlayerName(); // 스팀 이름 가져오기
+            SaveData->PlayerName = PlayerName;
+            UGameplayStatics::SaveGameToSlot(SaveData, SaveSlot::ProfileSlot, 0);
+        }
+    }
+    
+    /*
     ENetRole RemoteRole = InPawn->GetLocalRole();
     FString Role;
     switch (RemoteRole)
@@ -56,6 +73,7 @@ void UOverHeadWidget::ShowPlayerNetRole(APawn* InPawn, FString PlayerNameTemp)
         case ENetRole::ROLE_SimulatedProxy: Role = TEXT("Simulated Proxy"); break;
         default: Role = TEXT("None"); break;
     }
+    */
     FString DisplayString = FString::Printf(TEXT("%s"), *PlayerName);
     SetDisplayText(DisplayString);
 }
