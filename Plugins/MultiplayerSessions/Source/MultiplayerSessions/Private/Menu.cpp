@@ -6,7 +6,10 @@
 #include "Components/EditableTextBox.h"
 #include "Components/ScrollBox.h"
 #include "Components/CheckBox.h"
+#include "Kismet/GameplayStatics.h"
+#include "Components/Slider.h"
 
+#include "GameSave.h"
 #include "ServerList.h"
 
 // 초기화. 비긴 플레이같은거 -> 여가서 버튼 클릭이랑 매핑
@@ -48,6 +51,42 @@ bool UMenu::Initialize()
 	if ( NameBox )
 	{
 		NameBox->OnTextChanged.AddDynamic(this, &ThisClass::UpdatePlayerName);
+	}
+	
+	if (MouseUpDownSlider)
+	{
+		MouseUpDownSlider->OnValueChanged.AddDynamic(this, &UMenu::OnMouseUpDownSliderChanged);
+	}
+	if (MouseUpDownText)
+	{
+		MouseUpDownText->OnTextCommitted.AddDynamic(this, &UMenu::OnMouseUpDownTextCommitted);
+	}
+
+	if (MouseLeftRightSlider)
+	{
+		MouseLeftRightSlider->OnValueChanged.AddDynamic(this, &UMenu::OnMouseLeftRightSliderChanged);
+	}
+	if (MouseLeftRightText)
+	{
+		MouseLeftRightText->OnTextCommitted.AddDynamic(this, &UMenu::OnMouseLeftRightTextCommitted);
+	}
+
+	if (AimMouseUpDownSlider)
+	{
+		AimMouseUpDownSlider->OnValueChanged.AddDynamic(this, &UMenu::OnAimMouseUpDownSliderChanged);
+	}
+	if (AimMouseUpDownText)
+	{
+		AimMouseUpDownText->OnTextCommitted.AddDynamic(this, &UMenu::OnAimMouseUpDownTextCommitted);
+	}
+
+	if (AimMouseLeftRightSlider)
+	{
+		AimMouseLeftRightSlider->OnValueChanged.AddDynamic(this, &UMenu::OnAimMouseLeftRightSliderChanged);
+	}
+	if (AimMouseLeftRightText)
+	{
+		AimMouseLeftRightText->OnTextCommitted.AddDynamic(this, &UMenu::OnAimMouseLeftRightTextCommitted);
 	}
 
 	return true;
@@ -99,6 +138,8 @@ void UMenu::MenuSetup(int32 NumberOfPublicConnections, FString TypeOfMatch, FStr
 		MultiplayerSessionsSubsystem->MultiplayerOnStartSessionComplete.AddDynamic(this, &ThisClass::OnStartSession);
 		MultiplayerSessionsSubsystem->MultiplayerOnFindServerListComplete.AddUObject(this, &UMenu::OnFindServerList);
 	}
+
+	MenuSetFromSaveData();// 세이브 데이터에서 설정 불러오기
 }
 
 void UMenu::SetJoinSessionName(FString SessionName, FString MatchType)
@@ -489,4 +530,153 @@ void UMenu::UpdatePlayerName(const FText& Text)
 		}
 	}
 }
+
+// --------------------------------------------------------------------------------------------세이브 데이텨 관련 ㅜ
+
+void UMenu::MenuSetFromSaveData()
+{
+	UGameSave* LoadedSaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::SettingSlot, 0));
+
+	if ( LoadedSaveData )
+	{
+		if ( MouseUpDownSlider )
+		{
+			MouseUpDownSlider->SetValue( LoadedSaveData->MouseUpDown ); 
+		}
+		if ( MouseLeftRightSlider )
+		{
+			MouseLeftRightSlider->SetValue( LoadedSaveData->MouseLeftRight );
+		}
+		if ( AimMouseUpDownSlider )
+		{
+			AimMouseUpDownSlider->SetValue( LoadedSaveData->AimMouseUpDown );
+		}
+		if ( AimMouseLeftRightSlider )
+		{
+			AimMouseLeftRightSlider->SetValue( LoadedSaveData->AimMouseLeftRight );
+		}
+		
+		if ( MouseUpDownText )
+		{
+			FString ValueString = FString::Printf(TEXT("%.1f"), LoadedSaveData->MouseUpDown);
+			MouseUpDownText->SetText(FText::FromString(ValueString));
+		}
+		if ( MouseLeftRightText )
+		{
+			FString ValueString = FString::Printf(TEXT("%.1f"), LoadedSaveData->MouseLeftRight);
+			MouseLeftRightText->SetText(FText::FromString(ValueString));
+		}
+		if ( AimMouseUpDownText )
+		{
+			FString ValueString = FString::Printf(TEXT("%.1f"), LoadedSaveData->AimMouseUpDown);
+			AimMouseUpDownText->SetText(FText::FromString(ValueString));
+		}
+		if ( AimMouseLeftRightText )
+		{
+			FString ValueString = FString::Printf(TEXT("%.1f"), LoadedSaveData->AimMouseLeftRight);
+			AimMouseLeftRightText->SetText(FText::FromString(ValueString));
+		}
+	}
+}
+
+
+void UMenu::OnMouseUpDownSliderChanged(float Value)
+{
+    if (MouseUpDownText)
+    {
+        // 소수점 첫째 자리까지 표시
+        FString ValueString = FString::Printf(TEXT("%.1f"), Value);
+        MouseUpDownText->SetText(FText::FromString(ValueString));
+    }
+}
+
+void UMenu::OnMouseUpDownTextCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+    if (MouseUpDownSlider && MouseUpDownText)
+    {
+        // 텍스트를 float으로 변환
+        float Value = FCString::Atof(*Text.ToString());
+        // 값을 1.0과 10.0 사이로 제한
+        Value = FMath::Clamp(Value, 1.0f, 10.0f);
+
+        // 슬라이더 값 설정
+        MouseUpDownSlider->SetValue(Value);
+
+        // 텍스트 박스 값도 제한된 값으로 다시 설정 (UI 동기화)
+        FString ValueString = FString::Printf(TEXT("%.1f"), Value);
+        MouseUpDownText->SetText(FText::FromString(ValueString));
+    }
+}
+
+void UMenu::OnMouseLeftRightSliderChanged(float Value)
+{
+    if (MouseLeftRightText)
+    {
+        FString ValueString = FString::Printf(TEXT("%.1f"), Value);
+        MouseLeftRightText->SetText(FText::FromString(ValueString));
+    }
+}
+
+void UMenu::OnMouseLeftRightTextCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+    if (MouseLeftRightSlider && MouseLeftRightText)
+    {
+        float Value = FCString::Atof(*Text.ToString());
+        Value = FMath::Clamp(Value, 1.0f, 10.0f);
+
+        MouseLeftRightSlider->SetValue(Value);
+
+        FString ValueString = FString::Printf(TEXT("%.1f"), Value);
+        MouseLeftRightText->SetText(FText::FromString(ValueString));
+    }
+}
+
+void UMenu::OnAimMouseUpDownSliderChanged(float Value)
+{
+    if (AimMouseUpDownText)
+    {
+        FString ValueString = FString::Printf(TEXT("%.1f"), Value);
+        AimMouseUpDownText->SetText(FText::FromString(ValueString));
+    }
+}
+
+void UMenu::OnAimMouseUpDownTextCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+    if (AimMouseUpDownSlider && AimMouseUpDownText)
+    {
+        float Value = FCString::Atof(*Text.ToString());
+        Value = FMath::Clamp(Value, 1.0f, 10.0f);
+
+        AimMouseUpDownSlider->SetValue(Value);
+
+        FString ValueString = FString::Printf(TEXT("%.1f"), Value);
+        AimMouseUpDownText->SetText(FText::FromString(ValueString));
+    }
+}
+
+void UMenu::OnAimMouseLeftRightSliderChanged(float Value)
+{
+    if (AimMouseLeftRightText)
+    {
+        FString ValueString = FString::Printf(TEXT("%.1f"), Value);
+        AimMouseLeftRightText->SetText(FText::FromString(ValueString));
+    }
+}
+
+void UMenu::OnAimMouseLeftRightTextCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+    if (AimMouseLeftRightSlider && AimMouseLeftRightText)
+    {
+        float Value = FCString::Atof(*Text.ToString());
+        Value = FMath::Clamp(Value, 1.0f, 10.0f);
+
+        AimMouseLeftRightSlider->SetValue(Value);
+
+        FString ValueString = FString::Printf(TEXT("%.1f"), Value);
+        AimMouseLeftRightText->SetText(FText::FromString(ValueString));
+    }
+}
+
+
+// --------------------------------------------------------------------------------------------세이브 데이텨 관련 ㅗ
 

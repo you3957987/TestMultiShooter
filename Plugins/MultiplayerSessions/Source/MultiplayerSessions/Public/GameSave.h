@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
-#include "SaveData.generated.h"
+#include "GameSave.generated.h"
 
 namespace  SaveSlot // 네임스페이스로 저장 슬롯 이름 관리 SaveSlot::
 {
@@ -14,8 +14,9 @@ namespace  SaveSlot // 네임스페이스로 저장 슬롯 이름 관리 SaveSlo
 }	
 // 최초의 세이브 데이터 생성지는 BaseGameInstance 에서 생성!
 
+
 UCLASS()
-class MULTISHOOTER_API USaveData : public USaveGame
+class MULTIPLAYERSESSIONS_API UGameSave : public USaveGame
 {
 	GENERATED_BODY()
 
@@ -27,9 +28,15 @@ public:
 	FString PlayerName = "VICE"; // 기본 이름 설정
 
 	UPROPERTY(VisibleAnywhere) // 수평 감도
-	float MouseLeftRight = 1.0f;
+	float MouseLeftRight = 5.0f;
 
 	UPROPERTY(VisibleAnywhere) // 수직 감도
-	float MouseUpDown = 1.0f;
+	float MouseUpDown = 5.0f;
+
+	UPROPERTY(VisibleAnywhere) // 수평 감도
+	float AimMouseLeftRight = 5.0f;
+
+	UPROPERTY(VisibleAnywhere) // 수직 감도
+	float AimMouseUpDown = 5.0f;
 	
 };

@@ -140,23 +140,47 @@ private:
 
 	// ----------------------------------------------------------------------------------------설정 ㅜ
 
-	UPROPERTY(meta = (BindWidget))
-	class USlider* MouseUpDownSlider; 
-	UPROPERTY(meta = (BindWidget))
-	class USlider* MouseLefrRightSlider;
-	UPROPERTY(meta = (BindWidget))
-	class USlider* AimMouseUpDownSlider;
-	UPROPERTY(meta = (BindWidget))
-	class USlider* AimMouseLefrRightSlider; 
+	void MenuSetFromSaveData(); // 세이브 데이터에서 설정 불러오기
 
 	UPROPERTY(meta = (BindWidget))
-	class UEditableTextBox* MouseUpDownText;
+	class USlider* MouseUpDownSlider;
+	UFUNCTION()
+	void OnMouseUpDownSliderChanged(float Value);
+	
 	UPROPERTY(meta = (BindWidget))
-	class UEditableTextBox* MouseLefrRightText;
+	class USlider* MouseLeftRightSlider;
+	UFUNCTION()
+	void OnMouseLeftRightSliderChanged(float Value);
+	
+	UPROPERTY(meta = (BindWidget))
+	class USlider* AimMouseUpDownSlider;
+	UFUNCTION()
+	void OnAimMouseUpDownSliderChanged(float Value);
+	
+	UPROPERTY(meta = (BindWidget))
+	class USlider* AimMouseLeftRightSlider;
+	UFUNCTION()
+	void OnAimMouseLeftRightSliderChanged(float Value);
+
+	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* MouseUpDownText;UFUNCTION()
+	void OnMouseUpDownTextCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+	
+	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* MouseLeftRightText;
+	UFUNCTION()
+	void OnMouseLeftRightTextCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+	
 	UPROPERTY(meta = (BindWidget))
 	class UEditableTextBox* AimMouseUpDownText;
+	UFUNCTION()
+	void OnAimMouseUpDownTextCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+	
 	UPROPERTY(meta = (BindWidget))
-	class UEditableTextBox* AimMouseLefrRightText;
+	class UEditableTextBox* AimMouseLeftRightText;
+	UFUNCTION()
+	void OnAimMouseLeftRightTextCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+	
 	
 	// ----------------------------------------------------------------------------------------설정 ㅗ
 

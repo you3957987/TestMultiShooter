@@ -4,7 +4,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 
-#include "MultiShooter/SaveData/SaveData.h"
+#include "GameSave.h"
 #include "Menu.h"
 
 void UOverHeadWidget::NativeDestruct()
@@ -16,7 +16,7 @@ void UOverHeadWidget::NativeDestruct()
 
 void UOverHeadWidget::OnNameChanged(const FString& PlayerName)
 {
-    USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+    UGameSave* SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
     if (SaveData)
     {
         SaveData->PlayerName = PlayerName;
@@ -46,7 +46,7 @@ void UOverHeadWidget::ShowPlayerNetRole(APawn* InPawn, FString PlayerNameTemp)
     }
     
     FString PlayerName;
-    USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+    UGameSave* SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
     
     if ( SaveData->PlayerName != "VICE" ) // 기본 이름이 아닐때만
     {

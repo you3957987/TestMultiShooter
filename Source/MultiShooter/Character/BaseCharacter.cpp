@@ -30,7 +30,7 @@
 #include "MultiShooter/TypeHeader/Team.h" // ETeam 열거형 사용을 위한 헤더 파일
 #include "MultiShooter/PlayerStart/TeamPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
 #include "MultiShooter/PlayerStart/SoloPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
-#include "MultiShooter/SaveData/SaveData.h" // USaveData 클래스 사용을 위한 헤더 파일
+#include "GameSave.h" // 플러그인에 있는 세이브 데이터 헤더 파일
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -806,7 +806,7 @@ void ABaseCharacter::OnReloadTimeout()
 
 void ABaseCharacter::SetCharacterSettingFromSaveData()
 {
-	USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot( SaveSlot::SettingSlot, 0));
+	UGameSave* SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot( SaveSlot::SettingSlot, 0));
 
 	if (SaveData)
 	{
@@ -1655,7 +1655,7 @@ void ABaseCharacter::SetCharacterMeshOnMenu(USkeletalMesh* NewMesh)
 		GetMesh()->SetSkeletalMesh(NewMesh);
 
 		// 세이브 데이터 객체 생성 또는 로드
-		USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+		UGameSave* SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
 		if (!SaveData) return;
 
 		// 메시 이름 저장
@@ -1692,7 +1692,7 @@ void ABaseCharacter::SetCharacterMesh()
 		UE_LOG(LogTemp, Warning, TEXT("Name: %s"), *GameInstance->SelectedSkeletalMesh);
 		*/
 
-		USaveData* SaveData = Cast<USaveData>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+		UGameSave* SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
 		if (SaveData)
 		{
 			ServerSetCharacterMeshName(SaveData->SelectedSkeletalMesh);
