@@ -85,8 +85,9 @@ void ABasePC::PollInit(float DeltaTime)
         CharacterHUD->AddAnnouncement(); // 시작전 안내 위젯을 추가합니다.
         if (CharacterHUD->Announcement->AnnouncementText && CharacterHUD->Announcement->InfoText)
         {
-			CharacterHUD->Announcement->AnnouncementText->SetText(FText::FromString(TEXT("Start in :"))); // 시작전 안내 텍스트를 설정합니다.
-			CharacterHUD->Announcement->InfoText->SetText(FText::FromString(TEXT("Fly Around: W A S D"))); // 안내 메시지 텍스트를 설정합니다.
+			CharacterHUD->Announcement->AnnouncementText->SetText(FText::FromString(TEXT("대기시간"))); // 시작전 안내 텍스트를 설정합니다.
+			CharacterHUD->Announcement->InfoText->SetText(FText::FromString(TEXT("이동: W A S D\n상승 : Q 하강 : E")));
+            // 안내 메시지 텍스트를 설정합니다.
         }
     }
     
@@ -753,9 +754,8 @@ FString ABasePC::GetTeamInfoText(ABaseGameState* BaseGameState)
     else if (RedTeamScore == BlueTeamScore)
     {
 		InfoText = FString::Printf(TEXT("%s\n"), *Announcement::TeamsTiedForWin); // 팀이 동점인 경우 정보 텍스트를 설정합니다.
-		InfoText.Append(Announcement::RedTeam); // 레드 팀 점수 추가
-        InfoText.Append(TEXT("\n"));
-        InfoText.Append(Announcement::BlueTeam);
+        InfoText.Append(FString::Printf(TEXT("%s : %d\n"), *Announcement::RedTeam, RedTeamScore)); // 레드 팀 점수 추가
+        InfoText.Append(FString::Printf(TEXT("%s : %d\n"), *Announcement::BlueTeam, BlueTeamScore)); // 블루 팀 점수 추가
     }
     else if (RedTeamScore > BlueTeamScore)
     {
@@ -1202,7 +1202,6 @@ void ABasePC::OnRep_ShowTeamScore()
 }
 
 //------------------------------------------------------------------------------------------------------ 팀 관련 ㅗ
-
 
 
 // ------------------------------------------------------------------------------------------------------ 입력 매핑 관련 ㅜ

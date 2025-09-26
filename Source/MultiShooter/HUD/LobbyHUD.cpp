@@ -25,7 +25,7 @@ void ULobbyHUD::UpdatePlayerCountFromGameState()
     {
         CurState->SetText(FText::FromString(FString::Printf(TEXT("%d / %d"), CurrentPlayer, MaxPlayer)));
     }
-    if (StartText)
+    if (StartText) // 사람들 다 차면 시작 텍스트 보이게 하기
     {
         if (CurrentPlayer == MaxPlayer)
         {

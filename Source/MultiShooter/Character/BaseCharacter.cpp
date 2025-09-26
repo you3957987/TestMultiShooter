@@ -326,8 +326,7 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Started, this, &ABaseCharacter::FirePressed);
 		EnhancedInput->BindAction(IA_Fire, ETriggerEvent::Completed, this, &ABaseCharacter::FireReleased);
 		EnhancedInput->BindAction(IA_Grenade, ETriggerEvent::Started, this, &ABaseCharacter::Grenade); // 수류탄 액션 바인딩
-
-
+    	
 		//EnhancedInput->BindAction(IA_Reload, ETriggerEvent::Started, this, &ABaseCharacter::Reload); // 리로드 액션 바인딩
 		//EnhancedInput->BindAction(IA_Roll, ETriggerEvent::Started, this, &ABaseCharacter::Roll); // 수류탄 액션 바인딩
 		//EnhancedInput->BindAction(IA_BackDash, ETriggerEvent::Started, this, &ABaseCharacter::BackDash); // 백대쉬 액션 바인딩
