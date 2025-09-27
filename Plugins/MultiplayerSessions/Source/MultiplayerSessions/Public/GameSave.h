@@ -14,6 +14,10 @@ namespace  SaveSlot // 네임스페이스로 저장 슬롯 이름 관리 SaveSlo
 }	
 // 최초의 세이브 데이터 생성지는 BaseGameInstance 에서 생성!
 
+namespace NickName
+{
+	constexpr const TCHAR* DefaultName = TEXT("adas123213asedasdasdasdassaddasd");
+}
 
 UCLASS()
 class MULTIPLAYERSESSIONS_API UGameSave : public USaveGame
@@ -25,7 +29,7 @@ public:
 	FString SelectedSkeletalMesh = "BasicMale_SK";
 
 	UPROPERTY(VisibleAnywhere)
-	FString PlayerName = "VICE"; // 기본 이름 설정
+	FString PlayerName = "adas123213asedasdasdasdassaddasd"; // 기본 이름 설정
 
 	UPROPERTY(VisibleAnywhere) // 수평 감도
 	float MouseLeftRight = 5.0f;

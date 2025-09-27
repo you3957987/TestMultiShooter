@@ -31,6 +31,7 @@
 #include "MultiShooter/PlayerStart/TeamPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
 #include "MultiShooter/PlayerStart/SoloPlayerStart.h" // ETeam 열거형 사용을 위한 헤더 파일
 #include "GameSave.h" // 플러그인에 있는 세이브 데이터 헤더 파일
+#include "MultiShooter/HUD/OverHeadWidget.h"
 
 ABaseCharacter::ABaseCharacter()
 {
@@ -173,6 +174,14 @@ void ABaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+
+	UOverHeadWidget* HeadWidget = Cast<UOverHeadWidget>(OverHeadWidget->GetUserWidgetObject());
+	if ( HeadWidget )
+	{
+		HeadWidget->BindMenuToHeadWidget();
+	}
+	
 	/* 입력 매핑은 restart 함수에서 처리합니다.
     if (APlayerController* PC = Cast<APlayerController>(Controller))
     {
@@ -210,8 +219,10 @@ void ABaseCharacter::BeginPlay()
 	}
 
 	SetCamera(); // 비긴 플레이에서 카메라 설정
-	SetCharacterMesh(); // 캐릭터 메쉬 설정
+	
 	SetCharacterSettingFromSaveData(); // 세이브 데이터에서 캐릭터 설정 불러오기
+	SetCharacterMesh(); // 세이브 데이터에서 부터 캐릭터 메쉬 설정
+	//SetPlayerName(); // 플레이어 이름 설정 이거는 OnPlayerStateInitialized에서 실행
 }
 
 void ABaseCharacter::Tick(float DeltaTime)
@@ -284,6 +295,7 @@ void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ABaseCharacter, Shield); // MaxHealth 변수를 네트워크에서 복제합니다.
 	DOREPLIFETIME(ABaseCharacter, bDisableGamePlay); // 게임 플레이 비활성화 변수 복제
 	DOREPLIFETIME(ABaseCharacter, CharacterSkeletalMeshName); // 죽음 상태 변수 복제
+	DOREPLIFETIME(ABaseCharacter, PlayerName); // 플레이어 이름 변수 복제
 }
 // 컴포넌트 초기화시 실행. 컴뱃 컴포넌트 및 버프 컴포넌트, 렉 컴포넌트 초기화
 void ABaseCharacter::PostInitializeComponents() 
@@ -373,6 +385,7 @@ void ABaseCharacter::OnPlayerStateInitialized()
 	CharacterState->AddToDefeat(0); // 플레이어 상태에 처치 수 0 추가해서 업데이트 시키기!
 	SetTeamColor(CharacterState->GetTeam()); // 팀 색상을 설정합니다.
 	SetSpawnPoint(); // 스폰 포인트를 설정합니다.
+	SetPlayerName(); // 플레이어 이름 설정
 }
 
 // 팀 게임에서 스폰 포인트 설정
@@ -806,12 +819,47 @@ void ABaseCharacter::OnReloadTimeout()
 
 void ABaseCharacter::SetCharacterSettingFromSaveData()
 {
-	UGameSave* SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot( SaveSlot::SettingSlot, 0));
-
 	if (SaveData)
 	{
 		MouseUpDown = SaveData->MouseUpDown;
 		MouseLeftRight = SaveData->MouseLeftRight;
+		AimMouseUpDown = SaveData->AimMouseUpDown;
+		AimMouseLeftRight = SaveData->AimMouseLeftRight;
+	}
+}
+
+void ABaseCharacter::OnRep_PlayerName()
+{
+	if ( OverHeadWidget )
+	{
+		UOverHeadWidget* HeadWidget = Cast<UOverHeadWidget>(OverHeadWidget->GetUserWidgetObject());
+		if (HeadWidget)
+		{
+			HeadWidget->SetDisplayText(PlayerName);
+		}
+	}
+}
+
+void ABaseCharacter::ServerSetPlayerName_Implementation(const FString& InPlayerName)
+{
+	PlayerName = InPlayerName;
+	OnRep_PlayerName();
+}
+
+void ABaseCharacter::SetPlayerName()
+{
+	if (IsLocallyControlled() && SaveData)
+	{
+		if ( SaveData->PlayerName == NickName::DefaultName )
+		{
+			ServerSetPlayerName(GetPlayerState()->GetPlayerName());
+			UE_LOG(LogTemp, Warning, TEXT("Default Name"));
+		}
+		else
+		{
+			ServerSetPlayerName(SaveData->PlayerName);
+			UE_LOG(LogTemp, Warning, TEXT("Set Name : %s"), *SaveData->PlayerName);
+		}
 	}
 }
 
@@ -1655,7 +1703,6 @@ void ABaseCharacter::SetCharacterMeshOnMenu(USkeletalMesh* NewMesh)
 		GetMesh()->SetSkeletalMesh(NewMesh);
 
 		// 세이브 데이터 객체 생성 또는 로드
-		UGameSave* SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
 		if (!SaveData) return;
 
 		// 메시 이름 저장
@@ -1691,8 +1738,7 @@ void ABaseCharacter::SetCharacterMesh()
 		} 
 		UE_LOG(LogTemp, Warning, TEXT("Name: %s"), *GameInstance->SelectedSkeletalMesh);
 		*/
-
-		UGameSave* SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::ProfileSlot, 0));
+		
 		if (SaveData)
 		{
 			ServerSetCharacterMeshName(SaveData->SelectedSkeletalMesh);

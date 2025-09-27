@@ -17,11 +17,17 @@ public:
 	void SetDisplayText(const FString& Text);
 	UFUNCTION(BlueprintCallable)
 	void ShowPlayerNetRole( APawn* InPawn, FString PlayerName );
-
+	
+	void SetPlayerName(const FString& PlayerName);
+	void BindMenuToHeadWidget();
+	
 protected:
 	virtual void NativeDestruct() override;
 
 	UFUNCTION()
 	void OnNameChanged(const FString& PlayerName);
+
+private:
+	class UGameSave* SaveData;
 	
 };

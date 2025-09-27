@@ -5,6 +5,10 @@
 #include "MultiShooter/TypeHeader/Team.h"
 #include "CharacterState.generated.h"
 
+
+// 이름 변경 시 FString(PlayerName)을 파라미터로 전달하는 델리게이트입니다.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGetNameFromSaveDataDelegate, const FString&, PlayerName);
+
 UCLASS()
 class MULTISHOOTER_API ACharacterState : public APlayerState
 {
@@ -45,4 +49,10 @@ public:
 	void AddToDefeat(int32 DefeatAmount);  // 죽은 횟수를 추가하는 함수
 	void UpdateDeathMessage(FString KillerName); // 죽은 메시지를 업데이트하는 함수
 
+	// -------------------------------------------------------------------------------------------------------------------------------- 세이브 데이터 - 이름
+
+	// 이름이 변경될 때 호출될 델리게이트입니다. 블루프린트에서도 바인딩할 수 있습니다.
+	UPROPERTY(BlueprintAssignable)
+	FGetNameFromSaveDataDelegate GetNameFromSaveDataDelegate;
+	
 };

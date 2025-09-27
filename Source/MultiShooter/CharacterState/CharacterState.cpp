@@ -105,7 +105,6 @@ void ACharacterState::UpdateDeathMessage(FString KillerName)
     Controller->SetHUDKilledBy(KilledBy); // 플레이어 컨트롤러의 HUD에 죽은 메시지를 설정합니다.
 }
 
-
 void ACharacterState::OnRep_Team()
 {
 	BaseCharacter = BaseCharacter == nullptr ? Cast<ABaseCharacter>(GetPawn()) : BaseCharacter; // 캐릭터 상태를 관리하는 캐릭터 클래스 포인터를 가져옵니다.
@@ -126,3 +125,4 @@ void ACharacterState::SetTeam(ETeam TeamToSet)
         BaseCharacter->SetTeamColor(Team); // 캐릭터의 팀 색상을 설정합니다.
     }
 }
+

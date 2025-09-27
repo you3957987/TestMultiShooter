@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameSave.h"
 #include "GameFramework/Character.h"
 #include "MultiSHooter/TypeHeader/TurningInPlace.h" // 조준시 좌우로 360도 회전하는게 아니라 90도 정도로만 돌아가게 만들기 위한 헤더
 #include "MultiShooter/Interface/CrosshairInterface.h" // 크로스헤어 인터페이스 헤더
@@ -58,10 +59,23 @@ class MULTISHOOTER_API ABaseCharacter : public ACharacter, public ICrosshairInte
 
 	// --------------------------------------------------------------------------------------------------------세이브 데이터- 설정 ㅜ
 
+	class UGameSave* SaveData; // 세이브 데이터 객체
+	
 	void SetCharacterSettingFromSaveData(); // 세이브 데이터에서 캐릭터 설정을 불러오는 함수
 
 	float MouseUpDown = 1.0f; // 수평 감도
 	float MouseLeftRight = 1.0f; // 수직 감도
+	float AimMouseUpDown = 0.5f; // 조준시 수평 감도
+	float AimMouseLeftRight = 0.5f; // 조준시 수직 감도
+
+	UPROPERTY(ReplicatedUsing = OnRep_PlayerName)
+	FString PlayerName = NickName::DefaultName; // 플레이어 이름
+	void SetPlayerName(); // 플레이어 이름 설정 함수
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetPlayerName(const FString& InPlayerName); // 서버에서 플레이어 이름 설정 함수
+	UFUNCTION()
+	void OnRep_PlayerName(); // 플레이어 이름이 복제되었을 때 호출되는 함수
 
 	// --------------------------------------------------------------------------------------------------------세이브 데이터- 설정 ㅗ
 

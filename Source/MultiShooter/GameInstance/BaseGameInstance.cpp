@@ -14,7 +14,7 @@ void UBaseGameInstance::Init()
 		if (ProfileSaveData)
 		{
 			ProfileSaveData->SelectedSkeletalMesh = TEXT("BasicMale_SK");
-			ProfileSaveData->PlayerName = TEXT("VICE");
+			ProfileSaveData->PlayerName = TEXT("adas123213asedasdasdasdassaddasd");
             
 			// 설정된 기본값으로 세이브 파일을 생성합니다.
 			UGameplayStatics::SaveGameToSlot(ProfileSaveData, SaveSlot::ProfileSlot, 0);

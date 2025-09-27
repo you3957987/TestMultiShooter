@@ -52,6 +52,11 @@ bool UMenu::Initialize()
 	{
 		NameBox->OnTextChanged.AddDynamic(this, &ThisClass::UpdatePlayerName);
 	}
+
+	if ( ApplyButton )
+	{
+		ApplyButton->OnClicked.AddDynamic(this, &ThisClass::OnApplyButtonClicked); // 이름 설정 버튼과 동일한 함수 사용
+	}
 	
 	if (MouseUpDownSlider)
 	{
@@ -497,6 +502,55 @@ void UMenu::HandleJoinSessionNameTextBoxCommitted(const FText& Text, ETextCommit
 	}
 }
 
+
+// --------------------------------------------------------------------------------------------세이브 데이텨 관련 ㅜ
+
+void UMenu::MenuSetFromSaveData()
+{
+	SaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::SettingSlot, 0));
+
+	if ( SaveData )
+	{
+		if ( MouseUpDownSlider )
+		{
+			MouseUpDownSlider->SetValue( SaveData->MouseUpDown ); 
+		}
+		if ( MouseLeftRightSlider )
+		{
+			MouseLeftRightSlider->SetValue( SaveData->MouseLeftRight );
+		}
+		if ( AimMouseUpDownSlider )
+		{
+			AimMouseUpDownSlider->SetValue( SaveData->AimMouseUpDown );
+		}
+		if ( AimMouseLeftRightSlider )
+		{
+			AimMouseLeftRightSlider->SetValue( SaveData->AimMouseLeftRight );
+		}
+		
+		if ( MouseUpDownText )
+		{
+			FString ValueString = FString::Printf(TEXT("%.1f"), SaveData->MouseUpDown);
+			MouseUpDownText->SetText(FText::FromString(ValueString));
+		}
+		if ( MouseLeftRightText )
+		{
+			FString ValueString = FString::Printf(TEXT("%.1f"), SaveData->MouseLeftRight);
+			MouseLeftRightText->SetText(FText::FromString(ValueString));
+		}
+		if ( AimMouseUpDownText )
+		{
+			FString ValueString = FString::Printf(TEXT("%.1f"), SaveData->AimMouseUpDown);
+			AimMouseUpDownText->SetText(FText::FromString(ValueString));
+		}
+		if ( AimMouseLeftRightText )
+		{
+			FString ValueString = FString::Printf(TEXT("%.1f"), SaveData->AimMouseLeftRight);
+			AimMouseLeftRightText->SetText(FText::FromString(ValueString));
+		}
+	}
+}
+
 void UMenu::OnCLickedNameButton()
 {
 	// NameBox에서 값 가져와서 게임 인스턴스에 저장
@@ -517,6 +571,7 @@ void UMenu::OnCLickedNameButton()
 	}
 }
 
+// 이름 텍스트 박스 값 변경시
 void UMenu::UpdatePlayerName(const FText& Text)
 {
 	// 이름 길이가 8자 넘으면 자르기
@@ -531,54 +586,31 @@ void UMenu::UpdatePlayerName(const FText& Text)
 	}
 }
 
-// --------------------------------------------------------------------------------------------세이브 데이텨 관련 ㅜ
-
-void UMenu::MenuSetFromSaveData()
+// 설정 적용 버튼 클릭시
+void UMenu::OnApplyButtonClicked()
 {
-	UGameSave* LoadedSaveData = Cast<UGameSave>(UGameplayStatics::LoadGameFromSlot(SaveSlot::SettingSlot, 0));
-
-	if ( LoadedSaveData )
+	if ( SaveData )
 	{
 		if ( MouseUpDownSlider )
 		{
-			MouseUpDownSlider->SetValue( LoadedSaveData->MouseUpDown ); 
+			SaveData->MouseUpDown = MouseUpDownSlider->GetValue();
 		}
 		if ( MouseLeftRightSlider )
 		{
-			MouseLeftRightSlider->SetValue( LoadedSaveData->MouseLeftRight );
+			SaveData->MouseLeftRight = MouseLeftRightSlider->GetValue();
 		}
 		if ( AimMouseUpDownSlider )
 		{
-			AimMouseUpDownSlider->SetValue( LoadedSaveData->AimMouseUpDown );
+			SaveData->AimMouseUpDown = AimMouseUpDownSlider->GetValue();
 		}
 		if ( AimMouseLeftRightSlider )
 		{
-			AimMouseLeftRightSlider->SetValue( LoadedSaveData->AimMouseLeftRight );
+			SaveData->AimMouseLeftRight = AimMouseLeftRightSlider->GetValue();
 		}
-		
-		if ( MouseUpDownText )
-		{
-			FString ValueString = FString::Printf(TEXT("%.1f"), LoadedSaveData->MouseUpDown);
-			MouseUpDownText->SetText(FText::FromString(ValueString));
-		}
-		if ( MouseLeftRightText )
-		{
-			FString ValueString = FString::Printf(TEXT("%.1f"), LoadedSaveData->MouseLeftRight);
-			MouseLeftRightText->SetText(FText::FromString(ValueString));
-		}
-		if ( AimMouseUpDownText )
-		{
-			FString ValueString = FString::Printf(TEXT("%.1f"), LoadedSaveData->AimMouseUpDown);
-			AimMouseUpDownText->SetText(FText::FromString(ValueString));
-		}
-		if ( AimMouseLeftRightText )
-		{
-			FString ValueString = FString::Printf(TEXT("%.1f"), LoadedSaveData->AimMouseLeftRight);
-			AimMouseLeftRightText->SetText(FText::FromString(ValueString));
-		}
+
+		UGameplayStatics::SaveGameToSlot(SaveData, SaveSlot::SettingSlot, 0);
 	}
 }
-
 
 void UMenu::OnMouseUpDownSliderChanged(float Value)
 {

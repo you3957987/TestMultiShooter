@@ -142,6 +142,13 @@ private:
 
 	void MenuSetFromSaveData(); // 세이브 데이터에서 설정 불러오기
 
+	class UGameSave* SaveData;
+
+	UPROPERTY(meta = (BindWidget))
+	class UButton* ApplyButton; // 설정 적용 버튼
+	UFUNCTION()
+	void OnApplyButtonClicked();
+
 	UPROPERTY(meta = (BindWidget))
 	class USlider* MouseUpDownSlider;
 	UFUNCTION()
