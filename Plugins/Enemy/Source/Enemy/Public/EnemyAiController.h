@@ -23,7 +23,6 @@ class ENEMY_API AEnemyAiController : public AAIController
 protected:
 	virtual void BeginPlay() override;
 
-
 public:
 	virtual void Tick(float DeltaTime) override;
 	
@@ -31,4 +30,7 @@ public:
 	bool bFocusToPlayer = false; // 플레이어를 포커스하고 있는지 여부
 
 	bool IsInArrangeOfDetectRange(); // 감지 범위 안에 있는지 여부
+	bool IsInArrangeOfChaseRange(); // 추적 범위 안에 있는지 여부
+
+	bool bIsChasing = false; // 추적 중인지 여부
 };

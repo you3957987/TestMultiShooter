@@ -55,6 +55,30 @@ bool AEnemyAiController::IsInArrangeOfDetectRange()
 	if (ControlledEnemy == nullptr || Targetpawn == nullptr) return false;
 	const float DistanceToTarget = FVector::Dist(ControlledEnemy->GetActorLocation(), Targetpawn->GetActorLocation());
 
-	if ( DistanceToTarget <= ControlledEnemy->DetectRange ) return true;
-	else return false;
+	if ( DistanceToTarget <= ControlledEnemy->DetectRange )
+	{
+		bIsChasing = true;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
+
+bool AEnemyAiController::IsInArrangeOfChaseRange()
+{
+	if (ControlledEnemy == nullptr || Targetpawn == nullptr) return false;
+	const float DistanceToTarget = FVector::Dist(ControlledEnemy->GetActorLocation(), Targetpawn->GetActorLocation());
+
+	if ( DistanceToTarget <= ControlledEnemy->ChaseRange )
+	{
+		return true;
+	}
+	else 
+	{
+		bIsChasing = false;
+		return false;
+	}
+}
+

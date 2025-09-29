@@ -11,8 +11,11 @@ ABaseEnemy::ABaseEnemy()
 
 	DetectRangeSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AcceptRangeSphere"));
 	DetectRangeSphere->SetupAttachment(RootComponent); // 루트 컴포넌트
+
+	ChaseRangeSphere = CreateDefaultSubobject<USphereComponent>(TEXT("ChaseRangeSphere"));
+	ChaseRangeSphere->SetupAttachment(RootComponent); // 루트 컴포넌트
 	
-	Tags.Add(FName("PVE_Enemy")); // 적 캐릭터 태그 추가 -> 이걸 이용해서 프로젝트에서 플러그인 에너미 접근. 매우 중요!!!!
+	Tags.Add(FName("Enemy")); // 적 캐릭터 태그 추가 -> 이걸 이용해서 프로젝트에서 플러그인 에너미 접근. 매우 중요!!!!
 }
 
 void ABaseEnemy::BeginPlay()
@@ -85,6 +88,13 @@ void ABaseEnemy::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEv
 		if ( DetectRangeSphere )
 		{
 			DetectRangeSphere->SetSphereRadius(DetectRange);
+		}
+	}
+	if ( PropertyName == GET_MEMBER_NAME_CHECKED(ABaseEnemy, ChaseRange) )
+	{
+		if ( ChaseRangeSphere )
+		{
+			ChaseRangeSphere->SetSphereRadius(ChaseRange);
 		}
 	}
 }
