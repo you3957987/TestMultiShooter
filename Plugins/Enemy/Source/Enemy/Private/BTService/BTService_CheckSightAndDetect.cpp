@@ -2,6 +2,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "EnemyAiController.h"
+#include "ToolWidgetsSlateTypes.h"
 
 
 UBTService_CheckSightAndDetect::UBTService_CheckSightAndDetect()
@@ -18,6 +19,14 @@ void UBTService_CheckSightAndDetect::TickNode(UBehaviorTreeComponent& OwnerComp,
 
 	AEnemyAiController* AIController = Cast<AEnemyAiController>(OwnerComp.GetAIOwner());
 	if (AIController == nullptr) return;
+
+	if ( AIController->bAlwaysChase == true ) // 무조건 추적 모드인 경우
+	{
+		OwnerComp.GetBlackboardComponent()->SetValueAsVector(GetSelectedBlackboardKey(),
+			TargetPawn->GetActorLocation());
+		UE_LOG(LogTemp, Warning, TEXT("Check Sight And Detect_)AlwaysChase true") );
+		return;
+	}
 	
 	if (AIController->bIsChasing) // 추적 중인 경우
 	{

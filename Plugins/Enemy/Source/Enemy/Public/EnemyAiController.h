@@ -33,4 +33,5 @@ public:
 	bool IsInArrangeOfChaseRange(); // 추적 범위 안에 있는지 여부
 
 	bool bIsChasing = false; // 추적 중인지 여부
+	bool bAlwaysChase = false; // 무조건 플레이어 추적 모드
 };

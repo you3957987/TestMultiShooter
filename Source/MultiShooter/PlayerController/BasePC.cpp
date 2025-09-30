@@ -86,7 +86,7 @@ void ABasePC::PollInit(float DeltaTime)
         if (CharacterHUD->Announcement->AnnouncementText && CharacterHUD->Announcement->InfoText)
         {
 			CharacterHUD->Announcement->AnnouncementText->SetText(FText::FromString(TEXT("대기시간"))); // 시작전 안내 텍스트를 설정합니다.
-			CharacterHUD->Announcement->InfoText->SetText(FText::FromString(TEXT("이동: W A S D\n상승 : Q 하강 : E")));
+			CharacterHUD->Announcement->InfoText->SetText(FText::FromString(TEXT("이동: W A S D\n하강 : Q 상승 : E")));
             // 안내 메시지 텍스트를 설정합니다.
         }
     }

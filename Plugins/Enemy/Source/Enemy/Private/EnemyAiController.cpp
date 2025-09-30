@@ -33,15 +33,17 @@ void AEnemyAiController::PollInit()
 
 			if ( BehaviorTree )
 			{
-				RunBehaviorTree(BehaviorTree); // B 트리 실행
-
+				RunBehaviorTree(BehaviorTree); // B 트리 실행 + 이걸 가장 먼저 해야 블랙보드 컴포넌트가 생성됨
+				
 				BlackboardComp = GetBlackboardComponent();
 				if ( BlackboardComp && Targetpawn )
 				{
 					BlackboardComp->SetValueAsVector("StartLocation", ControlledEnemy->GetActorLocation());
 					BlackboardComp->SetValueAsFloat("AttackRange", ControlledEnemy->AttackRange);
 					BlackboardComp->SetValueAsFloat("DetectRange", ControlledEnemy->DetectRange);
-					BlackboardComp->SetValueAsFloat("AttackDelay", ControlledEnemy->AttackDelay); 
+					BlackboardComp->SetValueAsFloat("AttackDelay", ControlledEnemy->AttackDelay);
+					bAlwaysChase = ControlledEnemy->bAlwaysChase; // 무조건 추적 모드 여부
+					UE_LOG(LogTemp, Warning, TEXT("Enemy bAlwaysChase : %d"), bAlwaysChase );
 				}
 			}
 			bFocusToPlayer = true;

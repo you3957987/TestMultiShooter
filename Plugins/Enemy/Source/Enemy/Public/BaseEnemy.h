@@ -15,39 +15,53 @@ protected:
 	virtual void BeginPlay() override;
 
 	void PollInit(); // 틱에서 하는 초기화
-	
+
+	// 무조건 플레이어 추적 모드
+	UPROPERTY(EditAnywhere, Category="자체설정")
+	bool bAlwaysChase = false;
+	// 트루면 근접 공격, 폴스면 원거리 공격
+	UPROPERTY(EditAnywhere, Category="자체설정")
+	bool bMelleeAttack = true; 
+	// 최대 체력
 	UPROPERTY(EditAnywhere, Category="자체설정")
 	float MaxHealth = 100.f;
-
+	// 현재 체력
 	UPROPERTY(EditAnywhere, Category="자체설정")
 	float Health = 100.f;
-
+	// 이거 수정하면 자동으로 AttackRangeSphere의 반지름도 수정되게 만듬
 	UPROPERTY(EditAnywhere, Category="자체설정")
-	float AttackRange = 100.f;// 이거 수정하면 자동으로 AttackRangeSphere의 반지름도 수정되게 만듬
-
+	float AttackRange = 100.f;
+	// AI가 플레이어를 인식하는 범위
 	UPROPERTY(EditAnywhere, Category="자체설정")
-	float DetectRange = 700.f; // AI가 플레이어를 인식하는 범위
-
+	float DetectRange = 700.f; 
+	// AI가 플레이어를 추적하는 범위
 	UPROPERTY(EditAnywhere, Category="자체설정")
-	float ChaseRange = 1000.f; // AI가 플레이어를 추적하는 범위
-	
+	float ChaseRange = 1000.f; 
+	// 공격 딜레이
 	UPROPERTY(EditAnywhere, Category="자체설정")
-	float AttackDelay = 1.5f; // 공격 딜레이
+	float AttackDelay = 1.5f;
 	
 	// 타겟으로 삼을 캐릭터를 저장할 변수
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "자체설정")
 	TObjectPtr<ACharacter> TargetCharacter;
-	bool bTargetInitalize = false; // 캐릭터 초기화 여부를 나타내는 변수
+	// 캐릭터 초기화 여부를 나타내는 변수
+	bool bTargetInitalize = false;
+	// 충돌 구 컴포넌트
+	UPROPERTY(VisibleAnywhere)
+	class USphereComponent* AttackRangeSphere; 
+	// 인식 범위 확인용 컴포넌트
+	UPROPERTY(VisibleAnywhere)
+	class USphereComponent* DetectRangeSphere; 
+	// 추적 범위 확인용 컴포넌트
+	UPROPERTY(VisibleAnywhere)
+	class USphereComponent* ChaseRangeSphere;;
+	// 근접 공격 지점 컴포넌트
+	UPROPERTY(VisibleAnywhere)
+	class USceneComponent* AttackPoint;
+	// 근접 공격 범위
+	UPROPERTY(VisibleAnywhere)
+	class USphereComponent* AttackRangePointSphere;
 	
-	UPROPERTY(VisibleAnywhere)
-	class USphereComponent* AttackRangeSphere; // 충돌 구 컴포넌트
-
-	UPROPERTY(VisibleAnywhere)
-	class USphereComponent* DetectRangeSphere; // 인식 범위 확인용 컴포넌트
-
-	UPROPERTY(VisibleAnywhere)
-	class USphereComponent* ChaseRangeSphere;; // 추적 범위 확인용 컴포넌트
-
 public:
 	ABaseEnemy();
 	virtual void Tick(float DeltaTime) override;

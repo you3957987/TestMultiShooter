@@ -14,6 +14,12 @@ ABaseEnemy::ABaseEnemy()
 
 	ChaseRangeSphere = CreateDefaultSubobject<USphereComponent>(TEXT("ChaseRangeSphere"));
 	ChaseRangeSphere->SetupAttachment(RootComponent); // 루트 컴포넌트
+
+	AttackPoint = CreateDefaultSubobject<USceneComponent>(TEXT("AttackPoint"));
+	AttackPoint->SetupAttachment(RootComponent); // 루트 컴포넌트
+	
+	AttackRangePointSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AttackRangePointSphere"));
+	AttackRangePointSphere->SetupAttachment(AttackPoint); // AttackPoint에 부착
 	
 	Tags.Add(FName("Enemy")); // 적 캐릭터 태그 추가 -> 이걸 이용해서 프로젝트에서 플러그인 에너미 접근. 매우 중요!!!!
 }
