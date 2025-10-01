@@ -42,8 +42,9 @@ void AEnemyAiController::PollInit()
 					BlackboardComp->SetValueAsFloat("AttackRange", ControlledEnemy->AttackRange);
 					BlackboardComp->SetValueAsFloat("DetectRange", ControlledEnemy->DetectRange);
 					BlackboardComp->SetValueAsFloat("AttackDelay", ControlledEnemy->AttackDelay);
+					BlackboardComp->SetValueAsFloat("PatrolDelay", ControlledEnemy->PatrolDelay);
+					BlackboardComp->SetValueAsEnum(TEXT("EnemyType"), static_cast<uint8>(ControlledEnemy->EnemyType));
 					bAlwaysChase = ControlledEnemy->bAlwaysChase; // 무조건 추적 모드 여부
-					UE_LOG(LogTemp, Warning, TEXT("Enemy bAlwaysChase : %d"), bAlwaysChase );
 				}
 			}
 			bFocusToPlayer = true;

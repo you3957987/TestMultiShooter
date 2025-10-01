@@ -4,6 +4,15 @@
 #include "GameFramework/Character.h"
 #include "BaseEnemy.generated.h"
 
+UENUM(BlueprintType, Meta=(DisplayName="Enemy Type")) // 적 타입을 정의하는 열거형
+enum class EEnemyType : uint8
+{
+	EET_Melee UMETA(DisplayName = "Melee Enemy"), // 근접 공격 적
+	EET_Ranged UMETA(DisplayName = "Ranged Enemy"), // 원거리 공격 적
+
+	EET_MAX UMETA(DisplayName = "Default") // 최대값, 추가적인 값을 위한 공간
+};
+
 UCLASS()
 class ENEMY_API ABaseEnemy : public ACharacter
 {
@@ -19,9 +28,12 @@ protected:
 	// 무조건 플레이어 추적 모드
 	UPROPERTY(EditAnywhere, Category="자체설정")
 	bool bAlwaysChase = false;
-	// 트루면 근접 공격, 폴스면 원거리 공격
+	// 적 타입
 	UPROPERTY(EditAnywhere, Category="자체설정")
-	bool bMelleeAttack = true; 
+	EEnemyType EnemyType = EEnemyType::EET_Melee;
+	// 원거리 공격 타입일 때 발사체 클래스
+	UPROPERTY(EditAnywhere, Category="자체설정")
+	TSubclassOf<class ABaseEnemyProjectile> ProjectileClass;
 	// 최대 체력
 	UPROPERTY(EditAnywhere, Category="자체설정")
 	float MaxHealth = 100.f;
@@ -40,6 +52,13 @@ protected:
 	// 공격 딜레이
 	UPROPERTY(EditAnywhere, Category="자체설정")
 	float AttackDelay = 1.5f;
+	// 패트롤 딜레이
+	UPROPERTY(EditAnywhere, Category="자체설정")
+	float PatrolDelay = 3.f;
+	// 근접 공격 데미지
+	UPROPERTY(EditAnywhere, Category="자체설정")
+	float MeleeAttackDamage = 20.f; // 
+	
 	
 	// 타겟으로 삼을 캐릭터를 저장할 변수
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "자체설정")
@@ -57,10 +76,21 @@ protected:
 	class USphereComponent* ChaseRangeSphere;;
 	// 근접 공격 지점 컴포넌트
 	UPROPERTY(VisibleAnywhere)
-	class USceneComponent* AttackPoint;
+	class USceneComponent* MeleeAttackPoint;
 	// 근접 공격 범위
 	UPROPERTY(VisibleAnywhere)
 	class USphereComponent* AttackRangePointSphere;
+	// 원거리 공격 지점 컴포넌트
+	UPROPERTY(VisibleAnywhere)
+	class USceneComponent* RangedAttackPoint;
+
+	// 공격 애니메이션 몽타주
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UAnimMontage* AttackMontage; 
+	// 죽음 애니메이션 몽타주
+	UPROPERTY(EditAnywhere, Category = "자체설정")
+	class UAnimMontage* DeathMontage;
+
 	
 public:
 	ABaseEnemy();
@@ -73,13 +103,30 @@ public:
 
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE bool IsDead() const { return Health <= 0.f; }; // 체력이 0 이하이면 죽은 상태로 간주합니다.
-
+	void Die(); // 죽음 처리 함수
+	
+	// 이미 공격에 히트된 액터들을 저장하는 배열
+	UPROPERTY()
+	TArray<TObjectPtr<AActor>> HittedActors;
+	// 근접 공격 중인지 여부를 나타내는 변수
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "자체설정")
+	bool bIsAttacking = false; 
+	// 근접 공격 범위 활성화 함수 - 애님 노티파이에서 호출
+	UFUNCTION(BlueprintCallable)
+	void AttackCheck_Start() { HittedActors.Empty();bIsAttacking = true;} ;
+	// 근접 공격 범위 비활성화 함수 - 애님 노티파이에서 호출
+	UFUNCTION(BlueprintCallable)
+	void AttackCheck_End() { HittedActors.Empty();bIsAttacking = false; };
+	// 원거리 발사체 발사 함수 - 애님 노티파이에서 호출
+	UFUNCTION(BlueprintCallable)
+	virtual void ShootProjectile();
+	
 	// ATargetPoint 액터를 패트롤 지점으로 사용하기 위한 새 프로퍼티
 	UPROPERTY(EditAnywhere, Category = "자체설정", meta=(DisplayName="Patrol Points"))
 	TArray<TObjectPtr<class ATargetPoint>> PatrolPoints;
 
 	
-	void Attack();
+	virtual void Attack(); // 공격 함수. 자식에서 재정의
 
 #if WITH_EDITOR
 	// 에디터에서 프로퍼티가 변경될 때 호출됩니다.
