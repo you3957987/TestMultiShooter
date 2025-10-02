@@ -12,6 +12,6 @@ class ENEMY_API UBTTask_BaseMeleeAttack : public UBTTask_BlackboardBase
 
 public:
 	UBTTask_BaseMeleeAttack();
-
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
+	
 };

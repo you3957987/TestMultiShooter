@@ -17,6 +17,8 @@ EBTNodeResult::Type UBTTask_BaseRangedAttack::ExecuteTask(UBehaviorTreeComponent
 	if ( Enemy == nullptr ) return EBTNodeResult::Failed;
 
 	Enemy->Attack();// 적의 공격 함수 호출
-
+	
 	return EBTNodeResult::Succeeded;
 }
+
+

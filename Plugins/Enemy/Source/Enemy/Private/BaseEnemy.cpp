@@ -1,10 +1,10 @@
 #include "BaseEnemy.h"
-#include "AIController.h"
 #include "Kismet/GameplayStatics.h" // UGameplayStatics 사용을 위한 헤더 파일
 #include "Components/SphereComponent.h" // USphereComponent 사용을 위한 헤더 파일
+#include "Components/WidgetComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "EnemyProjectile/BaseEnemyProjectile.h"
-#include "GameFramework/ProjectileMovementComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 ABaseEnemy::ABaseEnemy()
 {
@@ -27,6 +27,12 @@ ABaseEnemy::ABaseEnemy()
 
 	RangedAttackPoint = CreateDefaultSubobject<USceneComponent>(TEXT("RangedAttackPoint"));
 	RangedAttackPoint->SetupAttachment(RootComponent); // 루트 컴포넌트
+
+	// 체력 바 위젯 컴포넌트 생성 및 설정
+	HealthBarWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("HealthBarWidget"));
+	HealthBarWidget->SetupAttachment(RootComponent);
+	HealthBarWidget->SetWidgetSpace(EWidgetSpace::World); // 월드 공간으로 변경
+	
 	
 	Tags.Add(FName("Enemy")); // 적 캐릭터 태그 추가 -> 이걸 이용해서 프로젝트에서 플러그인 에너미 접근. 매우 중요!!!!
 }
@@ -45,6 +51,8 @@ void ABaseEnemy::Tick(float DeltaTime)
 
 	PollInit();
 
+	UpdateHealthBarWidget(DeltaTime); // 체력 바 위젯 업데이트
+	
 	if (bIsAttacking == true && EnemyType == EEnemyType::EET_Melee) // 근접 공격 타입이고 공격 중일 때
 	{
 		TArray<AActor*> OverlappingActors;
@@ -159,6 +167,25 @@ void ABaseEnemy::Die()
 	}
 }
 
+void ABaseEnemy::UpdateHealthBarWidget(float DeltaTime)
+{
+	if (HealthBarWidget && HealthBarWidget->IsVisible())
+	{
+		APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+		if (PC && PC->PlayerCameraManager)
+		{
+			const FVector CameraLocation = PC->PlayerCameraManager->GetCameraLocation();
+			const FVector WidgetLocation = HealthBarWidget->GetComponentLocation();
+
+			// 위젯에서 카메라를 바라보는 방향의 회전값을 계산합니다.
+			const FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(WidgetLocation, CameraLocation);
+
+			// 위젯이 항상 수평을 유지하도록 Yaw 값만 사용하여 회전을 설정합니다.
+			HealthBarWidget->SetWorldRotation(FRotator(0.f, LookAtRotation.Yaw, 0.f));
+		}
+	}
+}
+
 #if WITH_EDITOR
 void ABaseEnemy::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
@@ -188,6 +215,13 @@ void ABaseEnemy::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEv
 		if ( ChaseRangeSphere )
 		{
 			ChaseRangeSphere->SetSphereRadius(ChaseRange);
+		}
+	}
+	if ( PropertyName == GET_MEMBER_NAME_CHECKED(ABaseEnemy, MoveSpeed) )
+	{
+		if ( GetCharacterMovement() )
+		{
+			GetCharacterMovement()->MaxWalkSpeed = MoveSpeed;
 		}
 	}
 }

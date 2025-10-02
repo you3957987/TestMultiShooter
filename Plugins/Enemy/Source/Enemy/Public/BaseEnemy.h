@@ -19,7 +19,9 @@ class ENEMY_API ABaseEnemy : public ACharacter
 	GENERATED_BODY()
 
 	friend class AEnemyAiController; // EnemyAiController에서 BaseEnemy의 protected 멤버에 접근할 수 있도록 합니다.
-
+	friend class UBTTask_BaseMeleeAttack; // BTTask_BaseMeleeAttack에서 BaseEnemy의 protected 멤버에 접근할 수 있도록 합니다.
+	friend class UBTTask_BaseRangedAttack; // BTTask_BaseRangedAttack에서 BaseEnemy의 protected 멤버에 접근할 수 있도록 합니다.
+	
 protected:
 	virtual void BeginPlay() override;
 
@@ -40,6 +42,9 @@ protected:
 	// 현재 체력
 	UPROPERTY(EditAnywhere, Category="자체설정")
 	float Health = 100.f;
+	// 이동 속도 = 여기서 값 바꾸면 자동으로 캐릭터 무브먼트 컴포넌트의 MaxWalkSpeed도 바뀜
+	UPROPERTY(EditAnywhere, Category="자체설정")
+	float MoveSpeed = 300.f;
 	// 이거 수정하면 자동으로 AttackRangeSphere의 반지름도 수정되게 만듬
 	UPROPERTY(EditAnywhere, Category="자체설정")
 	float AttackRange = 100.f;
@@ -84,6 +89,12 @@ protected:
 	UPROPERTY(VisibleAnywhere)
 	class USceneComponent* RangedAttackPoint;
 
+	// 체력 바 위젯 컴포넌트
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "자체설정")
+	TObjectPtr<class UWidgetComponent> HealthBarWidget;
+	// Tick에서 체력 바 위젯을 업데이트하는 함수
+	void UpdateHealthBarWidget(float DeltaTime);
+	
 	// 공격 애니메이션 몽타주
 	UPROPERTY(EditAnywhere, Category = "자체설정")
 	class UAnimMontage* AttackMontage; 

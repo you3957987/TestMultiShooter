@@ -9,10 +9,28 @@ ABaseEnemyProjectile::ABaseEnemyProjectile()
 	// 충돌 컴포넌트 생성 및 루트 컴포넌트로 설정
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComp"));
 	RootComponent = CollisionComp;
+	
+	// 오버랩 이벤트 생성 활성화
+	CollisionComp->SetGenerateOverlapEvents(true);
+	// 콜리전 프리셋: Custom, 활성화: Query and Physics
+	CollisionComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	// 오브젝트 타입: WorldDynamic
+	CollisionComp->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+
+	// 모든 채널에 대한 기본 반응을 '무시(Ignore)'로 설정
+	CollisionComp->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	
+	// 특정 채널에 대한 반응을 '블록(Block)'으로 설정
+	CollisionComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	CollisionComp->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
+	// 스케탈 메시 설정은 에디터에서 하기
 
 	// 외형을 표시할 스태틱 메시 컴포넌트 생성
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(RootComponent); // 충돌 컴포넌트에 부착
+
+	// 메시 컴포넌트는 콜리전 없음
+	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// 투사체 이동 컴포넌트 생성
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));

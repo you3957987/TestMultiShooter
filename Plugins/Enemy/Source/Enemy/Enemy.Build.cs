@@ -39,6 +39,7 @@ public class Enemy : ModuleRules
 				"Slate",
 				"SlateCore",
 				"AIModule",
+				"UMG"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
