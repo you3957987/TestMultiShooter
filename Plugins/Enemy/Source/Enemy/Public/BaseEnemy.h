@@ -92,7 +92,7 @@ protected:
 	// 체력 바 위젯 컴포넌트
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "자체설정")
 	TObjectPtr<class UWidgetComponent> HealthBarWidget;
-	// Tick에서 체력 바 위젯을 업데이트하는 함수
+	// Tick에서 체력 바 위젯을 내 캐릭터 쪽으로 돌아보게 하는 함수
 	void UpdateHealthBarWidget(float DeltaTime);
 	
 	// 공격 애니메이션 몽타주
@@ -137,7 +137,7 @@ public:
 	TArray<TObjectPtr<class ATargetPoint>> PatrolPoints;
 
 	
-	virtual void Attack(); // 공격 함수. 자식에서 재정의
+	virtual void Attack(); // 공격 함수. 
 
 #if WITH_EDITOR
 	// 에디터에서 프로퍼티가 변경될 때 호출됩니다.

@@ -1,7 +1,12 @@
 #include "BaseEnemy.h"
+
+#include "AIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Components/Progressbar.h"
 #include "Kismet/GameplayStatics.h" // UGameplayStatics 사용을 위한 헤더 파일
 #include "Components/SphereComponent.h" // USphereComponent 사용을 위한 헤더 파일
 #include "Components/WidgetComponent.h"
+#include "EnemyHUD/EnemyHealthBarWidget.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "EnemyProjectile/BaseEnemyProjectile.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -42,6 +47,15 @@ void ABaseEnemy::BeginPlay()
 	Super::BeginPlay();
 
 	Health = MaxHealth; // 시작할 때 체력을 최대 체력으로 설정
+
+	if ( HealthBarWidget ) // 체력바 위젯에서 프로그레스바 설정
+	{
+		UEnemyHealthBarWidget* HealthBar = Cast<UEnemyHealthBarWidget>(HealthBarWidget->GetUserWidgetObject());
+		if ( HealthBar )
+		{
+			HealthBar->HealthProgressBar->SetPercent(Health / MaxHealth);
+		}
+	}
 	
 }
 
@@ -51,7 +65,7 @@ void ABaseEnemy::Tick(float DeltaTime)
 
 	PollInit();
 
-	UpdateHealthBarWidget(DeltaTime); // 체력 바 위젯 업데이트
+	UpdateHealthBarWidget(DeltaTime); // 체력 바 위젯 업데이트 -> 항상 캐릭터 쪽으로 바라보도록
 	
 	if (bIsAttacking == true && EnemyType == EEnemyType::EET_Melee) // 근접 공격 타입이고 공격 중일 때
 	{
@@ -72,8 +86,7 @@ void ABaseEnemy::Tick(float DeltaTime)
 
 				bIsAttacking = false; // 공격 상태를 종료합니다.
 				
-				// 여기에 실제 데미지를 입히는 코드를 추가할 수 있습니다.
-				// UGameplayStatics::ApplyDamage(...)
+				// 이 아래에 이제 대미지 넣는거 추가 가능
 			}
 		}
 	}
@@ -110,6 +123,7 @@ void ABaseEnemy::Attack()
 		PlayAnimMontage(AttackMontage); // 공격 애니메이션 재생
 	}
 }
+
 
 // 원거리 공격 몽타주에서 애님 노티파이로 호출
 void ABaseEnemy::ShootProjectile()
@@ -164,6 +178,18 @@ void ABaseEnemy::Die()
 	if ( DeathMontage ) // 죽음 애니메이션 몽타주가 설정되어 있는지 확인
 	{
 		PlayAnimMontage(DeathMontage); // 죽음 애니메이션 재생
+	}
+
+	// AI 컨트롤러를 가져옵니다.
+	AAIController* AIController = Cast<AAIController>(GetController());
+	if (AIController)
+	{
+		// AI 컨트롤러에서 블랙보드 컴포넌트를 가져옵니다.
+		UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent();
+		if (BlackboardComp)
+		{
+			BlackboardComp->SetValueAsBool(TEXT("IsDead"), true);
+		}
 	}
 }
 
